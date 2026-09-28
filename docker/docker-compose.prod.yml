@@ -1,0 +1,18 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: ${GESTIO_CONNECTION_STRING}
+    ports:
+      - "8080:8080"
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
