@@ -34,6 +34,7 @@ public static class DbInitializer
                 Nombre = "Ramón",
                 Email = "ramon@gestio.local",
                 Nif = "12345678Z",
+                GestorId = PedroId,
                 Rol = Rol.AUTONOMO
             });
         }
@@ -72,7 +73,7 @@ public static class DbInitializer
                 UsuarioId = RamonId,
                 NombreArchivo = "factura-luz-enero.pdf",
                 FechaSubida = new DateTimeOffset(2026, 1, 10, 9, 30, 0, TimeSpan.Zero),
-                Estado = EstadoDocumento.Procesado
+                Estado = EstadoDocumento.VALIDADO
             },
             new Documento
             {
@@ -80,7 +81,7 @@ public static class DbInitializer
                 UsuarioId = RamonId,
                 NombreArchivo = "factura-internet-enero.pdf",
                 FechaSubida = new DateTimeOffset(2026, 1, 12, 11, 15, 0, TimeSpan.Zero),
-                Estado = EstadoDocumento.Pendiente
+                Estado = EstadoDocumento.SUBIDO
             },
             new Documento
             {
@@ -88,7 +89,7 @@ public static class DbInitializer
                 UsuarioId = RamonId,
                 NombreArchivo = "ticket-combustible.pdf",
                 FechaSubida = new DateTimeOffset(2026, 1, 15, 16, 45, 0, TimeSpan.Zero),
-                Estado = EstadoDocumento.Error
+                Estado = EstadoDocumento.ERROR
             },
             new Documento
             {
@@ -96,7 +97,7 @@ public static class DbInitializer
                 UsuarioId = PedroId,
                 NombreArchivo = "declaracion-iva-q1.pdf",
                 FechaSubida = new DateTimeOffset(2026, 1, 18, 8, 0, 0, TimeSpan.Zero),
-                Estado = EstadoDocumento.Procesando
+                Estado = EstadoDocumento.PROCESANDO
             },
             new Documento
             {
@@ -104,7 +105,7 @@ public static class DbInitializer
                 UsuarioId = PedroId,
                 NombreArchivo = "factura-proveedor-demo.pdf",
                 FechaSubida = new DateTimeOffset(2026, 1, 20, 10, 20, 0, TimeSpan.Zero),
-                Estado = EstadoDocumento.Procesado
+                Estado = EstadoDocumento.VALIDADO
             }
         };
 
@@ -178,9 +179,9 @@ public static class DbInitializer
             {
                 Id = AnomaliaCombustibleId,
                 DocumentoId = TicketCombustibleId,
-                Tipo = "NifNoValido",
+                Tipo = TipoAnomalia.NIF_AUSENTE,
                 Descripcion = "No se ha podido identificar un NIF válido en el documento.",
-                Severidad = SeveridadAnomalia.CRITICA,
+                Severidad = SeveridadAnomalia.BLOQUEANTE,
                 Resuelta = false,
                 FechaDeteccion = new DateTimeOffset(2026, 1, 15, 16, 50, 0, TimeSpan.Zero)
             },
@@ -188,7 +189,7 @@ public static class DbInitializer
             {
                 Id = AnomaliaProveedorId,
                 DocumentoId = FacturaProveedorId,
-                Tipo = "TotalNoCoincide",
+                Tipo = TipoAnomalia.DESCUADRE_ARITMETICO,
                 Descripcion = "El total detectado requiere revisión manual.",
                 Severidad = SeveridadAnomalia.ADVERTENCIA,
                 Resuelta = false,
@@ -198,9 +199,9 @@ public static class DbInitializer
             {
                 Id = AnomaliaDeclaracionId,
                 DocumentoId = DeclaracionIvaId,
-                Tipo = "FechaAusente",
+                Tipo = TipoAnomalia.BAJA_CONFIANZA,
                 Descripcion = "La fecha de emisión no estaba presente en el documento.",
-                Severidad = SeveridadAnomalia.INFORMATIVA,
+                Severidad = SeveridadAnomalia.ADVERTENCIA,
                 Resuelta = true,
                 FechaDeteccion = new DateTimeOffset(2026, 1, 18, 8, 5, 0, TimeSpan.Zero)
             }

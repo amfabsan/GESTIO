@@ -13,7 +13,8 @@ public sealed class AnomaliaConfiguration : IEntityTypeConfiguration<Anomalia>
         builder.HasKey(anomalia => anomalia.Id);
 
         builder.Property(anomalia => anomalia.Tipo)
-            .HasMaxLength(100)
+            .HasConversion<string>()
+            .HasMaxLength(30)
             .IsRequired();
 
         builder.Property(anomalia => anomalia.Descripcion)

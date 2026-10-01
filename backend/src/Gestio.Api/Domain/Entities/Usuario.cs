@@ -14,7 +14,13 @@ public sealed class Usuario
 
     public string? CodigoAsesoria { get; set; }
 
+    public Guid? GestorId { get; set; }
+
     public Rol Rol { get; set; }
+
+    public Usuario? Gestor { get; set; }
+
+    public ICollection<Usuario> Clientes { get; } = [];
 
     public ICollection<Documento> Documentos { get; } = [];
 }

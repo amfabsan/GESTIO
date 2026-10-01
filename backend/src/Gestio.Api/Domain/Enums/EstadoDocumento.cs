@@ -2,8 +2,10 @@ namespace Gestio.Api.Domain.Enums;
 
 public enum EstadoDocumento
 {
-    Pendiente = 1,
-    Procesando = 2,
-    Procesado = 3,
-    Error = 4
+    SUBIDO = 1,
+    PROCESANDO = 2,
+    PENDIENTE_VALIDACION = 3,
+    VALIDADO = 4,
+    ERROR = 5,
+    ACLARACION_SOLICITADA = 6
 }

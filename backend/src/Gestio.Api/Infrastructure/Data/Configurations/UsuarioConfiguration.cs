@@ -37,5 +37,10 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 
         builder.Property(usuario => usuario.Rol)
             .IsRequired();
+
+        builder.HasOne(usuario => usuario.Gestor)
+            .WithMany(usuario => usuario.Clientes)
+            .HasForeignKey(usuario => usuario.GestorId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

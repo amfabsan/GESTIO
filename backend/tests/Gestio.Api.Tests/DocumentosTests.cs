@@ -31,7 +31,7 @@ public sealed class DocumentosTests
 
         Assert.Equal(5, documentos.Count());
         Assert.Contains(documentos, documento => documento.NombreArchivo == "factura-luz-enero.pdf");
-        Assert.Contains(documentos, documento => documento.Estado == "Procesando");
+        Assert.Contains(documentos, documento => documento.Estado == "PROCESANDO");
         Assert.Contains(documentos, documento => documento.Extraccion is not null);
         Assert.Contains(documentos, documento => documento.Anomalias.Count > 0);
     }

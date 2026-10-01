@@ -8,7 +8,7 @@ public sealed class Anomalia
 
     public Guid DocumentoId { get; set; }
 
-    public required string Tipo { get; set; }
+    public TipoAnomalia Tipo { get; set; }
 
     public required string Descripcion { get; set; }
 

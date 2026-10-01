@@ -16,6 +16,9 @@ public sealed class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
             .HasMaxLength(255)
             .IsRequired();
 
+        builder.Property(documento => documento.HashSha256)
+            .HasMaxLength(64);
+
         builder.Property(documento => documento.FechaSubida)
             .HasColumnType("timestamp with time zone")
             .IsRequired();
@@ -26,8 +29,14 @@ public sealed class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
         builder.HasOne(documento => documento.Usuario)
             .WithMany(usuario => usuario.Documentos)
             .HasForeignKey(documento => documento.UsuarioId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(documento => documento.UsuarioId);
+        builder.HasIndex(documento => new { documento.UsuarioId, documento.FechaSubida })
+            .IsDescending(false, true);
+
+        builder.HasIndex(documento => new { documento.UsuarioId, documento.HashSha256 })
+            .IsUnique();
+
+        builder.HasIndex(documento => documento.Estado);
     }
 }
