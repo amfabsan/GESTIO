@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Gestio.Api.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260930104911_AddFiscalExtractionAndAnomalies")]
-    partial class AddFiscalExtractionAndAnomalies
+    [Migration("20261001110626_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -54,8 +54,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.Property<string>("Tipo")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
 
                     b.HasKey("Id");
 
@@ -76,6 +76,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Property<DateTimeOffset>("FechaSubida")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("HashSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("NombreArchivo")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -86,7 +90,13 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UsuarioId");
+                    b.HasIndex("Estado");
+
+                    b.HasIndex("UsuarioId", "FechaSubida")
+                        .IsDescending(false, true);
+
+                    b.HasIndex("UsuarioId", "HashSha256")
+                        .IsUnique();
 
                     b.ToTable("documentos", (string)null);
                 });
@@ -155,6 +165,9 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
+                    b.Property<Guid?>("GestorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Nif")
                         .IsRequired()
                         .HasColumnType("varchar(9)");
@@ -171,6 +184,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("GestorId");
 
                     b.HasIndex("Nif")
                         .IsUnique();
@@ -197,7 +212,7 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
                         .WithMany("Documentos")
                         .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Usuario");
@@ -214,6 +229,16 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Gestor")
+                        .WithMany("Clientes")
+                        .HasForeignKey("GestorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Gestor");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.Navigation("Anomalias");
@@ -223,6 +248,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
                 {
+                    b.Navigation("Clientes");
+
                     b.Navigation("Documentos");
                 });
 #pragma warning restore 612, 618

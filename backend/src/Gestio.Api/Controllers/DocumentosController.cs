@@ -42,7 +42,7 @@ public sealed class DocumentosController(ApplicationDbContext context) : Control
             documento.Anomalias
                 .OrderByDescending(anomalia => anomalia.FechaDeteccion)
                 .Select(anomalia => new AnomaliaResponse(
-                    anomalia.Tipo,
+                    anomalia.Tipo.ToString(),
                     anomalia.Descripcion,
                     anomalia.Severidad.ToString(),
                     anomalia.Resuelta,

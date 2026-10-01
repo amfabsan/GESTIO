@@ -10,6 +10,8 @@ public sealed class Documento
 
     public required string NombreArchivo { get; set; }
 
+    public string? HashSha256 { get; set; }
+
     public DateTimeOffset FechaSubida { get; set; }
 
     public EstadoDocumento Estado { get; set; }
