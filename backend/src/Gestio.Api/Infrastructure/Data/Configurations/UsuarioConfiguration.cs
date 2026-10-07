@@ -8,13 +8,27 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        builder.ToTable("usuarios", table => table.HasCheckConstraint(
-            "CK_usuarios_codigo_asesoria_por_rol",
-            "(\"Rol\" = 2 AND \"CodigoAsesoria\" ~ '^ASE-[0-9]{6}$') OR (\"Rol\" <> 2 AND \"CodigoAsesoria\" IS NULL)"));
+        builder.ToTable("usuarios", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_usuarios_codigo_asesoria_por_rol",
+                "(\"Rol\" = 2 AND \"CodigoAsesoria\" ~ '^ASE-[0-9]{6}$') OR (\"Rol\" <> 2 AND \"CodigoAsesoria\" IS NULL)");
+            table.HasCheckConstraint(
+                "CK_usuarios_dos_apellidos_obligatorios",
+                "length(trim(\"PrimerApellido\")) > 0 AND length(trim(\"SegundoApellido\")) > 0");
+        });
 
         builder.HasKey(usuario => usuario.Id);
 
         builder.Property(usuario => usuario.Nombre)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(usuario => usuario.PrimerApellido)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(usuario => usuario.SegundoApellido)
             .HasMaxLength(200)
             .IsRequired();
 

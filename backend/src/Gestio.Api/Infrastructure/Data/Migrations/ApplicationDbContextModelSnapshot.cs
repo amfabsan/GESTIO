@@ -174,8 +174,18 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("PrimerApellido")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int>("Rol")
                         .HasColumnType("integer");
+
+                    b.Property<string>("SegundoApellido")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("Id");
 
@@ -190,6 +200,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("usuarios", null, t =>
                         {
                             t.HasCheckConstraint("CK_usuarios_codigo_asesoria_por_rol", "(\"Rol\" = 2 AND \"CodigoAsesoria\" ~ '^ASE-[0-9]{6}$') OR (\"Rol\" <> 2 AND \"CodigoAsesoria\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_usuarios_dos_apellidos_obligatorios", "length(trim(\"PrimerApellido\")) > 0 AND length(trim(\"SegundoApellido\")) > 0");
                         });
                 });
 
