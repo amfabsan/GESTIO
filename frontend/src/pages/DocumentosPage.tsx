@@ -22,7 +22,7 @@ export function DocumentosPage() {
   }, [])
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
       <header>
         <p className="text-sm font-medium uppercase tracking-wide text-slate-500">Buzón fiscal</p>
         <h1 className="text-3xl font-semibold text-slate-900">Documentos</h1>
@@ -62,6 +62,6 @@ export function DocumentosPage() {
           </table>
         </div>
       )}
-    </main>
+    </div>
   )
 }

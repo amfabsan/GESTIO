@@ -8,6 +8,10 @@ public sealed class Usuario
 
     public required string Nombre { get; set; }
 
+    public required string PrimerApellido { get; set; }
+
+    public required string SegundoApellido { get; set; }
+
     public required string Email { get; set; }
 
     public required string Nif { get; set; }

@@ -32,6 +32,8 @@ public static class DbInitializer
             {
                 Id = RamonId,
                 Nombre = "Ramón",
+                PrimerApellido = "García",
+                SegundoApellido = "López",
                 Email = "ramon@gestio.local",
                 Nif = "12345678Z",
                 GestorId = PedroId,
@@ -45,6 +47,8 @@ public static class DbInitializer
             {
                 Id = PedroId,
                 Nombre = "Pedro",
+                PrimerApellido = "Sánchez",
+                SegundoApellido = "Martín",
                 Email = "pedro@gestio.local",
                 Nif = "87654321X",
                 CodigoAsesoria = "ASE-000123",
@@ -55,13 +59,6 @@ public static class DbInitializer
         if (usuarios.Count > 0)
         {
             await context.Usuarios.AddRangeAsync(usuarios, cancellationToken);
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
-        var pedro = await context.Usuarios.SingleAsync(usuario => usuario.Id == PedroId, cancellationToken);
-        if (pedro.CodigoAsesoria != "ASE-000123")
-        {
-            pedro.CodigoAsesoria = "ASE-000123";
             await context.SaveChangesAsync(cancellationToken);
         }
 
