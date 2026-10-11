@@ -66,44 +66,69 @@ public static class DbInitializer
         {
             new Documento
             {
+
                 Id = FacturaLuzId,
                 UsuarioId = RamonId,
                 NombreArchivo = "factura-luz-enero.pdf",
+                TipoMime = "application/pdf",
+                Origen = OrigenDocumento.SUBIDA_WEB,
                 FechaSubida = new DateTimeOffset(2026, 1, 10, 9, 30, 0, TimeSpan.Zero),
                 Estado = EstadoDocumento.VALIDADO
+
             },
+
             new Documento
             {
+                
                 Id = FacturaInternetId,
                 UsuarioId = RamonId,
                 NombreArchivo = "factura-internet-enero.pdf",
+                TipoMime = "application/pdf",
+                Origen = OrigenDocumento.SUBIDA_WEB,
                 FechaSubida = new DateTimeOffset(2026, 1, 12, 11, 15, 0, TimeSpan.Zero),
                 Estado = EstadoDocumento.SUBIDO
+
             },
+
             new Documento
             {
+
                 Id = TicketCombustibleId,
                 UsuarioId = RamonId,
                 NombreArchivo = "ticket-combustible.pdf",
+                TipoMime = "application/pdf",
+                Origen = OrigenDocumento.SUBIDA_WEB,
                 FechaSubida = new DateTimeOffset(2026, 1, 15, 16, 45, 0, TimeSpan.Zero),
                 Estado = EstadoDocumento.ERROR
+
             },
+
             new Documento
             {
+
                 Id = DeclaracionIvaId,
                 UsuarioId = PedroId,
                 NombreArchivo = "declaracion-iva-q1.pdf",
+                TipoMime = "application/pdf",
+                Origen = OrigenDocumento.SUBIDA_WEB,
                 FechaSubida = new DateTimeOffset(2026, 1, 18, 8, 0, 0, TimeSpan.Zero),
                 Estado = EstadoDocumento.PROCESANDO
+
             },
+
             new Documento
             {
+
                 Id = FacturaProveedorId,
                 UsuarioId = PedroId,
                 NombreArchivo = "factura-proveedor-demo.pdf",
+                TipoMime = "application/pdf",
+                Origen = OrigenDocumento.SUBIDA_WEB,
                 FechaSubida = new DateTimeOffset(2026, 1, 20, 10, 20, 0, TimeSpan.Zero),
                 Estado = EstadoDocumento.VALIDADO
+                
             }
+
         };
 
         var documentosExistentes = await context.Documentos
