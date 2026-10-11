@@ -16,6 +16,21 @@ public sealed class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
             .HasMaxLength(255)
             .IsRequired();
 
+        builder.Property(documento => documento.TipoMime)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(documento => documento.TamanoBytes)
+            .IsRequired();
+
+        builder.Property(documento => documento.Origen)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(documento => documento.StorageKey)
+            .HasMaxLength(500);
+
         builder.Property(documento => documento.HashSha256)
             .HasMaxLength(64);
 
@@ -34,8 +49,8 @@ public sealed class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
         builder.HasIndex(documento => new { documento.UsuarioId, documento.FechaSubida })
             .IsDescending(false, true);
 
-        builder.HasIndex(documento => new { documento.UsuarioId, documento.HashSha256 })
-            .IsUnique();
+        // Sin IsUnique: PB-05 no bloquea repetidos; la detección de duplicados es de PB-10.
+        builder.HasIndex(documento => new { documento.UsuarioId, documento.HashSha256 });
 
         builder.HasIndex(documento => documento.Estado);
     }
