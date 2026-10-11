@@ -17,8 +17,13 @@ export type Documento = {
   historial: EventoDocumento[]
 }
 
+export type TipoArchivoPermitido = {
+  extension: string
+  tipoMime: string
+  firmaHex: string
+}
+
 export type ConfiguracionSubida = {
   tamanoMaximoBytes: number
-  extensiones: string[]
-  tiposMime: string[]
+  tiposPermitidos: TipoArchivoPermitido[]
 }

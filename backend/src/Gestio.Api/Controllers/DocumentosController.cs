@@ -17,12 +17,13 @@ public sealed class DocumentosController(
     ICurrentUserService currentUserService,
     IOptions<DocumentosOptions> options) : ControllerBase
 {
-    [HttpGet("configuracion-subida")]
+        [HttpGet("configuracion-subida")]
     public ActionResult<ConfiguracionSubidaResponse> GetConfiguracionSubida() =>
         Ok(new ConfiguracionSubidaResponse(
             options.Value.TamanoMaximoBytes,
-            ValidadorArchivo.ExtensionesPermitidas,
-            ValidadorArchivo.TiposMimePermitidos));
+            ValidadorArchivo.TiposPermitidos
+                .Select(tipo => new TipoArchivoPermitidoResponse(tipo.Extension, tipo.TipoMime, Convert.ToHexString(tipo.Firma)))
+                .ToList()));
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DocumentoResponse>>> GetDocumentos(CancellationToken cancellationToken)
@@ -166,5 +167,6 @@ public sealed record EventoDocumentoResponse(string Tipo, DateTimeOffset Fecha, 
 
 public sealed record ConfiguracionSubidaResponse(
     long TamanoMaximoBytes,
-    IReadOnlyCollection<string> Extensiones,
-    IReadOnlyCollection<string> TiposMime);
+    IReadOnlyList<TipoArchivoPermitidoResponse> TiposPermitidos);
+
+public sealed record TipoArchivoPermitidoResponse(string Extension, string TipoMime, string FirmaHex);

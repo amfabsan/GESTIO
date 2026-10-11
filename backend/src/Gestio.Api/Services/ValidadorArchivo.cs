@@ -20,9 +20,9 @@ public static class ValidadorArchivo
         ["image/png"] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
     };
 
-    public static IReadOnlyCollection<string> ExtensionesPermitidas => MimePorExtension.Keys;
-
-    public static IReadOnlyCollection<string> TiposMimePermitidos => FirmaPorMime.Keys;
+        // Se publica al frontend para que aplique las mismas reglas sin tenerlas duplicadas.
+    public static IEnumerable<(string Extension, string TipoMime, byte[] Firma)> TiposPermitidos =>
+        MimePorExtension.Select(par => (par.Key, par.Value, FirmaPorMime[par.Value]));
 
     // Devuelve el tipo MIME real si la extensión está permitida y el contenido coincide con ella; si no, null.
     public static string? ObtenerTipoMimeReal(string nombreArchivo, ReadOnlySpan<byte> cabecera)

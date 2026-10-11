@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { isAxiosError } from 'axios'
 import type { ConfiguracionSubida, Documento } from '../../../types/documentos'
 import { obtenerConfiguracionSubida, subirDocumento } from '../documentosApi'
-import { formatearTamano, validarArchivo } from '../validarArchivo'
+import { describirTiposPermitidos, formatearTamano, validarArchivo } from '../validarArchivo'
 
 type DropzoneSubidaProps = {
   onSubido: (documento: Documento) => void
@@ -28,7 +28,7 @@ export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
     setError(null)
     setExito(null)
 
-    const errorValidacion = await validarArchivo(archivo, configuracion.tamanoMaximoBytes)
+    const errorValidacion = await validarArchivo(archivo, configuracion)
     if (errorValidacion) {
       setError(errorValidacion)
       return
@@ -56,6 +56,7 @@ export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
   }
 
   const deshabilitado = !configuracion || subiendo
+  const extensionesAceptadas = configuracion?.tiposPermitidos.map((tipo) => tipo.extension).join(',')
 
   return (
     <section className="space-y-3" aria-label="Subir documento">
@@ -75,7 +76,9 @@ export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
           {subiendo ? 'Subiendo...' : 'Arrastra aquí tu factura o ticket, o haz clic para seleccionarlo'}
         </span>
         {configuracion && (
-          <span className="text-sm text-slate-500">PDF, JPG o PNG · Máximo {formatearTamano(configuracion.tamanoMaximoBytes)}</span>
+          <span className="text-sm text-slate-500">
+            {describirTiposPermitidos(configuracion)} · Máximo {formatearTamano(configuracion.tamanoMaximoBytes)}
+          </span>
         )}
       </label>
       <input
@@ -83,7 +86,7 @@ export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
         ref={inputRef}
         type="file"
         className="sr-only"
-        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        accept={extensionesAceptadas}
         disabled={deshabilitado}
         onChange={(evento) => {
           const archivo = evento.target.files?.[0]
