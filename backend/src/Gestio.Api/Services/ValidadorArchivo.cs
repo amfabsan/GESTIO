@@ -1,10 +1,10 @@
 namespace Gestio.Api.Services;
 
+public sealed record TipoArchivoPermitido(string Extension, string TipoMime, byte[] Firma);
+
 // Comprueba el tipo real del archivo por su firma (magic bytes); cambiar la extensión no basta para colarlo.
 public static class ValidadorArchivo
 {
-    public const int BytesCabecera = 8;
-
     private static readonly Dictionary<string, string> MimePorExtension = new(StringComparer.OrdinalIgnoreCase)
     {
         [".pdf"] = "application/pdf",
@@ -20,9 +20,12 @@ public static class ValidadorArchivo
         ["image/png"] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
     };
 
-        // Se publica al frontend para que aplique las mismas reglas sin tenerlas duplicadas.
-    public static IEnumerable<(string Extension, string TipoMime, byte[] Firma)> TiposPermitidos =>
-        MimePorExtension.Select(par => (par.Key, par.Value, FirmaPorMime[par.Value]));
+    public static readonly IReadOnlyList<TipoArchivoPermitido> TiposPermitidos = MimePorExtension
+        .Select(par => new TipoArchivoPermitido(par.Key, par.Value, FirmaPorMime[par.Value]))
+        .ToList();
+
+    // Bytes que hay que leer del archivo para poder comparar la firma más larga.
+    public static readonly int BytesCabecera = FirmaPorMime.Values.Max(firma => firma.Length);
 
     // Devuelve el tipo MIME real si la extensión está permitida y el contenido coincide con ella; si no, null.
     public static string? ObtenerTipoMimeReal(string nombreArchivo, ReadOnlySpan<byte> cabecera)

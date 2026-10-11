@@ -1,6 +1,11 @@
 import { apiClient } from '../../services/apiClient'
 import type { ConfiguracionSubida, Documento } from '../../types/documentos'
 
+export async function obtenerDocumentos(signal?: AbortSignal) {
+  const { data } = await apiClient.get<Documento[]>('/documentos', { signal })
+  return data
+}
+
 export async function obtenerConfiguracionSubida() {
   const { data } = await apiClient.get<ConfiguracionSubida>('/documentos/configuracion-subida')
   return data
@@ -17,9 +22,7 @@ export async function subirDocumento(archivo: File) {
   return data
 }
 
-export async function abrirOriginalDocumento(id: string) {
+export async function obtenerOriginal(id: string) {
   const { data } = await apiClient.get<Blob>(`/documentos/${id}/archivo`, { responseType: 'blob' })
-  const url = URL.createObjectURL(data)
-  window.open(url, '_blank', 'noopener')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  return data
 }

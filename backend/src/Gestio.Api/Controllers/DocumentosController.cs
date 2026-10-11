@@ -1,29 +1,27 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
-using Gestio.Api.Domain.Enums;
-using Gestio.Api.Domain.Errores;
 using Gestio.Api.Domain.Interfaces;
+using Gestio.Api.Models.Responses;
 using Gestio.Api.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 namespace Gestio.Api.Controllers;
 
 [ApiController]
 [Route("api/documentos")]
-public sealed class DocumentosController(
-    DocumentosService documentosService,
-    ICurrentUserService currentUserService,
-    IOptions<DocumentosOptions> options) : ControllerBase
+public sealed class DocumentosController(DocumentosService documentosService, ICurrentUserService currentUserService) : ControllerBase
 {
-        [HttpGet("configuracion-subida")]
-    public ActionResult<ConfiguracionSubidaResponse> GetConfiguracionSubida() =>
-        Ok(new ConfiguracionSubidaResponse(
-            options.Value.TamanoMaximoBytes,
-            ValidadorArchivo.TiposPermitidos
+    [HttpGet("configuracion-subida")]
+    public ActionResult<ConfiguracionSubidaResponse> GetConfiguracionSubida()
+    {
+        var reglas = documentosService.ObtenerReglasSubida();
+
+        return Ok(new ConfiguracionSubidaResponse(
+            reglas.TamanoMaximoBytes,
+            reglas.TiposPermitidos
                 .Select(tipo => new TipoArchivoPermitidoResponse(tipo.Extension, tipo.TipoMime, Convert.ToHexString(tipo.Firma)))
                 .ToList()));
+    }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<DocumentoResponse>>> GetDocumentos(CancellationToken cancellationToken)
@@ -31,10 +29,7 @@ public sealed class DocumentosController(
         var usuario = await currentUserService.ObtenerAsync(cancellationToken);
         if (usuario is null) return Unauthorized();
 
-        var documentos = await ConDetalle(documentosService.ConsultablesPor(usuario))
-            .OrderByDescending(documento => documento.FechaSubida)
-            .ToListAsync(cancellationToken);
-
+        var documentos = await documentosService.ListarAsync(usuario, cancellationToken);
         return Ok(documentos.Select(MapearDocumento).ToList());
     }
 
@@ -45,9 +40,7 @@ public sealed class DocumentosController(
         if (usuario is null) return Unauthorized();
 
         // Si no puede consultarlo se responde 404 para no revelar que el documento existe.
-        var documento = await ConDetalle(documentosService.ConsultablesPor(usuario))
-            .FirstOrDefaultAsync(documento => documento.Id == id, cancellationToken);
-
+        var documento = await documentosService.ObtenerAsync(usuario, id, cancellationToken);
         return documento is null ? NotFound() : Ok(MapearDocumento(documento));
     }
 
@@ -57,13 +50,8 @@ public sealed class DocumentosController(
         var usuario = await currentUserService.ObtenerAsync(cancellationToken);
         if (usuario is null) return Unauthorized();
 
-        var documento = await documentosService.ConsultablesPor(usuario)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(documento => documento.Id == id, cancellationToken);
-        if (documento is null) return NotFound();
-
-        var archivo = await documentosService.AbrirOriginalAsync(documento, cancellationToken);
-        return archivo is null ? NotFound() : File(archivo, documento.TipoMime, documento.NombreArchivo);
+        var original = await documentosService.AbrirOriginalAsync(usuario, id, cancellationToken);
+        return original is null ? NotFound() : File(original.Contenido, original.TipoMime, original.NombreArchivo);
     }
 
     [HttpPost]
@@ -72,25 +60,14 @@ public sealed class DocumentosController(
     {
         var usuario = await currentUserService.ObtenerAsync(cancellationToken);
         if (usuario is null) return Unauthorized();
-        if (usuario.Rol != Rol.AUTONOMO) return DocumentoErrores.SoloAutonomoPuedeSubir.ToProblem();
 
         await using var contenido = archivo.OpenReadStream();
-        var resultado = await documentosService.SubirAsync(usuario.Id, archivo.FileName, contenido, archivo.Length, cancellationToken);
+        var resultado = await documentosService.SubirAsync(usuario, archivo.FileName, contenido, archivo.Length, cancellationToken);
         if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
 
-        var documento = await ConDetalle(documentosService.ConsultablesPor(usuario))
-            .FirstAsync(documento => documento.Id == resultado.Valor!.Id, cancellationToken);
-
+        var documento = resultado.Valor!;
         return CreatedAtAction(nameof(GetDocumento), new { id = documento.Id }, MapearDocumento(documento));
     }
-
-    private static IQueryable<Documento> ConDetalle(IQueryable<Documento> consulta) => consulta
-        .AsNoTracking()
-        .AsSplitQuery()
-        .Include(documento => documento.Usuario)
-        .Include(documento => documento.ExtraccionIa)
-        .Include(documento => documento.Anomalias)
-        .Include(documento => documento.Eventos);
 
     private static DocumentoResponse MapearDocumento(Documento documento) => new(
         documento.Id,
@@ -129,44 +106,3 @@ public sealed class DocumentosController(
             .Select(evento => new EventoDocumentoResponse(evento.Tipo.ToString(), evento.Fecha, evento.Detalle))
             .ToList());
 }
-
-public sealed record DocumentoResponse(
-    Guid Id,
-    string NombreArchivo,
-    string Usuario,
-    DateTimeOffset FechaSubida,
-    string Estado,
-    string TipoMime,
-    long TamanoBytes,
-    string Origen,
-    bool TieneOriginal,
-    ExtraccionResponse? Extraccion,
-    IReadOnlyList<AnomaliaResponse> Anomalias,
-    IReadOnlyList<EventoDocumentoResponse> Historial);
-
-public sealed record ExtraccionResponse(
-    string? EmisorNombre,
-    string? EmisorNif,
-    DateOnly? FechaEmision,
-    decimal? BaseImponible,
-    decimal? TipoIva,
-    decimal? CuotaIva,
-    decimal? Total,
-    string? CategoriaSugerida,
-    string? NivelConfianza,
-    string? DatosCrudosJson);
-
-public sealed record AnomaliaResponse(
-    string Tipo,
-    string Descripcion,
-    string Severidad,
-    bool Resuelta,
-    DateTimeOffset FechaDeteccion);
-
-public sealed record EventoDocumentoResponse(string Tipo, DateTimeOffset Fecha, string? Detalle);
-
-public sealed record ConfiguracionSubidaResponse(
-    long TamanoMaximoBytes,
-    IReadOnlyList<TipoArchivoPermitidoResponse> TiposPermitidos);
-
-public sealed record TipoArchivoPermitidoResponse(string Extension, string TipoMime, string FirmaHex);

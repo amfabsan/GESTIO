@@ -5,9 +5,14 @@ using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Errores;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Gestio.Api.Services;
+
+public sealed record ReglasSubida(long TamanoMaximoBytes, IReadOnlyList<TipoArchivoPermitido> TiposPermitidos);
+
+public sealed record ArchivoOriginal(Stream Contenido, string TipoMime, string NombreArchivo);
 
 public sealed class DocumentosService(
     ApplicationDbContext context,
@@ -16,26 +21,38 @@ public sealed class DocumentosService(
     TimeProvider timeProvider,
     ILogger<DocumentosService> logger)
 {
-    public IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
-        usuario.Rol == Rol.GESTOR
-            // Provisional hasta PB-04: la vinculación ACTIVA se representa hoy con Usuario.GestorId.
-            ? context.Documentos.Where(documento => documento.UsuarioId == usuario.Id || documento.Usuario.GestorId == usuario.Id)
-            : context.Documentos.Where(documento => documento.UsuarioId == usuario.Id);
+    public ReglasSubida ObtenerReglasSubida() => new(options.Value.TamanoMaximoBytes, ValidadorArchivo.TiposPermitidos);
 
-    public Task<Stream?> AbrirOriginalAsync(Documento documento, CancellationToken cancellationToken) =>
-        documento.StorageKey is null
-            ? Task.FromResult<Stream?>(null)
-            : storage.AbrirAsync(documento.StorageKey, cancellationToken);
+    public async Task<IReadOnlyList<Documento>> ListarAsync(UsuarioActual usuario, CancellationToken cancellationToken) =>
+        await ConDetalle(ConsultablesPor(usuario))
+            .OrderByDescending(documento => documento.FechaSubida)
+            .ToListAsync(cancellationToken);
 
-    public async Task<Resultado<Documento>> SubirAsync(Guid usuarioId, string nombreArchivo, Stream contenido, long tamanoBytes, CancellationToken cancellationToken)
+    public Task<Documento?> ObtenerAsync(UsuarioActual usuario, Guid id, CancellationToken cancellationToken) =>
+        ConDetalle(ConsultablesPor(usuario))
+            .FirstOrDefaultAsync(documento => documento.Id == id, cancellationToken);
+
+    public async Task<ArchivoOriginal?> AbrirOriginalAsync(UsuarioActual usuario, Guid id, CancellationToken cancellationToken)
     {
+        var documento = await ConsultablesPor(usuario)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(documento => documento.Id == id, cancellationToken);
+        if (documento?.StorageKey is null) return null;
+
+        var contenido = await storage.AbrirAsync(documento.StorageKey, cancellationToken);
+        return contenido is null ? null : new ArchivoOriginal(contenido, documento.TipoMime, documento.NombreArchivo);
+    }
+
+    public async Task<Resultado<Documento>> SubirAsync(UsuarioActual usuario, string nombreArchivo, Stream contenido, long tamanoBytes, CancellationToken cancellationToken)
+    {
+        if (usuario.Rol != Rol.AUTONOMO) return DocumentoErrores.SoloAutonomoPuedeSubir;
         if (tamanoBytes <= 0) return DocumentoErrores.ArchivoVacio;
         if (tamanoBytes > options.Value.TamanoMaximoBytes) return DocumentoErrores.TamanoExcedido(options.Value.TamanoMaximoBytes);
 
         var cabecera = new byte[ValidadorArchivo.BytesCabecera];
         var leidos = await contenido.ReadAtLeastAsync(cabecera, cabecera.Length, throwOnEndOfStream: false, cancellationToken);
         var tipoMime = ValidadorArchivo.ObtenerTipoMimeReal(nombreArchivo, cabecera.AsSpan(0, leidos));
-        if (tipoMime is null) return DocumentoErrores.TipoNoPermitido;
+        if (tipoMime is null) return DocumentoErrores.TipoNoPermitido(ValidadorArchivo.TiposPermitidos.Select(tipo => tipo.Extension));
 
         contenido.Position = 0;
         var hash = Convert.ToHexStringLower(await SHA256.HashDataAsync(contenido, cancellationToken));
@@ -44,11 +61,11 @@ public sealed class DocumentosService(
         string storageKey;
         try
         {
-            storageKey = await storage.GuardarAsync(contenido, usuarioId, ValidadorArchivo.ExtensionDeAlmacenamiento(tipoMime), cancellationToken);
+            storageKey = await storage.GuardarAsync(contenido, usuario.Id, ValidadorArchivo.ExtensionDeAlmacenamiento(tipoMime), cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "No se pudo almacenar el archivo subido por {UsuarioId}", usuarioId);
+            logger.LogError(ex, "No se pudo almacenar el archivo subido por {UsuarioId}", usuario.Id);
             return DocumentoErrores.AlmacenamientoFallido;
         }
 
@@ -59,7 +76,7 @@ public sealed class DocumentosService(
         var documento = new Documento
         {
             Id = Guid.NewGuid(),
-            UsuarioId = usuarioId,
+            UsuarioId = usuario.Id,
             NombreArchivo = nombre,
             TipoMime = tipoMime,
             TamanoBytes = tamanoBytes,
@@ -70,7 +87,7 @@ public sealed class DocumentosService(
             Estado = EstadoDocumento.SUBIDO
         };
         documento.Eventos.Add(new EventoDocumento(
-            usuarioId,
+            usuario.Id,
             TipoEventoDocumento.SUBIDA,
             ahora,
             $"Archivo original recibido ({tamanoBytes} bytes)."));
@@ -87,6 +104,20 @@ public sealed class DocumentosService(
             throw;
         }
 
-        return documento;
+        return (await ObtenerAsync(usuario, documento.Id, cancellationToken))!;
     }
+
+    // Regla de acceso (RF7) en un único sitio. Provisional hasta PB-04: la vinculación ACTIVA se representa hoy con Usuario.GestorId.
+    private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
+        usuario.Rol == Rol.GESTOR
+            ? context.Documentos.Where(documento => documento.UsuarioId == usuario.Id || documento.Usuario.GestorId == usuario.Id)
+            : context.Documentos.Where(documento => documento.UsuarioId == usuario.Id);
+
+    private static IQueryable<Documento> ConDetalle(IQueryable<Documento> consulta) => consulta
+        .AsNoTracking()
+        .AsSplitQuery()
+        .Include(documento => documento.Usuario)
+        .Include(documento => documento.ExtraccionIa)
+        .Include(documento => documento.Anomalias)
+        .Include(documento => documento.Eventos);
 }

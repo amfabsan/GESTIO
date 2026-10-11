@@ -1,5 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Gestio.Api.Common;
+using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Infrastructure.Data;
+using Gestio.Api.Infrastructure.Identidad;
+using Gestio.Api.Infrastructure.Storage;
+using Gestio.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,12 +19,23 @@ builder.Services.AddCors(options =>
         .AllowAnyMethod());
 });
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, UsuarioActualDesdeCabecera>();
+
+builder.Services.Configure<DocumentosOptions>(builder.Configuration.GetSection(DocumentosOptions.Seccion));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddScoped<DocumentosService>();
 
 builder.Services.AddControllers();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {

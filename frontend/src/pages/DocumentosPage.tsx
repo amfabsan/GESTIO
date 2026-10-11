@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react'
-import { apiClient } from '../services/apiClient'
 import { useAuth } from '../context/useAuth'
 import { DropzoneSubida } from '../features/documentos/components/DropzoneSubida'
-import { abrirOriginalDocumento } from '../features/documentos/documentosApi'
-import type { Documento } from '../types/documentos'
+import { useDocumentos } from '../features/documentos/hooks/useDocumentos'
 
 const estadoStyles: Record<string, string> = {
   SUBIDO: 'bg-slate-100 text-slate-800',
@@ -16,31 +13,7 @@ const estadoStyles: Record<string, string> = {
 
 export function DocumentosPage() {
   const { perfilActivo } = useAuth()
-  const [documentos, setDocumentos] = useState<Documento[]>([])
-  const [cargando, setCargando] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [errorOriginal, setErrorOriginal] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!perfilActivo) return
-
-    const controller = new AbortController()
-    apiClient.get<Documento[]>('/documentos', { signal: controller.signal })
-      .then((respuesta) => setDocumentos(respuesta.data))
-      .catch(() => {
-        if (!controller.signal.aborted) setError('No se han podido cargar los documentos.')
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setCargando(false)
-      })
-
-    return () => controller.abort()
-  }, [perfilActivo])
-
-  const verOriginal = (id: string) => {
-    setErrorOriginal(null)
-    abrirOriginalDocumento(id).catch(() => setErrorOriginal('No se ha podido abrir el archivo original.'))
-  }
+  const { documentos, cargando, error, errorOriginal, agregarDocumento, abrirOriginal } = useDocumentos(perfilActivo?.id)
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
@@ -50,7 +23,7 @@ export function DocumentosPage() {
         <p className="mt-2 text-slate-600">Sube tus facturas y tickets y consulta su estado de procesamiento.</p>
       </header>
 
-      <DropzoneSubida onSubido={(documento) => setDocumentos((actuales) => [documento, ...actuales])} />
+      <DropzoneSubida onSubido={agregarDocumento} />
 
       {cargando && <p className="text-slate-600">Cargando documentos...</p>}
       {error && <p className="rounded-lg bg-red-50 p-4 text-red-700">{error}</p>}
@@ -83,7 +56,7 @@ export function DocumentosPage() {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     {documento.tieneOriginal ? (
-                      <button className="text-sm font-semibold text-[#1b2a4a] underline-offset-2 hover:underline" type="button" onClick={() => verOriginal(documento.id)}>
+                      <button className="text-sm font-semibold text-[#1b2a4a] underline-offset-2 hover:underline" type="button" onClick={() => void abrirOriginal(documento.id)}>
                         Ver
                       </button>
                     ) : (

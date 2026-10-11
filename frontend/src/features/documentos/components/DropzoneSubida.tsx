@@ -1,51 +1,21 @@
-import { useEffect, useRef, useState, type DragEvent } from 'react'
-import { isAxiosError } from 'axios'
-import type { ConfiguracionSubida, Documento } from '../../../types/documentos'
-import { obtenerConfiguracionSubida, subirDocumento } from '../documentosApi'
-import { describirTiposPermitidos, formatearTamano, validarArchivo } from '../validarArchivo'
+import { useRef, useState, type DragEvent } from 'react'
+import type { Documento } from '../../../types/documentos'
+import { formatearTamano } from '../../../utils/archivos'
+import { useUploadDocumento } from '../hooks/useUploadDocumento'
+import { describirTiposPermitidos } from '../validarArchivo'
 
 type DropzoneSubidaProps = {
   onSubido: (documento: Documento) => void
 }
 
 export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
-  const [configuracion, setConfiguracion] = useState<ConfiguracionSubida | null>(null)
-  const [subiendo, setSubiendo] = useState(false)
+  const { configuracion, subiendo, error, exito, subir } = useUploadDocumento(onSubido)
   const [arrastrando, setArrastrando] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [exito, setExito] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    obtenerConfiguracionSubida()
-      .then(setConfiguracion)
-      .catch(() => setError('No se ha podido cargar la configuración de subida.'))
-  }, [])
-
   async function procesarArchivo(archivo: File) {
-    if (!configuracion) return
-
-    setError(null)
-    setExito(null)
-
-    const errorValidacion = await validarArchivo(archivo, configuracion)
-    if (errorValidacion) {
-      setError(errorValidacion)
-      return
-    }
-
-    setSubiendo(true)
-    try {
-      const documento = await subirDocumento(archivo)
-      setExito(`«${documento.nombreArchivo}» se ha subido correctamente.`)
-      onSubido(documento)
-    } catch (excepcion) {
-      const detalle = isAxiosError<{ detail?: string }>(excepcion) ? excepcion.response?.data?.detail : undefined
-      setError(detalle ?? 'No se ha podido subir el documento. Inténtalo de nuevo.')
-    } finally {
-      setSubiendo(false)
-      if (inputRef.current) inputRef.current.value = ''
-    }
+    await subir(archivo)
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   function manejarDrop(evento: DragEvent<HTMLLabelElement>) {

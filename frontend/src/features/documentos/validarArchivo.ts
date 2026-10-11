@@ -1,9 +1,5 @@
 import type { ConfiguracionSubida } from '../../types/documentos'
-
-export function formatearTamano(bytes: number) {
-  const megas = bytes / (1024 * 1024)
-  return `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(megas)} MB`
-}
+import { formatearTamano } from '../../utils/archivos'
 
 export function describirTiposPermitidos(configuracion: ConfiguracionSubida) {
   return configuracion.tiposPermitidos.map((tipo) => tipo.extension.replace('.', '').toUpperCase()).join(', ')
