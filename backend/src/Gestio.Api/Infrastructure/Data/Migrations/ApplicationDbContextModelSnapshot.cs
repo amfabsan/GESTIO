@@ -82,6 +82,23 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<string>("Origen")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("StorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<long>("TamanoBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TipoMime")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Guid>("UsuarioId")
                         .HasColumnType("uuid");
 
@@ -92,10 +109,42 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.HasIndex("UsuarioId", "FechaSubida")
                         .IsDescending(false, true);
 
-                    b.HasIndex("UsuarioId", "HashSha256")
-                        .IsUnique();
+                    b.HasIndex("UsuarioId", "HashSha256");
 
                     b.ToTable("documentos", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.EventoDocumento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Detalle")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("DocumentoId", "Fecha");
+
+                    b.ToTable("eventos_documento", (string)null);
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ExtraccionIa", b =>
@@ -227,6 +276,23 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.EventoDocumento", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
+                        .WithMany("Eventos")
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Documento");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ExtraccionIa", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
@@ -251,6 +317,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.Navigation("Anomalias");
+
+                    b.Navigation("Eventos");
 
                     b.Navigation("ExtraccionIa");
                 });
