@@ -21,7 +21,7 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                 type: "character varying(20)",
                 maxLength: 20,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "SUBIDA_WEB");
 
             migrationBuilder.AddColumn<string>(
                 name: "StorageKey",
@@ -43,7 +43,7 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                 type: "character varying(100)",
                 maxLength: 100,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "application/pdf");
 
             migrationBuilder.CreateTable(
                 name: "eventos_documento",
