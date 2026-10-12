@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { DocumentosPage } from '../pages/DocumentosPage'
+import { BuzonPage } from '../pages/autonomo/BuzonPage'
 import { InicioPage } from '../pages/autonomo/InicioPage'
 import { ClientesPage } from '../pages/gestor/ClientesPage'
 import { UsersPage } from '../pages/UsersPage'
@@ -20,7 +20,7 @@ export function AppRoutes() {
         <Route path="users" element={<UsersPage />} />
         <Route element={<RoleGuard rolPermitido="AUTONOMO" />}>
           <Route path="autonomo/inicio" element={<InicioPage />} />
-          <Route path="documentos" element={<DocumentosPage />} />
+          <Route path="autonomo/buzon" element={<BuzonPage />} />
         </Route>
         <Route element={<RoleGuard rolPermitido="GESTOR" />}>
           <Route path="gestor/clientes" element={<ClientesPage />} />

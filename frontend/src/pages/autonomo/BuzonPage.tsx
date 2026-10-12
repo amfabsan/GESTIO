@@ -1,6 +1,6 @@
-import { useAuth } from '../context/useAuth'
-import { DropzoneSubida } from '../features/documentos/components/DropzoneSubida'
-import { useDocumentos } from '../features/documentos/hooks/useDocumentos'
+import { useAuth } from '../../context/useAuth'
+import { DropzoneSubida } from '../../features/documentos/components/DropzoneSubida'
+import { useDocumentos } from '../../features/documentos/hooks/useDocumentos'
 
 const estadoStyles: Record<string, string> = {
   SUBIDO: 'bg-slate-100 text-slate-800',
@@ -11,16 +11,15 @@ const estadoStyles: Record<string, string> = {
   ACLARACION_SOLICITADA: 'bg-orange-100 text-orange-800',
 }
 
-export function DocumentosPage() {
+export function BuzonPage() {
   const { perfilActivo } = useAuth()
   const { documentos, cargando, error, errorOriginal, agregarDocumento, abrirOriginal } = useDocumentos(perfilActivo?.id)
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-6 py-8">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wide text-slate-500">Buzón fiscal</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Documentos</h1>
-        <p className="mt-2 text-slate-600">Sube tus facturas y tickets y consulta su estado de procesamiento.</p>
+        <h1 className="text-3xl font-semibold text-slate-900">Buzón de documentos</h1>
+        <p className="mt-2 text-slate-600">Sube cualquier factura o ticket y consulta su estado de procesamiento.</p>
       </header>
 
       <DropzoneSubida onSubido={agregarDocumento} />
