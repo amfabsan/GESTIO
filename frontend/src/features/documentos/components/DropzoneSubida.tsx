@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent } from 'react'
-import { CheckCircle2, Loader2, Smartphone, Upload } from 'lucide-react'
-import { btnPrimario, btnSecundario } from '../../../components/ui/estilos'
+import { CheckCircle2, Loader2, Upload } from 'lucide-react'
+import { btnPrimario } from '../../../components/ui/estilos'
 import type { Documento } from '../../../types/documentos'
 import { formatearTamano } from '../../../utils/archivos'
 import { useUploadDocumento } from '../hooks/useUploadDocumento'
@@ -60,12 +60,9 @@ export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
             {describirTiposPermitidos(configuracion)} · Facturas, tickets, recibos · Máximo {formatearTamano(configuracion.tamanoMaximoBytes)}
           </p>
         )}
-        <div className="mt-4 flex flex-wrap justify-center gap-3">
+        <div className="mt-4 flex justify-center">
           <button type="button" className={btnPrimario} disabled={deshabilitado}>
             <Upload aria-hidden="true" className="size-4" /> Seleccionar archivo
-          </button>
-          <button type="button" className={btnSecundario} onClick={(evento) => evento.stopPropagation()}>
-            <Smartphone aria-hidden="true" className="size-4" /> Desde WhatsApp
           </button>
         </div>
       </div>
