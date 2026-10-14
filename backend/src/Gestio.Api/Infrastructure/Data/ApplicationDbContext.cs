@@ -15,6 +15,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<EventoDocumento> EventosDocumento => Set<EventoDocumento>();
 
+    public DbSet<Vinculacion> Vinculaciones => Set<Vinculacion>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
