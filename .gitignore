@@ -208,6 +208,7 @@ frontend/.env.*
 
 # Local infrastructure
 .docker/
+backend/src/Gestio.Api/storage/
 # except build/, which is used as an MSBuild target.
 !**/[Pp]ackages/build/
 # Uncomment if necessary however generally it will be regenerated when needed
