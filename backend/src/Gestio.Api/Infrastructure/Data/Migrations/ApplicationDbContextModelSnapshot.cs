@@ -254,6 +254,54 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Vinculacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AceptadaPorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AutonomoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoAsesoria")
+                        .IsRequired()
+                        .HasColumnType("varchar(10)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("FechaAceptacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("FechaFinalizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("FechaSolicitud")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("FinalizadaPorId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutonomoId")
+                        .IsUnique()
+                        .HasFilter("\"Estado\" = 2");
+
+                    b.HasIndex("AutonomoId", "CodigoAsesoria")
+                        .IsUnique()
+                        .HasFilter("\"Estado\" = 1");
+
+                    b.HasIndex("AutonomoId", "FechaSolicitud");
+
+                    b.HasIndex("CodigoAsesoria", "Estado");
+
+                    b.ToTable("vinculaciones", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Anomalia", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
@@ -314,6 +362,17 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Gestor");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Vinculacion", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Autonomo")
+                        .WithMany("VinculacionesComoAutonomo")
+                        .HasForeignKey("AutonomoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Autonomo");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.Navigation("Anomalias");
@@ -328,6 +387,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Clientes");
 
                     b.Navigation("Documentos");
+
+                    b.Navigation("VinculacionesComoAutonomo");
                 });
 #pragma warning restore 612, 618
         }

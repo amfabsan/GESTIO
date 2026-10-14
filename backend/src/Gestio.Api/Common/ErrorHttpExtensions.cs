@@ -18,6 +18,7 @@ public static class ErrorHttpExtensions
             TipoError.TAMANO_EXCEDIDO => StatusCodes.Status413PayloadTooLarge,
             TipoError.TIPO_NO_SOPORTADO => StatusCodes.Status415UnsupportedMediaType,
             TipoError.NO_DISPONIBLE => StatusCodes.Status503ServiceUnavailable,
+            TipoError.CONFLICTO => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status500InternalServerError
 
         };

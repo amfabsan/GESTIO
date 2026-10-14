@@ -7,6 +7,6 @@ public enum TipoError
     PROHIBIDO,
     TAMANO_EXCEDIDO,
     TIPO_NO_SOPORTADO,
-    NO_DISPONIBLE
-
+    NO_DISPONIBLE,
+    CONFLICTO
 }
