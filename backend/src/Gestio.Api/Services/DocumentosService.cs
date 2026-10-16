@@ -107,7 +107,7 @@ public sealed class DocumentosService(
         return (await ObtenerAsync(usuario, documento.Id, cancellationToken))!;
     }
 
-    // Regla de acceso (RF7) en un único sitio. Provisional hasta PB-04: la vinculación ACTIVA se representa hoy con Usuario.GestorId.
+    // Regla de acceso (RF7) en un único sitio.
     private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
         usuario.Rol == Rol.GESTOR
             ? context.Documentos.Where(documento =>
