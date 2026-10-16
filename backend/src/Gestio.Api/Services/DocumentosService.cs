@@ -110,7 +110,15 @@ public sealed class DocumentosService(
     // Regla de acceso (RF7) en un único sitio. Provisional hasta PB-04: la vinculación ACTIVA se representa hoy con Usuario.GestorId.
     private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
         usuario.Rol == Rol.GESTOR
-            ? context.Documentos.Where(documento => documento.UsuarioId == usuario.Id || documento.Usuario.GestorId == usuario.Id)
+            ? context.Documentos.Where(documento =>
+                documento.UsuarioId == usuario.Id ||
+                context.Vinculaciones.Any(vinculacion =>
+                    vinculacion.AutonomoId == documento.UsuarioId &&
+                    vinculacion.CodigoAsesoria == context.Usuarios
+                        .Where(administrador => administrador.Id == usuario.Id)
+                        .Select(administrador => administrador.CodigoAsesoria)
+                        .FirstOrDefault() &&
+                    vinculacion.Estado == EstadoVinculacion.ACTIVA))
             : context.Documentos.Where(documento => documento.UsuarioId == usuario.Id);
 
     private static IQueryable<Documento> ConDetalle(IQueryable<Documento> consulta) => consulta

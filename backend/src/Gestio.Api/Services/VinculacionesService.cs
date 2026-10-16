@@ -126,7 +126,7 @@ public sealed class VinculacionesService(ApplicationDbContext context, TimeProvi
         return vinculacion;
     }
 
-    public Task<IReadOnlyList<Vinculacion>> ListarAsync(
+    public async Task<IReadOnlyList<Vinculacion>> ListarAsync(
         UsuarioActual usuario,
         CancellationToken cancellationToken)
     {
@@ -142,10 +142,9 @@ public sealed class VinculacionesService(ApplicationDbContext context, TimeProvi
                 administrador.Rol == Rol.GESTOR &&
                 administrador.CodigoAsesoria == vinculacion.CodigoAsesoria));
 
-        return consulta
+        return await consulta
             .OrderByDescending(vinculacion => vinculacion.FechaSolicitud)
-            .ToListAsync(cancellationToken)
-            .ContinueWith(t => (IReadOnlyList<Vinculacion>)t.Result, cancellationToken);
+            .ToListAsync(cancellationToken);
     }
 
     private Task<bool> ExisteAsesoriaAsync(string codigo, CancellationToken cancellationToken) =>
