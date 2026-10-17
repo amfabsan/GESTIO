@@ -3,6 +3,7 @@ import { BuzonPage } from '../pages/autonomo/BuzonPage'
 import { InicioPage } from '../pages/autonomo/InicioPage'
 import { MiAsesoriaPage } from '../pages/autonomo/MiAsesoriaPage'
 import { ClientesPage } from '../pages/gestor/ClientesPage'
+import { SolicitudesPage } from '../pages/gestor/SolicitudesPage'
 import { UsersPage } from '../pages/UsersPage'
 import { useAuth } from '../context/useAuth'
 import { AppLayout } from '../components/layout/AppLayout'
@@ -26,6 +27,7 @@ export function AppRoutes() {
         </Route>
         <Route element={<RoleGuard rolPermitido="GESTOR" />}>
           <Route path="gestor/clientes" element={<ClientesPage />} />
+          <Route path="gestor/solicitudes" element={<SolicitudesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

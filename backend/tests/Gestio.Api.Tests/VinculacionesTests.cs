@@ -2,8 +2,10 @@ using Gestio.Api.Domain.Entities;
 using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Errores;
 using Gestio.Api.Domain.Interfaces;
+using Gestio.Api.Controllers;
 using Gestio.Api.Infrastructure.Data;
 using Gestio.Api.Services;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Gestio.Api.Tests;
@@ -58,6 +60,86 @@ public sealed class VinculacionesTests
 
         Assert.Equal(VinculacionErrores.SolicitudDuplicada, repetida.Error);
         Assert.Equal(1, await context.Vinculaciones.CountAsync());
+    }
+
+    [Fact]
+    public async Task RechazarAsync_AdministradorDeLaAsesoria_ConservaLaSolicitudRechazada()
+    {
+        await using var context = CrearContexto();
+        await AñadirUsuariosAsync(context);
+        var servicio = CrearServicio(context);
+        var solicitud = (await servicio.SolicitarAsync(
+            new(AutonomoId, Rol.AUTONOMO),
+            "ASE-000123",
+            CancellationToken.None)).Valor!;
+
+        var resultado = await servicio.RechazarAsync(
+            new(AdministradorId, Rol.GESTOR),
+            solicitud.Id,
+            CancellationToken.None);
+
+        Assert.True(resultado.EsCorrecto);
+        Assert.Equal(EstadoVinculacion.RECHAZADA, resultado.Valor!.Estado);
+        Assert.NotNull(resultado.Valor.FechaRechazo);
+        Assert.Equal(AdministradorId, resultado.Valor.RechazadaPorId);
+        Assert.Equal(1, await context.Vinculaciones.CountAsync());
+    }
+
+    [Fact]
+    public async Task RechazarAsync_OtroGestor_NoPuedeRechazar()
+    {
+        await using var context = CrearContexto();
+        await AñadirUsuariosAsync(context);
+        var servicio = CrearServicio(context);
+        var solicitud = (await servicio.SolicitarAsync(
+            new(AutonomoId, Rol.AUTONOMO),
+            "ASE-000123",
+            CancellationToken.None)).Valor!;
+
+        var resultado = await servicio.RechazarAsync(
+            new(OtraAdministradoraId, Rol.GESTOR),
+            solicitud.Id,
+            CancellationToken.None);
+
+        Assert.Equal(VinculacionErrores.SoloAdministradorPuedeGestionar, resultado.Error);
+        Assert.Equal(EstadoVinculacion.PENDIENTE, (await context.Vinculaciones.SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task RechazarAsync_VinculacionActiva_DevuelveEstadoNoValido()
+    {
+        await using var context = CrearContexto();
+        await AñadirUsuariosAsync(context);
+        var servicio = CrearServicio(context);
+        var solicitud = (await servicio.SolicitarAsync(
+            new(AutonomoId, Rol.AUTONOMO),
+            "ASE-000123",
+            CancellationToken.None)).Valor!;
+        await servicio.AceptarAsync(new(AdministradorId, Rol.GESTOR), solicitud.Id, CancellationToken.None);
+
+        var resultado = await servicio.RechazarAsync(
+            new(AdministradorId, Rol.GESTOR),
+            solicitud.Id,
+            CancellationToken.None);
+
+        Assert.Equal(VinculacionErrores.EstadoNoValido, resultado.Error);
+        Assert.Equal(EstadoVinculacion.ACTIVA, (await context.Vinculaciones.SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task GetVinculaciones_IncluyeNifDelAutonomo()
+    {
+        await using var context = CrearContexto();
+        await AñadirUsuariosAsync(context);
+        var servicio = CrearServicio(context);
+        await servicio.SolicitarAsync(new(AutonomoId, Rol.AUTONOMO), "ASE-000123", CancellationToken.None);
+        var controller = new VinculacionesController(servicio, new UsuarioActualFijo(new(AdministradorId, Rol.GESTOR)));
+
+        var resultado = await controller.GetVinculaciones(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(resultado.Result);
+        var vinculacion = Assert.IsAssignableFrom<IReadOnlyList<VinculacionResponse>>(ok.Value).Single();
+        Assert.Equal("11111111A", vinculacion.Autonomo!.Nif);
     }
 
     [Fact]
@@ -197,5 +279,10 @@ public sealed class VinculacionesTests
                 Rol = Rol.GESTOR
             });
         await context.SaveChangesAsync();
+    }
+
+    private sealed class UsuarioActualFijo(UsuarioActual usuario) : ICurrentUserService
+    {
+        public Task<UsuarioActual?> ObtenerAsync(CancellationToken cancellationToken) => Task.FromResult<UsuarioActual?>(usuario);
     }
 }

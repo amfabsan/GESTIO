@@ -279,10 +279,16 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Property<DateTimeOffset?>("FechaFinalizacion")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("FechaRechazo")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("FechaSolicitud")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("FinalizadaPorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RechazadaPorId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");

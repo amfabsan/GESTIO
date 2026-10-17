@@ -1,10 +1,11 @@
-export type EstadoVinculacion = 'PENDIENTE' | 'ACTIVA' | 'FINALIZADA'
+export type EstadoVinculacion = 'PENDIENTE' | 'ACTIVA' | 'FINALIZADA' | 'RECHAZADA'
 
 export interface AutonomoVinculado {
   id: string
   nombre: string
   primerApellido: string
   segundoApellido: string
+  nif: string
 }
 
 export interface Vinculacion {
@@ -18,6 +19,8 @@ export interface Vinculacion {
   aceptadaPorId: string | null
   fechaFinalizacion: string | null
   finalizadaPorId: string | null
+  fechaRechazo: string | null
+  rechazadaPorId: string | null
 }
 
 export interface SolicitarVinculacionRequest {
