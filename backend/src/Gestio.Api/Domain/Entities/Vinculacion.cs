@@ -22,5 +22,9 @@ public sealed class Vinculacion
 
     public Guid? FinalizadaPorId { get; set; }
 
+    public DateTimeOffset? FechaRechazo { get; set; }
+
+    public Guid? RechazadaPorId { get; set; }
+
     public Usuario Autonomo { get; set; } = null!;
 }

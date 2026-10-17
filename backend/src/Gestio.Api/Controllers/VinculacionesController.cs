@@ -46,6 +46,18 @@ public sealed class VinculacionesController(
         return Ok(Mapear(resultado.Valor!));
     }
 
+    [HttpPost("{id:guid}/rechazar")]
+    public async Task<ActionResult<VinculacionResponse>> Rechazar(Guid id, CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var resultado = await vinculacionesService.RechazarAsync(usuario, id, cancellationToken);
+        if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
+
+        return Ok(Mapear(resultado.Valor!));
+    }
+
     [HttpPost("{id:guid}/finalizar")]
     public async Task<ActionResult<VinculacionResponse>> Finalizar(Guid id, CancellationToken cancellationToken)
     {
@@ -65,14 +77,17 @@ public sealed class VinculacionesController(
             vinculacion.Autonomo.Id,
             vinculacion.Autonomo.Nombre,
             vinculacion.Autonomo.PrimerApellido,
-            vinculacion.Autonomo.SegundoApellido),
+            vinculacion.Autonomo.SegundoApellido,
+            vinculacion.Autonomo.Nif),
         vinculacion.CodigoAsesoria,
         vinculacion.Estado.ToString(),
         vinculacion.FechaSolicitud,
         vinculacion.FechaAceptacion,
         vinculacion.AceptadaPorId,
         vinculacion.FechaFinalizacion,
-        vinculacion.FinalizadaPorId);
+        vinculacion.FinalizadaPorId,
+        vinculacion.FechaRechazo,
+        vinculacion.RechazadaPorId);
 }
 
 public sealed record SolicitarVinculacionRequest(string CodigoAsesoria);
@@ -87,6 +102,8 @@ public sealed record VinculacionResponse(
     DateTimeOffset? FechaAceptacion,
     Guid? AceptadaPorId,
     DateTimeOffset? FechaFinalizacion,
-    Guid? FinalizadaPorId);
+    Guid? FinalizadaPorId,
+    DateTimeOffset? FechaRechazo,
+    Guid? RechazadaPorId);
 
-public sealed record AutonomoVinculadoResponse(Guid Id, string Nombre, string PrimerApellido, string SegundoApellido);
+public sealed record AutonomoVinculadoResponse(Guid Id, string Nombre, string PrimerApellido, string SegundoApellido, string Nif);

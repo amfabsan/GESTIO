@@ -30,6 +30,9 @@ public sealed class VinculacionConfiguration : IEntityTypeConfiguration<Vinculac
         builder.Property(vinculacion => vinculacion.FechaFinalizacion)
             .HasColumnType("timestamp with time zone");
 
+        builder.Property(vinculacion => vinculacion.FechaRechazo)
+            .HasColumnType("timestamp with time zone");
+
         builder.HasOne(vinculacion => vinculacion.Autonomo)
             .WithMany(usuario => usuario.VinculacionesComoAutonomo)
             .HasForeignKey(vinculacion => vinculacion.AutonomoId)

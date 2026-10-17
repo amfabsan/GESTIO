@@ -126,6 +126,33 @@ public sealed class VinculacionesService(ApplicationDbContext context, TimeProvi
         return vinculacion;
     }
 
+    public async Task<Resultado<Vinculacion>> RechazarAsync(
+        UsuarioActual usuario,
+        Guid vinculacionId,
+        CancellationToken cancellationToken)
+    {
+        var vinculacion = await context.Vinculaciones
+            .FirstOrDefaultAsync(vinculacion => vinculacion.Id == vinculacionId, cancellationToken);
+        if (vinculacion is null) return VinculacionErrores.VinculacionNoEncontrada;
+
+        if (!await EsAdministradorDeAsync(usuario, vinculacion.CodigoAsesoria, cancellationToken))
+        {
+            return VinculacionErrores.SoloAdministradorPuedeGestionar;
+        }
+
+        if (vinculacion.Estado != EstadoVinculacion.PENDIENTE)
+        {
+            return VinculacionErrores.EstadoNoValido;
+        }
+
+        vinculacion.Estado = EstadoVinculacion.RECHAZADA;
+        vinculacion.FechaRechazo = timeProvider.GetUtcNow();
+        vinculacion.RechazadaPorId = usuario.Id;
+        await context.SaveChangesAsync(cancellationToken);
+
+        return vinculacion;
+    }
+
     public async Task<IReadOnlyList<Vinculacion>> ListarAsync(
         UsuarioActual usuario,
         CancellationToken cancellationToken)
