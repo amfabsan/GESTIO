@@ -7,6 +7,7 @@ const estadoTexto: Record<EstadoVinculacion, string> = {
   PENDIENTE: 'Solicitud pendiente',
   ACTIVA: 'Vinculado',
   FINALIZADA: 'Finalizada',
+  RECHAZADA: 'Rechazada',
 }
 
 function formatearFecha(fecha: string) {
