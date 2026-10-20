@@ -8,7 +8,7 @@ using SkiaSharp;
 namespace Gestio.Api.Services;
 
 // Los ejecutables pueden ser rutas absolutas; nunca se ejecuta un shell.
-public sealed class LectorDocumentoLocal(IConfiguration configuration) : ILectorDocumento
+public sealed class LectorDocumentoLocal(IConfiguration configuration, MotorOcrLatin? motorLatin = null) : ILectorDocumento
 {
     public async Task<TextoDocumento> LeerAsync(Stream original, string tipoMime, CancellationToken cancellationToken)
     {
@@ -59,7 +59,9 @@ public sealed class LectorDocumentoLocal(IConfiguration configuration) : ILector
             else textos.Add(await Reconocer(archivo, 1, lecturas, ct));
             var reconocido = string.Join("\n", textos);
             if (!EsUtil(reconocido)) throw new InvalidOperationException("No se reconoce texto útil. Sube un documento más legible.");
-            return new TextoDocumento(reconocido, version.Split('\n')[0].Trim(), lecturas);
+            var versionLatin = motorLatin is not null && !configuration.GetValue<bool>("Ocr:DesactivarLatin")
+                ? "; RapidOcrNet 4.2.0 / PP-OCRv5 latin" : "";
+            return new TextoDocumento(reconocido, version.Split('\n')[0].Trim() + versionLatin, lecturas);
         }
         finally { Directory.Delete(carpeta, true); }
     }
@@ -70,6 +72,16 @@ public sealed class LectorDocumentoLocal(IConfiguration configuration) : ILector
     {
         var variantes = PreprocesadorDocumento.Preparar(archivo, ct);
         var principales = new List<(ImagenOcr Imagen, LecturaDocumento Lectura)>();
+        if (motorLatin is not null && !configuration.GetValue<bool>("Ocr:DesactivarLatin"))
+        {
+            using var codecOriginal = SKCodec.Create(archivo);
+            if (codecOriginal.EncodedOrigin == SKEncodedOrigin.TopLeft)
+                lecturas.Add(await motorLatin.LeerAsync(archivo, pagina, "color", "original", ct));
+            // La copia gris conserva la orientación EXIF; otra preparación contrasta
+            // el reconocimiento sin utilizar texto ni datos esperados de la factura.
+            foreach (var candidata in variantes.Where(v => v.Variante is "gris" or "documento" or "rectificada"))
+                lecturas.Add(await motorLatin.LeerAsync(candidata.Ruta, pagina, candidata.Variante, candidata.Geometria, ct));
+        }
         foreach (var variante in variantes)
         {
             using var codec = SKCodec.Create(variante.Ruta);

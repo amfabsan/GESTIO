@@ -260,6 +260,89 @@ extraer» en los documentos existentes. Las nuevas cargas usan el procesador
 `disposicion-5` automáticamente. En los JPEG comprobados, aproximadamente
 20–40 segundos por extracción.
 
+## Cambios de precisión: disposicion-6
+
+Se añade `MotorOcrLatin`: PP-OCRv5 latino con RapidOcrNet 4.2.0 y ONNX Runtime
+1.29.0, sobre CPU. Es OCR convencional, no IA generativa. Complementa las
+lecturas de Tesseract y mantiene Poppler para PDF. No utiliza servicios remotos,
+credenciales, Python ni colas. Una sesión compartida y un semáforo evitan
+recargar los modelos y ejecutar simultáneamente una sesión no compartible.
+La inferencia se espera con `await` y admite cancelación.
+
+El paquete NuGet, con licencia Apache-2.0, aporta sólo el detector, clasificador,
+reconocedor latino y diccionario de PP-OCRv5 (13.744.733 bytes de modelos).
+Se copian mediante Content tanto a la salida de compilación como a la
+publicación y a las herramientas que referencian la API. Se ha comprobado la
+ejecución con .NET 10 sobre Windows x64 y la publicación incluye los binarios
+nativos de ONNX para Windows y Linux x64; Linux no se ha ejecutado en esta
+comprobación. Documentación del motor:
+https://github.com/BobLd/RapidOcrNet y
+https://paddlepaddle.github.io/PaddleOCR/latest/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.html .
+
+Restaurar y compilar el proyecto instala los paquetes y copia los modelos.
+No hay que instalar un servicio adicional. Se mantienen Tesseract, su modelo
+español incluido y Poppler. `Ocr:ModelosLatin` permite una carpeta alternativa
+a `models/v5` junto al ejecutable; `Ocr:DesactivarLatin=true` permite comparar
+el resultado usando sólo Tesseract. Los modelos no se descargan al procesar.
+
+Archivos de esta versión: `MotorOcrLatin.cs` encapsula la inferencia local;
+`LectorDocumentoLocal.cs` la combina con Tesseract/Poppler; `ILectorDocumento.cs`
+conserva la línea de origen; `ExtractorCampos.cs` y
+`ExtractorCampos.Disposicion.cs` ajustan nombres, NIF, columnas, consenso y filas
+parciales. `Program.cs` registra la sesión compartida y `Gestio.Api.csproj`
+declara el paquete y publica los modelos. `IntentoProcesamiento.cs` identifica
+la versión 6; `BuzonPage.tsx` aclara el desglose múltiple. `OcrLatinTests.cs` y
+`tools/VerificarOcr/Program.cs` comprueban las reglas y el motor real.
+
+Cada palabra conserva la caja, puntuación y línea detectadas por el motor.
+Las coordenadas se normalizan con división decimal. La línea original permite
+leer nombres inclinados sin mezclarlos con direcciones que solapan sus cajas.
+Las puntuaciones 0..1 del motor se expresan en la escala interna 0..100;
+no se presentan como probabilidad de acierto ni confianza por campo.
+
+Las reglas separan razón social y CIF de una misma línea, priorizan nombres
+legales frente a palabras sueltas de una dirección, admiten un nombre comercial
+de cabecera corroborado y buscan el número en su columna evitando precios y
+mesas. Los espacios y puntuación de nombres se comparan normalizados pero se
+devuelve siempre una lectura literal, sin corregir letras. Dos motores que
+corroboran un campo no se invalidan por una única segmentación discordante;
+si el otro valor también está corroborado se mantiene la ambigüedad.
+Las filas de IVA parciales compatibles se complementan sin calcular sus bases
+ni sumar cuotas para completar campos escalares. El buzón indica «Varios tipos
+(ver desglose)» cuando corresponde. No se ha añadido migración.
+
+Comprobación: 89 pruebas correctas, compilación y lint del frontend, y
+publicación completa del backend. Sobre los dos originales adjuntados al chat,
+el ticket pequeño recupera JUAN Y ANDREA, S.L., CIF B07574296, número
+T001/48344, fecha 06/08/2015, base 305,36 y total 337,35, con filas de IVA
+10%/29,21 y 21%/2,78. Sus bases por tipo no aparecen y permanecen null.
+La otra factura recupera el nombre comercial impreso «La Esquina del Real»,
+CIF B81205791, número 38164, fecha 04/03/2017, base 123,83, tipo 10%, cuota
+12,38 y total 136,21. No se afirma que haya leído literalmente la razón social
+del pie: el nombre propuesto es el comercial de la cabecera.
+
+Se ha repetido el OCR renombrando ambas imágenes PNG y comparando sus campos.
+La comprobación HTTP sobre la API publicada verifica subida, recarga, original
+con idéntico SHA256, permisos de propietario/gestor vinculado, rechazo de un
+autónomo ajeno y dos reintentos simultáneos (200/409) con conservación del intento
+anterior. Los JPEG reales de regresión conservan los importes 188,50, 45,65,
+350,00 y 225,70; se ha revisado el consenso con las lecturas reales guardadas
+para impedir que una segmentación aislada elimine un total o fecha corroborados.
+Los informes privados de esta sesión están en `artifacts/latin-casos`, ignorado
+por Git. Las propuestas siguen requiriendo validación humana.
+
+También se han comprobado por HTTP los JPEG originales almacenados, PNG y un
+PDF escaneado generado únicamente con la imagen de `images`: conserva base
+171,36, tipo 10%, cuota 17,14 y total 188,50. Un PNG blanco termina en ERROR,
+conserva el original y mantiene ambos intentos al reintentar. Se han retirado
+las siete copias de prueba de la base y del almacenamiento, conservando los
+documentos del usuario y los informes locales.
+
+Reiniciar el backend y usar «Volver a extraer» para aplicar esta versión a
+documentos anteriores. Las nuevas cargas la usan automáticamente. El OCR es
+más costoso: se han observado aproximadamente 35–60 segundos por documento,
+y más tiempo bajo carga simultánea; se mantiene el límite de tres minutos.
+
 La aplicación existente usa una cabecera X-Usuario-Id elegida en pantalla y
 carece de sesión autenticada. Se conserva ICurrentUserService y el filtro de
 propietario/vinculación ACTIVA en consulta, original y reintento. La cabecera

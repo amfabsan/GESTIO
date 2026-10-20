@@ -6,7 +6,7 @@ public sealed class IntentoProcesamiento
     public Guid DocumentoId { get; set; }
     public DateTimeOffset Inicio { get; set; }
     public DateTimeOffset? Fin { get; set; }
-    public string Procesador { get; set; } = "tesseract-poppler/disposicion-5";
+    public string Procesador { get; set; } = "tesseract-ppocrv5-poppler/disposicion-6";
     public string? Version { get; set; }
     public string Resultado { get; set; } = "PROCESANDO";
     public string? Error { get; set; }

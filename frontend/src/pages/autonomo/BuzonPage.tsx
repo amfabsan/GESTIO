@@ -92,8 +92,8 @@ export function BuzonPage() {
                                     ['Número', documento.extraccion?.numeroFactura],
                                     ['Fecha emisión', documento.extraccion?.fechaEmision],
                                     ['Base imponible', documento.extraccion?.baseImponible != null ? formatearEuros(documento.extraccion.baseImponible) : null],
-                                    ['Tipo IVA', documento.extraccion?.tipoIva != null ? `${documento.extraccion.tipoIva}%` : null],
-                                    ['Cuota IVA', documento.extraccion?.cuotaIva != null ? formatearEuros(documento.extraccion.cuotaIva) : null],
+                                    ['Tipo IVA', (documento.extraccion?.desglosesIva?.length ?? 0) > 1 ? 'Varios tipos (ver desglose)' : documento.extraccion?.tipoIva != null ? `${documento.extraccion.tipoIva}%` : null],
+                                    ['Cuota IVA', (documento.extraccion?.desglosesIva?.length ?? 0) > 1 ? 'Ver desglose de IVA' : documento.extraccion?.cuotaIva != null ? formatearEuros(documento.extraccion.cuotaIva) : null],
                                     ['Total', documento.extraccion?.total != null ? formatearEuros(documento.extraccion.total) : null],
                                   ] as const).map(([campo, valor]) => <div key={campo}><dt className="inline font-medium">{campo}: </dt><dd className="inline">{valor ?? 'No extraído'}</dd></div>)}
                                   <div>Confianza por campo: No disponible</div>

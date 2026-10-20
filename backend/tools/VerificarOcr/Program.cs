@@ -9,7 +9,9 @@ using Microsoft.Extensions.Configuration;
 if (args.Length < 2) { Console.Error.WriteLine("Uso: VerificarOcr manifiesto.json carpetaResultados [--renombrar]"); return 2; }
 var carpeta = Path.GetFullPath(args[1]); Directory.CreateDirectory(carpeta);
 using var manifiesto = JsonDocument.Parse(await File.ReadAllTextAsync(args[0]));
-var lector = new LectorDocumentoLocal(new ConfigurationBuilder().AddEnvironmentVariables().Build());
+var configuracion = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+using var motorLatin = new MotorOcrLatin(configuracion);
+var lector = new LectorDocumentoLocal(configuracion, motorLatin);
 var errores = 0;
 foreach (var caso in manifiesto.RootElement.EnumerateArray())
 {

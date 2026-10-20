@@ -2,7 +2,8 @@ namespace Gestio.Api.Domain.Interfaces;
 
 // Coordenadas normalizadas a la página (0..1), también para los recortes.
 // Confianza es la puntuación de la palabra entregada por el motor, no una confianza de campo.
-public sealed record PalabraDocumento(string Texto, double X, double Y, double Ancho, double Alto, double? Confianza)
+public sealed record PalabraDocumento(string Texto, double X, double Y, double Ancho, double Alto, double? Confianza,
+    int? LineaOrigen = null)
 {
     public double CentroX => X + Ancho / 2;
     public double CentroY => Y + Alto / 2;

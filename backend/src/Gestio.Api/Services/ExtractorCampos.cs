@@ -59,12 +59,16 @@ public static partial class ExtractorCampos
             for (var i = 0; i < emisor.Length; i++)
             {
                 var l = emisor[i];
+                var legalConNif = Buscar(l, @"^(.{3,200}?\b(?:S\.?\s*L\.?|S\.?\s*A\.?))\s*[,;\-]?\s*(?:N\.?I\.?F\.?|C\.?I\.?F\.?)\s*:");
+                if (legalConNif.Success && EsNombre(legalConNif.Groups[1].Value))
+                    candidatos.Add(legalConNif.Groups[1].Value.Trim());
                 if (Buscar(Normalizar(l), @"\b(?:S\.?\s*L\.?|S\.?\s*A\.?)\s*$").Success && EsNombre(l)) candidatos.Add(l);
                 if (Buscar(l, @"\b(?:N\.?I\.?F\.?|C\.?I\.?F\.?)\s*:").Success && i > 0 && EsNombre(emisor[i - 1]))
                     candidatos.Add(emisor[i - 1]);
             }
-            nombre = Unico(candidatos);
-            if (nombre is null && emisor.Length > 0 && EsNombre(emisor[0]) &&
+            var legales = candidatos.Where(l => Buscar(l, @"\bS\.?\s*[LA]\.?\s*$").Success).ToArray();
+            nombre = Unico(legales.Length > 0 ? legales : candidatos);
+            if (nombre is null && legales.Length == 0 && emisor.Length > 0 && EsNombre(emisor[0]) &&
                 emisor[0].Count(char.IsUpper) >= emisor[0].Count(char.IsLetter) * .8 && emisor.Take(6).Any(l =>
                 Buscar(Normalizar(l), @"\b(?:nif|cif|telefono|tel\.?|calle|avenida|restaurante)\b|^(?:c/|cl[. ])").Success))
                 nombre = emisor[0];
@@ -74,7 +78,7 @@ public static partial class ExtractorCampos
             // "palabra," al final es una dirección que continúa en la línea siguiente.
             // Tres letras iguales seguidas son filas de asteriscos o guiones mal leídas.
             var primeraDireccion = Array.FindIndex(emisor.Take(15).ToArray(), l => Buscar(Normalizar(l), Direccion).Success);
-            nombre ??= primeraDireccion <= 0 ? null : emisor[Math.Max(0, primeraDireccion - 3)..primeraDireccion].Reverse()
+            nombre ??= primeraDireccion <= 0 || legales.Length > 0 ? null : emisor[Math.Max(0, primeraDireccion - 3)..primeraDireccion].Reverse()
                 .Where(l => !Regex.IsMatch(l, @"\p{L},\s*$"))
                 .Select(l => Regex.Replace(l, @"[\s,;:\-]+$|\s+\.$", ""))
                 .FirstOrDefault(l => EsNombre(l) && !l.Any(char.IsLower) && l.Count(char.IsLetter) >= 5 &&
@@ -87,6 +91,10 @@ public static partial class ExtractorCampos
         if (nifs.Count == 0)
             nifs.AddRange(emisor.Take(14).Where(l => Buscar(l, @"^[A-Z0-9]{9}$").Success && NifValido(l.ToUpperInvariant()))
                 .Select(l => l.ToUpperInvariant()));
+        if (nifs.Count == 0)
+            nifs.AddRange(emisor.Where(l => Buscar(l, @"\bS\.?\s*[LA]\.?").Success)
+                .SelectMany(l => Regex.Matches(l, @"\b([A-Z][ .-]*\d(?:[ .-]?\d){6}[A-Z0-9])\b", RegexOptions.IgnoreCase))
+                .Select(m => Regex.Replace(m.Groups[1].Value, @"[ .-]", "").ToUpperInvariant()).Where(NifValido));
         var numeros = lineas.Select(l => Buscar(l,
             @"\b(?:n(?:umero|[º°o.]|ro\.)\s*(?:de\s*)?(?:factura|ticket)|(?:factura(?: simplificada)?|fac\.?\s*simplif\.?|ticket|tiquet)(?:\s*(?:n(?:umero|[º°o.]|ro\.)|num\.))?)\s*[:#-]?\s*([A-Z0-9][A-Z0-9/.-]*)\b"))
             .Where(m => m.Success && m.Groups[1].Value.Any(char.IsDigit)).Select(m => m.Groups[1].Value);
@@ -191,7 +199,7 @@ public static partial class ExtractorCampos
 
     private static bool EsNombre(string l) => l.Length is >= 3 and <= 200 && l.Count(char.IsLetter) >= 3 &&
         !l.Any(char.IsDigit) && !Buscar(Normalizar(l),
-            @"\b(?:factura|ticket|documento|gracias|cliente|base|total|producto|descripcion|fecha|nif|cif|telefono|www|http|iva|calle|avenida|espana|spain)\b|^(?:c[/il.)]+\s|cl\b|av\b)").Success;
+            @"\b(?:factura|ticket|documento|gracias|cliente|base|total|producto|descripcion|fecha|nif|cif|telefono|www|http|iva|calle|avenida|espana|spain|qr|tributario|verifactu|recibo|copia)\b|^(?:c[/il.)]+\s|cl\b|av\b)").Success;
 
     private static decimal? ConvertirImporte(string valor)
     {
