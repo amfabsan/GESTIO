@@ -85,7 +85,11 @@ public sealed class LectorDocumentoLocal(IConfiguration configuration) : ILector
         // Releer desde la imagen de la lectura elegida; nunca mezclar coordenadas
         // de la fotografía con las de una página rectificada.
         var seleccion = principales.MaxBy(p => Calidad(p.Lectura));
-        foreach (var candidata in principales.GroupBy(p => p.Imagen.Ruta).Select(g => g.MaxBy(p => Calidad(p.Lectura))))
+        // Con el papel recortado y enderezado, releer recortes de la foto inclinada sólo
+        // añade líneas mezcladas (p. ej. TOTAL junto a la cifra de la línea de abajo).
+        var relectura = principales.Any(p => p.Imagen.Geometria == "documento")
+            ? principales.Where(p => p.Imagen.Geometria == "documento") : principales;
+        foreach (var candidata in relectura.GroupBy(p => p.Imagen.Ruta).Select(g => g.MaxBy(p => Calidad(p.Lectura))))
             await Releer(candidata.Imagen, candidata.Lectura, pagina, lecturas, ct);
         return DisposicionDocumento.Texto(seleccion.Lectura.Palabras);
     }
@@ -171,14 +175,31 @@ public sealed class LectorDocumentoLocal(IConfiguration configuration) : ILector
         if (!string.IsNullOrWhiteSpace(datos)) argumentos.AddRange(["--tessdata-dir", Environment.ExpandEnvironmentVariables(datos)]);
         else if (File.Exists(Path.Combine(incluidos, "spa.traineddata"))) argumentos.AddRange(["--tessdata-dir", incluidos]);
         var tsv = await Ejecutar("Tesseract", "tesseract", ct, argumentos.ToArray());
-        var palabras = tsv.Split('\n').Skip(1).Select(l => l.TrimEnd('\r').Split('\t', 12))
-            .Where(c => c.Length == 12 && c[0] == "5" && !string.IsNullOrWhiteSpace(c[11]))
-            .Select(c => new PalabraDocumento(c[11],
-                (origenX + int.Parse(c[6]) / escalaX) / anchoPagina,
-                (origenY + int.Parse(c[7]) / escalaY) / altoPagina,
-                int.Parse(c[8]) / escalaX / anchoPagina, int.Parse(c[9]) / escalaY / altoPagina,
-                double.TryParse(c[10], NumberStyles.Float, CultureInfo.InvariantCulture, out var confianza) && confianza >= 0 ? confianza : null))
-            .ToArray();
+        var palabras = new List<PalabraDocumento>();
+        var (lineaAnterior, finAnterior) = ("", 0);
+        foreach (var c in tsv.Split('\n').Skip(1).Select(l => l.TrimEnd('\r').Split('\t', 12))
+            .Where(c => c.Length == 12 && c[0] == "5" && !string.IsNullOrWhiteSpace(c[11])))
+        {
+            var (izquierda, arriba, ancho, alto) = (int.Parse(c[6]), int.Parse(c[7]), int.Parse(c[8]), int.Parse(c[9]));
+            var palabra = new PalabraDocumento(c[11],
+                (origenX + izquierda / escalaX) / anchoPagina, (origenY + arriba / escalaY) / altoPagina,
+                ancho / escalaX / anchoPagina, alto / escalaY / altoPagina,
+                double.TryParse(c[10], NumberStyles.Float, CultureInfo.InvariantCulture, out var confianza) && confianza >= 0 ? confianza : null);
+            var linea = $"{c[2]}.{c[3]}.{c[4]}";
+            // Tesseract parte a veces "109,70€" en "109," y "70€" por el hueco tras la coma.
+            // Dos trozos contiguos de la misma línea con esa forma son un único importe.
+            if (linea == lineaAnterior && palabras.Count > 0 && izquierda - finAnterior < alto * 1.5 &&
+                System.Text.RegularExpressions.Regex.IsMatch(palabras[^1].Texto, @"^\d{1,6}[.,]$") &&
+                System.Text.RegularExpressions.Regex.IsMatch(palabra.Texto, @"^\d{2}(?:€|EUR)?[.;]?$"))
+            {
+                var previa = palabras[^1];
+                var (y, abajo) = (Math.Min(previa.Y, palabra.Y), Math.Max(previa.Y + previa.Alto, palabra.Y + palabra.Alto));
+                palabras[^1] = new PalabraDocumento(previa.Texto + palabra.Texto, previa.X, y, palabra.X + palabra.Ancho - previa.X, abajo - y,
+                    previa.Confianza is { } a && palabra.Confianza is { } b ? Math.Min(a, b) : null);
+            }
+            else palabras.Add(palabra);
+            (lineaAnterior, finAnterior) = (linea, izquierda + ancho);
+        }
         using var dimensiones = SKCodec.Create(archivo);
         var region = regional ? new RegionDocumento(origenX / anchoPagina, origenY / altoPagina,
             dimensiones.Info.Width / escalaX / anchoPagina, dimensiones.Info.Height / escalaY / altoPagina) : null;

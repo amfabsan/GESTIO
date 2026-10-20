@@ -11,6 +11,12 @@ public static partial class ExtractorCampos
 {
     private const string Dinero = @"-?\d+(?:[. ]\d{3})*,\d{2}|-?\d+\.\d{2}|-?\d+";
     private const string Fecha = @"\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[/.-]\d{1,2}[/.-](?:\d{4}|\d{2}))\b";
+    // 04/Mar/2017, 4-MAR-17, 4 de marzo de 2017 (abreviaturas en español e inglés).
+    private const string Meses = "ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic|jan|apr|aug|dec";
+    private const string FechaTexto = @"\b\d{1,2}(?:\s*[/.\-]\s*|\s+de\s+|\s+)(?:" + Meses + @")[a-z]*\.?(?:\s*[/.\-]\s*|\s+de\s+|\s+)(?:\d{4}|\d{2})\b";
+    private const string Direccion = @"^(?:c/|cl[. ]|calle|avda?\b|avenida|plaza|pza\b|paseo|ctra\b)|\b\d{5}\b|\b(?:tel\.?|telf\.?|telefono)\b|^\+?(?:\d[ .]?){9,12}$";
+    // Tipos de IVA, IGIC e IPSI vigentes: sirven para reconocer una fila fiscal, nunca para calcularla.
+    private static readonly decimal[] TiposConocidos = [2m, 3m, 4m, 5m, 7m, 7.5m, 8m, 9.5m, 10m, 13.5m, 15m, 20m, 21m];
     private static Match Buscar(string texto, string patron) => Regex.Match(texto, patron, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static string Normalizar(string texto) => new(texto.Normalize(NormalizationForm.FormD)
         .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark).ToArray());
@@ -62,10 +68,21 @@ public static partial class ExtractorCampos
                 emisor[0].Count(char.IsUpper) >= emisor[0].Count(char.IsLetter) * .8 && emisor.Take(6).Any(l =>
                 Buscar(Normalizar(l), @"\b(?:nif|cif|telefono|tel\.?|calle|avenida|restaurante)\b|^(?:c/|cl[. ])").Success))
                 nombre = emisor[0];
+            // Nombre comercial sin etiqueta y no en la primera línea (QR, logotipo o rótulos
+            // encima): la línea en mayúsculas más cercana por encima de la primera dirección,
+            // código postal o teléfono. Lo de más arriba suele ser ruido del QR o del logotipo;
+            // "palabra," al final es una dirección que continúa en la línea siguiente.
+            // Tres letras iguales seguidas son filas de asteriscos o guiones mal leídas.
+            var primeraDireccion = Array.FindIndex(emisor.Take(15).ToArray(), l => Buscar(Normalizar(l), Direccion).Success);
+            nombre ??= primeraDireccion <= 0 ? null : emisor[Math.Max(0, primeraDireccion - 3)..primeraDireccion].Reverse()
+                .Where(l => !Regex.IsMatch(l, @"\p{L},\s*$"))
+                .Select(l => Regex.Replace(l, @"[\s,;:\-]+$|\s+\.$", ""))
+                .FirstOrDefault(l => EsNombre(l) && !l.Any(char.IsLower) && l.Count(char.IsLetter) >= 5 &&
+                    !Regex.IsMatch(l, @"[^\p{L}\s.,&'\-]|(\p{L})\1\1"));
         }
 
         var nifs = emisor.SelectMany(l => Regex.Matches(l,
-            @"\b(?:N\.?I\.?F\.?|C\.?I\.?F\.?|NIE)(?:\s+(?:del?\s+)?emisor)?[\s:.\-]*([A-Z]\s*\d(?:[ .-]?\d){6}\s*[A-Z0-9]|\d(?:[ .-]?\d){7}\s*[A-Z])\b", RegexOptions.IgnoreCase))
+            @"\b(?:N\.?I\.?F\.?|C\.?I\.?F\.?|NIE)(?:\s+(?:del?\s+)?emisor)?[\s:.\-]*([A-Z][\s.\-]*\d(?:[ .-]?\d){6}\s*[A-Z0-9]|\d(?:[ .-]?\d){7}\s*[A-Z])\b", RegexOptions.IgnoreCase))
             .Select(m => Regex.Replace(m.Groups[1].Value, @"[ .-]", "").ToUpperInvariant()).ToList();
         if (nifs.Count == 0)
             nifs.AddRange(emisor.Take(14).Where(l => Buscar(l, @"^[A-Z0-9]{9}$").Success && NifValido(l.ToUpperInvariant()))
@@ -80,10 +97,10 @@ public static partial class ExtractorCampos
         {
             if (Buscar(l, @"\b(?:vencimiento|pago|pedido|entrega)\s*:").Success &&
                 !Buscar(l, @"fecha (?:de )?(?:emision|factura)").Success) continue;
-            var explicita = Buscar(l, @"fecha(?:\s+(?:de\s+)?(?:emision|factura|expedicion))?\s*[:. -]*\s*(" + Fecha + ")");
-            if (explicita.Success && ConvertirFecha(explicita.Groups[1].Value) is { } fecha) fechasExplicitas.Add(fecha);
-            else foreach (Match m in Regex.Matches(l, Fecha))
-                if (ConvertirFecha(m.Value) is { } f) fechasSinEtiqueta.Add(f);
+            var explicita = Buscar(l, @"fecha(?:\s+(?:de\s+)?(?:emision|factura|expedicion))?\s*[:. -]*\s*(" + Fecha + "|" + FechaTexto + ")");
+            if (explicita.Success && LeerFecha(explicita.Groups[1].Value) is { } fecha) fechasExplicitas.Add(fecha);
+            else foreach (Match m in Regex.Matches(l, Fecha + "|" + FechaTexto, RegexOptions.IgnoreCase))
+                if (LeerFecha(m.Value) is { } f) fechasSinEtiqueta.Add(f);
         }
 
         decimal? baseTabla = null, tipoTabla = null, cuotaTabla = null;
@@ -121,8 +138,36 @@ public static partial class ExtractorCampos
         }
         if (!variasFilas && tablas.Distinct().ToArray() is [var tabla])
             (baseTabla, tipoTabla, cuotaTabla) = (tabla.Base, tabla.Tipo, tabla.Cuota);
+        // Cabecera fiscal ilegible (letra pequeña) con cifras legibles: la fila se reconoce
+        // por su coherencia interna exacta (base × tipo = cuota redondeada o truncada, base +
+        // cuota = total). No se calcula ninguna cifra: sólo se identifica qué es cada una de
+        // las leídas. Sin tolerancia, un dígito mal leído no pasa la prueba; si sólo falla la
+        // cuota, base × (1 + tipo) = total sigue identificando base, tipo y total.
+        var coherentes = new List<(decimal Base, decimal Tipo, decimal? Cuota, decimal? Total)>();
+        foreach (var l in lineas)
+        {
+            var cifras = Regex.Matches(l, @"(?<![\w.,])(?:" + Dinero + @")(?!\w)");
+            var n = cifras.Select(m => ConvertirImporte(m.Value)).ToArray();
+            for (var k = 0; k + 2 < n.Length; k++)
+            {
+                if (n[k] is not { } b || n[k + 1] is not { } t || b <= 0 || !TiposConocidos.Contains(t) ||
+                    !Regex.IsMatch(cifras[k].Value, @"[.,]\d{2}$")) continue;
+                var producto = b * t / 100;
+                var esperadas = new[] { decimal.Round(producto, 2, MidpointRounding.AwayFromZero), decimal.Truncate(producto * 100) / 100 };
+                bool EsTotal(decimal? x) => x is { } v && esperadas.Any(c => b + c == v);
+                var siguiente = k + 3 < n.Length ? n[k + 3] : null;
+                t /= 1.0000000000m; // "10.00" se guarda como 10, igual que "10%"
+                // Si la base se obtuvo dividiendo el total, la cuota es la diferencia y puede
+                // separarse un céntimo del producto: sólo se acepta si el total lo confirma.
+                if (n[k + 2] is { } c && (esperadas.Contains(c) || siguiente == b + c && Math.Abs(c - producto) < .01m))
+                    coherentes.Add((b, t, c, siguiente == b + c ? siguiente : null));
+                else if (EsTotal(n[k + 2])) coherentes.Add((b, t, null, n[k + 2]));
+                else if (EsTotal(siguiente)) coherentes.Add((b, t, null, siguiente)); // cuota ilegible entre medias
+            }
+        }
+        (decimal Base, decimal Tipo, decimal? Cuota, decimal? Total)? coherente = coherentes.Distinct().ToArray() is [var fila] ? fila : null;
         var tipos = lineas.SelectMany(l => Regex.Matches(l,
-            @"\b(?:tipo\s+(?:de\s+)?iva|iva)\s*[:(]?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%", RegexOptions.IgnoreCase))
+            @"\b(?:tipo\s+(?:de\s+)?iva|iva|tva)\s*[:(]?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%", RegexOptions.IgnoreCase))
             .Select(m => ConvertirImporte(m.Groups[1].Value)).Where(v => v is not null).Select(v => v!.Value).ToArray();
         var totales = Importes(@"total(?:\s+(?:euros|eur|factura|a pagar|con iva|iva (?:inc\.?|incl(?:uido|uida|\.)?)|general))?|tot\.?|importe total|a pagar").ToArray();
         var bases = Importes(@"base imponible|total base imponible|subtotal").ToArray();
@@ -132,11 +177,11 @@ public static partial class ExtractorCampos
             Id = Guid.NewGuid(), DocumentoId = documentoId, EmisorNombre = nombre, EmisorNif = Unico(nifs),
             NumeroFactura = Unico(numeros),
             FechaEmision = fechasExplicitas.Count > 0 ? Unico(fechasExplicitas) : Unico(fechasSinEtiqueta),
-            BaseImponible = bases.Length > 0 ? Unico(bases) : baseTabla,
-            TipoIva = tipos.Length > 0 ? Unico(tipos) : tipoTabla,
-            CuotaIva = cuotas.Length > 0 ? Unico(cuotas) : cuotaTabla,
-            Total = totales.Length > 0 ? Unico(totales) : lineas.Any(l => Buscar(l, @"\bTO\s*TAL\b").Success)
-                ? null : Unico(Importes(@"total pendiente|pendiente de cobro"))
+            BaseImponible = bases.Length > 0 ? Unico(bases) : baseTabla ?? coherente?.Base,
+            TipoIva = tipos.Length > 0 ? Unico(tipos) : tipoTabla ?? coherente?.Tipo,
+            CuotaIva = cuotas.Length > 0 ? Unico(cuotas) : cuotaTabla ?? coherente?.Cuota,
+            Total = totales.Length > 0 ? Unico(totales) : coherente?.Total ?? (lineas.Any(l => Buscar(l, @"\bTO\s*TAL\b").Success)
+                ? null : Unico(Importes(@"total pendiente|pendiente de cobro")))
         };
         resultado.DesglosesIva = LeerDesgloses(lineas);
         if (resultado.DesglosesIva.Count > 1) resultado.TipoIva = resultado.CuotaIva = null;
@@ -154,6 +199,24 @@ public static partial class ExtractorCampos
         if (limpio.Contains(',')) limpio = limpio.Replace(".", "").Replace(',', '.');
         return decimal.TryParse(limpio, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
             CultureInfo.InvariantCulture, out var d) && Math.Abs(d) < 10000000000000000m ? d : null;
+    }
+
+    private static DateOnly? LeerFecha(string valor) =>
+        Regex.IsMatch(valor, @"^[\d/.\-]+$") ? ConvertirFecha(valor) : ConvertirFechaTexto(valor);
+
+    private static DateOnly? ConvertirFechaTexto(string valor)
+    {
+        var m = Buscar(Normalizar(valor), @"(\d{1,2})\D+?(" + Meses + @")[a-z]*\.?\D+?(\d{4}|\d{2})\b");
+        if (!m.Success) return null;
+        var mes = m.Groups[2].Value.ToLowerInvariant() switch
+        {
+            "ene" or "jan" => 1, "feb" => 2, "mar" => 3, "abr" or "apr" => 4, "may" => 5, "jun" => 6,
+            "jul" => 7, "ago" or "aug" => 8, "sep" or "set" => 9, "oct" => 10, "nov" => 11, _ => 12
+        };
+        var anio = int.Parse(m.Groups[3].Value);
+        if (anio < 100) anio += anio < 70 ? 2000 : 1900;
+        try { return new DateOnly(anio, mes, int.Parse(m.Groups[1].Value)); }
+        catch (ArgumentOutOfRangeException) { return null; }
     }
 
     private static DateOnly? ConvertirFecha(string valor)

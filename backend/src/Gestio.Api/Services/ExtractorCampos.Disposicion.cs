@@ -159,11 +159,25 @@ public static partial class ExtractorCampos
     private static IReadOnlyList<PalabraDocumento> BuscarSoporte(string campo, object valor, IReadOnlyList<PalabraDocumento> palabras)
     {
         if (valor is decimal d) return palabras.Where(p => Numero(p) == d).ToArray();
-        if (valor is DateOnly fecha) return palabras.Where(p => Buscar(p.Texto, "^" + Fecha + "[,;]?$" ).Success &&
-            ConvertirFecha(p.Texto.TrimEnd(',', ';')) == fecha).ToArray();
+        if (valor is DateOnly fecha) return palabras.Where(p => Buscar(Normalizar(p.Texto), "^(?:" + Fecha + "|" + FechaTexto + ")[,;]?$" ).Success &&
+            LeerFecha(p.Texto.TrimEnd(',', ';')) == fecha).ToArray();
         var buscado = Token((string)valor);
         if (campo == nameof(ExtraccionIa.EmisorNombre))
-            return palabras.Where(p => Token(p.Texto).Length > 1 && buscado.Contains(Token(p.Texto), StringComparison.Ordinal)).ToArray();
+        {
+            // Las palabras consecutivas de la línea que forman el nombre; no cualquier palabra
+            // suelta de la página cuyas letras aparezcan dentro de él (rebajaría su confianza).
+            foreach (var linea in DisposicionDocumento.Lineas(palabras))
+            {
+                var p = linea.Palabras.Where(x => Token(x.Texto).Length > 0).ToArray();
+                for (var i = 0; i < p.Length; i++)
+                {
+                    var acumulado = "";
+                    for (var j = i; j < p.Length && acumulado.Length < buscado.Length; j++)
+                        if ((acumulado += Token(p[j].Texto)) == buscado) return p[i..(j + 1)];
+                }
+            }
+            return [];
+        }
         return palabras.Where(p => Token(p.Texto) == buscado).ToArray();
     }
 
@@ -181,7 +195,9 @@ public static partial class ExtractorCampos
                     Token(derecha[0].Texto) == "IVA" && (derecha.Length < 2 || Token(derecha[1].Texto) is not ("INCLUIDO" or "INCLUIDA" or "INC" or "INCL")))) continue;
                 if (linea.Palabras.Any(p => Token(p.Texto) is "PVP" or "PRECIO" or "DESCRIPCION")) continue;
                 var importes = derecha.Where(p => Numero(p) is not null).ToArray();
-                if (importes.Length == 1) totales.Add(importes[0]);
+                // "109," + ruido + "70€": la cifra llegó partida; quedarse con "70" sería inventar.
+                var partida = derecha.Any(p => p.Texto.Any(char.IsDigit) && Numero(p) is null);
+                if (importes.Length == 1 && !partida) totales.Add(importes[0]);
             }
         }
         if (totales.Count > 0)
@@ -245,7 +261,8 @@ public static partial class ExtractorCampos
             {
                 var s = p.Texto.Trim(':', '#', ',', ';');
                 if (!s.Any(char.IsDigit) || Buscar(s, "^" + Fecha + "$" ).Success) continue;
-                if (Buscar(s, @"^(?:[A-Z0-9]+[/.-][A-Z0-9/.-]+|[A-Z]+\d[A-Z0-9]*|\d{4,6})$" ).Success)
+                // Mayúsculas y dos cifras como mínimo: "Preci0" (Precio mal leído) no es un número.
+                if (Regex.IsMatch(s, @"^(?:[A-Z0-9]+[/.-][A-Z0-9/.-]+|[A-Z]+\d[A-Z0-9]*|\d{4,6})$") && s.Count(char.IsDigit) >= 2)
                     numerosFactura.Add(p);
             }
         }

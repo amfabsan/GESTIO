@@ -219,10 +219,46 @@ guarda lecturas y resultados por documento para revisar los errores. No subir
 originales ni informes fiscales privados al repositorio. Los informes locales
 de esta comprobación están en `artifacts/mejora-ocr`, ignorado por Git.
 
+## Cambios de precisión: disposicion-5
+
+Preparación: si el papel ocupa menos del 85 % de la foto, está entero en el
+encuadre y sus cuatro lados tienen salto de contraste real con el fondo, se
+recorta y endereza con una homografía, se corrige la iluminación (sombras de
+pliegues) y se enfoca si se ha ampliado. Las relecturas se hacen sólo sobre esa
+geometría: los recortes de la foto inclinada mezclaban líneas. Sin papel claro
+se sigue el flujo anterior, con corrección de iluminación sólo si hay sombras.
+Tesseract parte a veces «109,70€» en «109,» y «70€»: dos trozos contiguos de
+la misma línea con esa forma se reúnen en un único importe.
+
+Reglas nuevas, todas sobre lo leído y sin calcular cifras:
+- Fechas con el mes en letra: `04/Mar/2017`, `4 de marzo de 2017`, `15-DIC-19`.
+- Fila fiscal con cabecera ilegible: se reconoce por coherencia exacta
+  (base × tipo = cuota redondeada o truncada, base + cuota = total) con un tipo
+  de IVA, IGIC o IPSI vigente. Si sólo falla la cuota, base × (1 + tipo) = total
+  identifica base, tipo y total y la cuota queda null. Sin tolerancia: un dígito
+  mal leído (12,39 por 12,38) no pasa.
+- Emisor sin etiqueta: la línea en mayúsculas más cercana por encima de la
+  primera dirección, código postal o teléfono de la cabecera. Se descartan las
+  que terminan en «palabra,» (dirección partida) y las de tres letras iguales
+  seguidas (asteriscos mal leídos). Su confianza se mide con las palabras que lo
+  forman, no con palabras sueltas de la página.
+- NIF/CIF con guion tras la letra (`B-81205791`) y `TVA` como etiqueta de IVA.
+- No se toma total de una línea TOTAL con la cifra partida («109,» + ruido +
+  «70€»), ni número de factura de palabras con minúsculas o una sola cifra
+  («Preci0»).
+
+Comprobado con Tesseract 5.4.0 y cinco imágenes, sin valores por archivo:
+`factura-con-iva` pasa de ERROR a fecha, base 123,83, tipo 10, cuota 12,38 y
+total 136,21; `factura-chech` añade emisor y número (todos los campos impresos);
+el ticket El Raco y su versión lejana, inclinada y con sombra recuperan el total
+109,70; la miniatura de 225×300 añade el CIF B07574296. En esa miniatura base,
+total, número y segundo IVA siguen sin leerse: las cifras no tienen resolución
+suficiente y las lecturas se contradicen; no se rellenan.
+
 Para aplicar las mejoras en el buzón: reiniciar el backend y pulsar «Volver a
 extraer» en los documentos existentes. Las nuevas cargas usan el procesador
-`disposicion-4` automáticamente. Las lecturas adicionales aumentan el tiempo:
-en los JPEG comprobados, aproximadamente 10–19 segundos por extracción.
+`disposicion-5` automáticamente. En los JPEG comprobados, aproximadamente
+20–40 segundos por extracción.
 
 La aplicación existente usa una cabecera X-Usuario-Id elegida en pantalla y
 carece de sesión autenticada. Se conserva ICurrentUserService y el filtro de

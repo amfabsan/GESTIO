@@ -10,8 +10,8 @@ public static partial class ExtractorCampos
         var filas = new List<DesgloseIva>();
         foreach (var linea in lineas)
         {
-            // IVA 21 % 12,34; TAX/IVA 10% 4,50. Nunca interpretar la cuota como base.
-            var m = Buscar(linea, @"^(?:TAX\s*[/\-]\s*)?(?:IVA|I\.?V\.?A\.?)\s*[:(]?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%\)?\s*[:=|]?\s*(" + Dinero + @")\s*(?:€|EUR)?\s*$");
+            // IVA 21 % 12,34; TAX/IVA 10% 4,50; TVA (francés). Nunca interpretar la cuota como base.
+            var m = Buscar(linea, @"^(?:TAX\s*[/\-]\s*)?(?:IVA|I\.?V\.?A\.?|TVA)\s*[:(]?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%\)?\s*[:=|]?\s*(" + Dinero + @")\s*(?:€|EUR)?\s*$");
             if (m.Success && ConvertirImporte(m.Groups[1].Value) is { } tipo &&
                 ConvertirImporte(m.Groups[2].Value) is { } cuota)
                 filas.Add(new(null, tipo, cuota));
