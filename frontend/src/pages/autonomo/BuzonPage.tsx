@@ -12,7 +12,7 @@ import { formatearEuros, formatearFecha } from '../../utils/formato'
 
 export function BuzonPage() {
   const { perfilActivo } = useAuth()
-  const { documentos, cargando, error, errorOriginal, agregarDocumento, abrirOriginal } = useDocumentos(perfilActivo?.id)
+  const { documentos, cargando, error, errorOriginal, agregarDocumento, abrirOriginal, reintentar, reintentando } = useDocumentos(perfilActivo?.id)
   const [filtro, setFiltro] = useState<FiltroBuzon>('TODOS')
 
   const filtrados = documentos.filter((documento) => cumpleFiltro(documento, filtro))
@@ -21,7 +21,7 @@ export function BuzonPage() {
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f4f0] text-[#1a1916]">
       <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
-        <PageHeader titulo="Buzón de documentos" subtitulo="Sube cualquier factura o ticket: la IA lo lee, lo clasifica y se lo envía a tu gestor" />
+        <PageHeader titulo="Buzón de documentos" subtitulo="Sube una factura o ticket para extraer sus datos y dejarlos pendientes de validación" />
 
         <DropzoneSubida onSubido={agregarDocumento} />
 
@@ -82,6 +82,35 @@ export function BuzonPage() {
                                 )}
                               </div>
                               <p className="text-xs text-[#6b6656]">{formatearFecha(documento.fechaSubida)}</p>
+                              <details className="mt-2 text-sm">
+                                <summary className="cursor-pointer">Ver datos propuestos</summary>
+                                <EstadoBadge estado={documento.estado} />
+                                <dl className="mt-2 space-y-1">
+                                  {([
+                                    ['Emisor', documento.extraccion?.emisorNombre],
+                                    ['NIF emisor', documento.extraccion?.emisorNif],
+                                    ['Número', documento.extraccion?.numeroFactura],
+                                    ['Fecha emisión', documento.extraccion?.fechaEmision],
+                                    ['Base imponible', documento.extraccion?.baseImponible != null ? formatearEuros(documento.extraccion.baseImponible) : null],
+                                    ['Tipo IVA', documento.extraccion?.tipoIva != null ? `${documento.extraccion.tipoIva}%` : null],
+                                    ['Cuota IVA', documento.extraccion?.cuotaIva != null ? formatearEuros(documento.extraccion.cuotaIva) : null],
+                                    ['Total', documento.extraccion?.total != null ? formatearEuros(documento.extraccion.total) : null],
+                                  ] as const).map(([campo, valor]) => <div key={campo}><dt className="inline font-medium">{campo}: </dt><dd className="inline">{valor ?? 'No extraído'}</dd></div>)}
+                                  <div>Confianza por campo: No disponible</div>
+                                </dl>
+                                {!!documento.extraccion?.desglosesIva?.length && <table className="mt-2 text-sm">
+                                  <caption className="text-left font-medium">Desglose de IVA leído</caption>
+                                  <thead><tr><th scope="col" className="pr-4 text-left">Base</th><th scope="col" className="pr-4 text-left">Tipo</th><th scope="col" className="text-left">Cuota</th></tr></thead>
+                                  <tbody>{documento.extraccion.desglosesIva.map((fila, indice) => <tr key={indice}>
+                                    <td className="pr-4">{fila.baseImponible != null ? formatearEuros(fila.baseImponible) : 'No extraído'}</td>
+                                    <td className="pr-4">{fila.tipoIva != null ? `${fila.tipoIva}%` : 'No extraído'}</td>
+                                    <td>{fila.cuotaIva != null ? formatearEuros(fila.cuotaIva) : 'No extraído'}</td>
+                                  </tr>)}</tbody>
+                                </table>}
+                                {documento.extraccion?.advertencias?.map(aviso => <p key={aviso} className="mt-2 text-amber-800">{aviso}</p>)}
+                                {documento.intentos.map(intento => <p key={intento.id} className="mt-2">{formatearFecha(intento.inicio)} · {intento.resultado}{intento.error && `: ${intento.error}`}</p>)}
+                                {documento.tieneOriginal && (documento.estado === 'ERROR' || documento.estado === 'PENDIENTE_VALIDACION') && <button type="button" disabled={reintentando !== null} onClick={() => void reintentar(documento.id)} className="mt-2 text-[#c8651a] hover:underline">{reintentando === documento.id ? 'Procesando…' : documento.estado === 'ERROR' ? 'Reintentar extracción' : 'Volver a extraer'}</button>}
+                              </details>
                             </div>
                           </div>
                         </td>

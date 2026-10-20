@@ -12,9 +12,14 @@ public sealed record DocumentoResponse(
     bool TieneOriginal,
     ExtraccionResponse? Extraccion,
     IReadOnlyList<AnomaliaResponse> Anomalias,
-    IReadOnlyList<EventoDocumentoResponse> Historial);
+    IReadOnlyList<EventoDocumentoResponse> Historial,
+    IReadOnlyList<IntentoResponse> Intentos);
+
+public sealed record IntentoResponse(Guid Id, DateTimeOffset Inicio, DateTimeOffset? Fin,
+    string Procesador, string? Version, string Resultado, string? Error, string? ValoresJson);
 
 public sealed record ExtraccionResponse(
+    string? NumeroFactura,
     string? EmisorNombre,
     string? EmisorNif,
     DateOnly? FechaEmision,
@@ -24,7 +29,9 @@ public sealed record ExtraccionResponse(
     decimal? Total,
     string? CategoriaSugerida,
     string? NivelConfianza,
-    string? DatosCrudosJson);
+    string? DatosCrudosJson,
+    IReadOnlyList<Gestio.Api.Domain.Entities.DesgloseIva> DesglosesIva,
+    IReadOnlyList<string> Advertencias);
 
 public sealed record AnomaliaResponse(
     string Tipo,

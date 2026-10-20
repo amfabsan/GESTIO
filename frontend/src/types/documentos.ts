@@ -13,6 +13,7 @@ export type EventoDocumento = {
 }
 
 export type ExtraccionDocumento = {
+  numeroFactura: string | null
   emisorNombre: string | null
   emisorNif: string | null
   fechaEmision: string | null
@@ -23,6 +24,8 @@ export type ExtraccionDocumento = {
   categoriaSugerida: string | null
   nivelConfianza: string | null
   datosCrudosJson: string | null
+  desglosesIva: { baseImponible: number | null; tipoIva: number | null; cuotaIva: number | null }[]
+  advertencias: string[]
 }
 
 export type AnomaliaDocumento = {
@@ -46,6 +49,7 @@ export type Documento = {
   extraccion: ExtraccionDocumento | null
   anomalias: AnomaliaDocumento[]
   historial: EventoDocumento[]
+  intentos: { id: string; inicio: string; fin: string | null; procesador: string; version: string | null; resultado: string; error: string | null; valoresJson: string | null }[]
 }
 
 export type TipoArchivoPermitido = {

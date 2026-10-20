@@ -69,6 +69,15 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         return CreatedAtAction(nameof(GetDocumento), new { id = documento.Id }, MapearDocumento(documento));
     }
 
+    [HttpPost("{id:guid}/reintentar")]
+    public async Task<ActionResult<DocumentoResponse>> Reintentar(Guid id, CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+        var resultado = await documentosService.ProcesarAsync(usuario, id, true, CancellationToken.None);
+        return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
+    }
+
     private static DocumentoResponse MapearDocumento(Documento documento) => new(
         documento.Id,
         documento.NombreArchivo,
@@ -82,6 +91,7 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         documento.ExtraccionIa is null
             ? null
             : new ExtraccionResponse(
+                documento.ExtraccionIa.NumeroFactura,
                 documento.ExtraccionIa.EmisorNombre,
                 documento.ExtraccionIa.EmisorNif,
                 documento.ExtraccionIa.FechaEmision,
@@ -91,7 +101,9 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 documento.ExtraccionIa.Total,
                 documento.ExtraccionIa.CategoriaSugerida,
                 documento.ExtraccionIa.NivelConfianza?.ToString(),
-                documento.ExtraccionIa.DatosCrudosJson),
+                documento.ExtraccionIa.DatosCrudosJson,
+                documento.ExtraccionIa.DesglosesIva,
+                documento.ExtraccionIa.Advertencias),
         documento.Anomalias
             .OrderByDescending(anomalia => anomalia.FechaDeteccion)
             .Select(anomalia => new AnomaliaResponse(
@@ -104,5 +116,7 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         documento.Eventos
             .OrderBy(evento => evento.Fecha)
             .Select(evento => new EventoDocumentoResponse(evento.Tipo.ToString(), evento.Fecha, evento.Detalle))
-            .ToList());
+            .ToList(),
+        documento.Intentos.OrderBy(i => i.Inicio)
+            .Select(i => new IntentoResponse(i.Id, i.Inicio, i.Fin, i.Procesador, i.Version, i.Resultado, i.Error, i.ValoresJson)).ToList());
 }

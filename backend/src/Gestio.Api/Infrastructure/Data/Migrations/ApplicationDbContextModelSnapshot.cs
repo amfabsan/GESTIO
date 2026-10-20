@@ -68,6 +68,7 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("Estado")
+                        .IsConcurrencyToken()
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("FechaSubida")
@@ -183,6 +184,9 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<string>("NumeroFactura")
+                        .HasColumnType("text");
+
                     b.Property<decimal?>("TipoIva")
                         .HasColumnType("numeric(5,2)");
 
@@ -195,6 +199,47 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("extracciones_ia", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.IntentoProcesamiento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("Fin")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("Inicio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Procesador")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Resultado")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ValoresJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoId")
+                        .IsUnique()
+                        .HasFilter("\"Fin\" IS NULL");
+
+                    b.ToTable("intentos_procesamiento", (string)null);
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
@@ -358,6 +403,15 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.IntentoProcesamiento", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", null)
+                        .WithMany("Intentos")
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Gestor")
@@ -386,6 +440,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Eventos");
 
                     b.Navigation("ExtraccionIa");
+
+                    b.Navigation("Intentos");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>

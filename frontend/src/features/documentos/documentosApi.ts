@@ -26,3 +26,8 @@ export async function obtenerOriginal(id: string) {
   const { data } = await apiClient.get<Blob>(`/documentos/${id}/archivo`, { responseType: 'blob' })
   return data
 }
+
+export async function reintentarDocumento(id: string) {
+  const { data } = await apiClient.post<Documento>(`/documentos/${id}/reintentar`)
+  return data
+}

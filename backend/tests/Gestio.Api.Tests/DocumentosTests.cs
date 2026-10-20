@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
 
 namespace Gestio.Api.Tests;
 
@@ -142,7 +143,7 @@ public sealed class DocumentosTests
             .Include(documento => documento.Eventos)
             .SingleAsync(documento => documento.Id == resultado.Valor!.Id);
 
-        Assert.Equal(EstadoDocumento.SUBIDO, documento.Estado);
+        Assert.Equal(EstadoDocumento.ERROR, documento.Estado);
         Assert.Equal(DbInitializer.RamonId, documento.UsuarioId);
         Assert.Equal("factura.pdf", documento.NombreArchivo);
         Assert.Equal("application/pdf", documento.TipoMime);
@@ -151,7 +152,7 @@ public sealed class DocumentosTests
         Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(PdfValido)), documento.HashSha256);
         Assert.Equal(PdfValido, storage.Archivos[documento.StorageKey!]);
 
-        var evento = Assert.Single(documento.Eventos);
+        var evento = Assert.Single(documento.Eventos, e => e.Tipo == TipoEventoDocumento.SUBIDA);
         Assert.Equal(TipoEventoDocumento.SUBIDA, evento.Tipo);
         Assert.Equal(DbInitializer.RamonId, evento.UsuarioId);
     }
@@ -235,6 +236,107 @@ public sealed class DocumentosTests
         Assert.Equal(0, await context.Documentos.CountAsync());
     }
 
+    [Fact]
+    public async Task ErrorOCR_ConservaOriginal_YReintentoConHistorial_YPermisos()
+    {
+        await using var context = CrearContexto(nameof(ErrorOCR_ConservaOriginal_YReintentoConHistorial_YPermisos));
+        await DbInitializer.SeedAsync(context);
+        var storage = new AlmacenamientoEnMemoria();
+        var servicio = CrearServicio(context, storage);
+        using var contenido = new MemoryStream(PdfValido);
+        var subida = await servicio.SubirAsync(Ramon, "original.pdf", contenido, PdfValido.Length, CancellationToken.None);
+        var id = subida.Valor!.Id;
+        Assert.Equal(EstadoDocumento.ERROR, subida.Valor.Estado);
+        Assert.Single(subida.Valor.Intentos);
+        Assert.Contains("No está disponible", subida.Valor.Intentos.Single().Error!);
+        var ajeno = new UsuarioActual(Guid.NewGuid(), Rol.AUTONOMO);
+        Assert.Null(await servicio.AbrirOriginalAsync(ajeno, id, CancellationToken.None));
+        Assert.False((await servicio.ProcesarAsync(ajeno, id, true, CancellationToken.None)).EsCorrecto);
+        var original = await servicio.AbrirOriginalAsync(Ramon, id, CancellationToken.None);
+        Assert.NotNull(original);
+        using var copia = new MemoryStream();
+        await original.Contenido.CopyToAsync(copia);
+        await original.Contenido.DisposeAsync();
+        Assert.Equal(PdfValido, copia.ToArray());
+        var reintento = await servicio.ProcesarAsync(Ramon, id, true, CancellationToken.None);
+        Assert.True(reintento.EsCorrecto);
+        context.ChangeTracker.Clear();
+        var recargado = await servicio.ObtenerAsync(Ramon, id, CancellationToken.None);
+        Assert.Equal(2, recargado!.Intentos.Count);
+        Assert.All(recargado.Intentos, i => { Assert.NotNull(i.Fin); Assert.Equal("ERROR", i.Resultado); });
+        Assert.Equal(5, recargado.Eventos.Count);
+        Assert.Single(storage.Archivos);
+        var vinculo = await context.Vinculaciones.FirstAsync(v => v.AutonomoId == Ramon.Id);
+        vinculo.Estado = EstadoVinculacion.FINALIZADA;
+        await context.SaveChangesAsync();
+        Assert.Null(await servicio.AbrirOriginalAsync(Pedro, id, CancellationToken.None));
+        Assert.False((await servicio.ProcesarAsync(Pedro, id, true, CancellationToken.None)).EsCorrecto);
+    }
+
+    [Fact]
+    public async Task ProcesamientoCorrecto_PermiteReextraccionConHistorial_YRechazaValidado()
+    {
+        await using var context = CrearContexto(nameof(ProcesamientoCorrecto_PermiteReextraccionConHistorial_YRechazaValidado));
+        await DbInitializer.SeedAsync(context);
+        var storage = new AlmacenamientoEnMemoria();
+        // Doble sólo para comprobar la orquestación; no verifica el motor OCR.
+        var servicio = new DocumentosService(context, storage,
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo());
+        using var contenido = new MemoryStream(PdfValido);
+        var subida = await servicio.SubirAsync(Ramon, "original.pdf", contenido, PdfValido.Length, CancellationToken.None);
+        Assert.True(subida.EsCorrecto);
+        Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, subida.Valor!.Estado);
+        Assert.Equal(12.34m, subida.Valor.ExtraccionIa!.Total);
+        Assert.Null(subida.Valor.ExtraccionIa.BaseImponible);
+        Assert.Null(subida.Valor.ExtraccionIa.FechaEmision);
+        var intento = Assert.Single(subida.Valor.Intentos);
+        Assert.Equal("CORRECTO", intento.Resultado);
+        Assert.NotNull(intento.ValoresJson);
+        Assert.NotNull(intento.Fin);
+        Assert.True((await servicio.ProcesarAsync(Ramon, subida.Valor.Id, true, CancellationToken.None)).EsCorrecto);
+        context.ChangeTracker.Clear();
+        var recargado = await servicio.ObtenerAsync(Ramon, subida.Valor.Id, CancellationToken.None);
+        Assert.Equal(12.34m, recargado!.ExtraccionIa!.Total);
+        Assert.Equal(2, recargado.Intentos.Count);
+        Assert.Equal(5, recargado.Eventos.Count);
+        var validado = await context.Documentos.SingleAsync(d => d.Id == recargado.Id);
+        validado.Estado = EstadoDocumento.VALIDADO;
+        await context.SaveChangesAsync();
+        Assert.False((await servicio.ProcesarAsync(Ramon, validado.Id, true, CancellationToken.None)).EsCorrecto);
+    }
+
+    [Theory]
+    [InlineData("PROCESAMIENTO_COMPLETADO", TipoEventoDocumento.PROCESAMIENTO_COMPLETADO)]
+    [InlineData("PROCESAMIENTO_ERROR", TipoEventoDocumento.PROCESAMIENTO_ERROR)]
+    public void Historial_LeeTiposPersistidosPorVersionesAnteriores(string almacenado, TipoEventoDocumento esperado)
+    {
+        using var context = CrearContexto(nameof(Historial_LeeTiposPersistidosPorVersionesAnteriores));
+        var propiedad = context.Model.FindEntityType(typeof(EventoDocumento))!
+            .FindProperty(nameof(EventoDocumento.Tipo))!;
+        var conversor = propiedad.GetTypeMapping().Converter!;
+        Assert.Equal(esperado, conversor.ConvertFromProvider(almacenado));
+        Assert.Equal(almacenado, conversor.ConvertToProvider(esperado));
+    }
+
+    [Fact]
+    public async Task TextoReconocidoSinCampos_TerminaEnError_YConservaOriginal()
+    {
+        await using var context = CrearContexto(nameof(TextoReconocidoSinCampos_TerminaEnError_YConservaOriginal));
+        await DbInitializer.SeedAsync(context);
+        var storage = new AlmacenamientoEnMemoria();
+        var servicio = new DocumentosService(context, storage,
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo("Texto legible sin datos fiscales identificables"));
+        using var contenido = new MemoryStream(PdfValido);
+        var subida = await servicio.SubirAsync(Ramon, "documento.pdf", contenido, PdfValido.Length, CancellationToken.None);
+        Assert.True(subida.EsCorrecto);
+        Assert.Equal(EstadoDocumento.ERROR, subida.Valor!.Estado);
+        Assert.Null(subida.Valor.ExtraccionIa);
+        Assert.Contains("ningún dato", Assert.Single(subida.Valor.Intentos).Error!);
+        Assert.Single(storage.Archivos);
+    }
+
     private static ApplicationDbContext CrearContexto(string nombre) =>
         new(new DbContextOptionsBuilder<ApplicationDbContext>().UseInMemoryDatabase(nombre).Options);
 
@@ -244,7 +346,11 @@ public sealed class DocumentosTests
             storage,
             Options.Create(new DocumentosOptions { TamanoMaximoBytes = tamanoMaximoBytes }),
             TimeProvider.System,
-            NullLogger<DocumentosService>.Instance);
+            NullLogger<DocumentosService>.Instance,
+            new LectorDocumentoLocal(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Ocr:Tesseract"] = "gestio-test-motor-no-instalado"
+            }).Build()));
 
     private static DocumentosController CrearControlador(ApplicationDbContext context, UsuarioActual usuario) =>
         new(CrearServicio(context, new AlmacenamientoEnMemoria()), new UsuarioActualFijo(usuario));
@@ -258,6 +364,12 @@ public sealed class DocumentosTests
 }
 
 // Sustituye al perfil seleccionado en los tests: siempre devuelve el usuario indicado.
+file sealed class LectorParaPruebaDeFlujo(string? texto = null) : ILectorDocumento
+{
+    public Task<TextoDocumento> LeerAsync(Stream original, string tipoMime, CancellationToken cancellationToken) =>
+        Task.FromResult(new TextoDocumento(texto ?? "Emisor: Comercio de prueba\nTotal: 12,34", "doble-unitario"));
+}
+
 file sealed class UsuarioActualFijo(UsuarioActual usuario) : ICurrentUserService
 {
     public Task<UsuarioActual?> ObtenerAsync(CancellationToken cancellationToken) => Task.FromResult<UsuarioActual?>(usuario);

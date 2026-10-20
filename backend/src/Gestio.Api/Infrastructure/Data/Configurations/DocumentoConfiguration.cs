@@ -39,6 +39,7 @@ public sealed class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
             .IsRequired();
 
         builder.Property(documento => documento.Estado)
+            .IsConcurrencyToken()
             .IsRequired();
 
         builder.HasOne(documento => documento.Usuario)

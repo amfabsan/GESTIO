@@ -26,6 +26,7 @@ builder.Services.Configure<DocumentosOptions>(builder.Configuration.GetSection(D
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<DocumentosService>();
+builder.Services.AddScoped<ILectorDocumento, LectorDocumentoLocal>();
 builder.Services.AddScoped<VinculacionesService>();
 
 builder.Services.AddControllers();

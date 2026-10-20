@@ -20,5 +20,13 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        modelBuilder.Entity<IntentoProcesamiento>(b =>
+        {
+            b.ToTable("intentos_procesamiento");
+            b.HasKey(i => i.Id);
+            b.HasOne<Documento>().WithMany(d => d.Intentos).HasForeignKey(i => i.DocumentoId);
+            b.Property(i => i.ValoresJson).HasColumnType("jsonb");
+            b.HasIndex(i => i.DocumentoId).IsUnique().HasFilter("\"Fin\" IS NULL");
+        });
     }
 }
