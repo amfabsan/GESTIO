@@ -8,6 +8,11 @@ public static class DbInitializer
 {
     public static readonly Guid RamonId = new("11111111-1111-1111-1111-111111111111");
     public static readonly Guid PedroId = new("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid LuciaId = new("77777777-7777-7777-7777-777777777771");
+    private static readonly Guid JavierId = new("77777777-7777-7777-7777-777777777772");
+    private static readonly Guid SolicitudLuciaId = new("88888888-8888-8888-8888-888888888881");
+    private static readonly Guid SolicitudJavierId = new("88888888-8888-8888-8888-888888888882");
+    private static readonly Guid VinculacionRamonPedroId = new("66666666-6666-6666-6666-666666666661");
 
     private static readonly Guid FacturaLuzId = new("33333333-3333-3333-3333-333333333331");
     private static readonly Guid FacturaInternetId = new("33333333-3333-3333-3333-333333333332");
@@ -59,6 +64,21 @@ public static class DbInitializer
         if (usuarios.Count > 0)
         {
             await context.Usuarios.AddRangeAsync(usuarios, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        if (!await context.Vinculaciones.AnyAsync(vinculacion => vinculacion.Id == VinculacionRamonPedroId, cancellationToken))
+        {
+            context.Vinculaciones.Add(new Vinculacion
+            {
+                Id = VinculacionRamonPedroId,
+                AutonomoId = RamonId,
+                CodigoAsesoria = "ASE-000123",
+                Estado = EstadoVinculacion.ACTIVA,
+                FechaSolicitud = new DateTimeOffset(2026, 1, 1, 9, 0, 0, TimeSpan.Zero),
+                FechaAceptacion = new DateTimeOffset(2026, 1, 2, 9, 0, 0, TimeSpan.Zero),
+                AceptadaPorId = PedroId
+            });
             await context.SaveChangesAsync(cancellationToken);
         }
 
@@ -243,5 +263,75 @@ public static class DbInitializer
             await context.Anomalias.AddRangeAsync(anomaliasNuevas, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    public static async Task SeedSolicitudesDemoAsync(ApplicationDbContext context, CancellationToken cancellationToken = default)
+    {
+        if (!await context.Usuarios.AnyAsync(usuario => usuario.Id == PedroId, cancellationToken))
+        {
+            return;
+        }
+
+        var usuarios = new[]
+        {
+            new Usuario
+            {
+                Id = LuciaId,
+                Nombre = "Lucía",
+                PrimerApellido = "Fernández",
+                SegundoApellido = "Gómez",
+                Email = "lucia.fernandez@gestio.local",
+                Nif = "48291037X",
+                Rol = Rol.AUTONOMO
+            },
+            new Usuario
+            {
+                Id = JavierId,
+                Nombre = "Javier",
+                PrimerApellido = "Torres",
+                SegundoApellido = "Pérez",
+                Email = "javier.torres@gestio.local",
+                Nif = "39182746Y",
+                Rol = Rol.AUTONOMO
+            }
+        };
+
+        foreach (var usuario in usuarios)
+        {
+            if (!await context.Usuarios.AnyAsync(existente => existente.Id == usuario.Id, cancellationToken))
+            {
+                context.Usuarios.Add(usuario);
+            }
+        }
+        await context.SaveChangesAsync(cancellationToken);
+
+        var solicitudes = new[]
+        {
+            new Vinculacion
+            {
+                Id = SolicitudLuciaId,
+                AutonomoId = LuciaId,
+                CodigoAsesoria = "ASE-000123",
+                Estado = EstadoVinculacion.PENDIENTE,
+                FechaSolicitud = new DateTimeOffset(2026, 6, 15, 9, 20, 0, TimeSpan.Zero)
+            },
+            new Vinculacion
+            {
+                Id = SolicitudJavierId,
+                AutonomoId = JavierId,
+                CodigoAsesoria = "ASE-000123",
+                Estado = EstadoVinculacion.PENDIENTE,
+                FechaSolicitud = new DateTimeOffset(2026, 6, 14, 17, 5, 0, TimeSpan.Zero)
+            }
+        };
+
+        foreach (var solicitud in solicitudes)
+        {
+            if (!await context.Vinculaciones.AnyAsync(existente => existente.Id == solicitud.Id, cancellationToken))
+            {
+                context.Vinculaciones.Add(solicitud);
+            }
+        }
+        await context.SaveChangesAsync(cancellationToken);
     }
 }

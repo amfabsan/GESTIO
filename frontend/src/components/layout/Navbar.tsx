@@ -22,7 +22,7 @@ export function Navbar() {
         {esGestor ? (
           <>
             <Link className={claseEnlace('/gestor/clientes')} to="/gestor/clientes">♧ Clientes</Link>
-            <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">♧ Solicitudes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-xs">2</span></button>
+            <Link className={claseEnlace('/gestor/solicitudes')} to="/gestor/solicitudes">♧ Solicitudes</Link>
             <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▣ Bandeja <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-xs">6</span></button>
             <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▦ Calendario</button>
             <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">◯ Mensajes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-xs">1</span></button>
@@ -35,7 +35,7 @@ export function Navbar() {
             <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▦ Calendario</button>
             <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▣ Facturas</button>
             <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">◯ Mensajes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-xs">1</span></button>
-            <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">↔ Mi asesoría</button>
+            <Link className={claseEnlace('/autonomo/mi-asesoria')} to="/autonomo/mi-asesoria">↔ Mi asesoría</Link>
           </>
         )}
       </div>

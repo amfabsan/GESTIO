@@ -46,6 +46,62 @@ public sealed class DocumentosTests
     }
 
     [Fact]
+    public async Task GetDocumentos_GestorSoloVeDocumentosConVinculacionActiva()
+    {
+        await using var context = CrearContexto(nameof(GetDocumentos_GestorSoloVeDocumentosConVinculacionActiva));
+        await DbInitializer.SeedAsync(context);
+
+        var cliente = new Usuario
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "Luis",
+            PrimerApellido = "Cliente",
+            SegundoApellido = "Demo",
+            Email = "luis@gestio.local",
+            Nif = "44444444D",
+            Rol = Rol.AUTONOMO
+        };
+        var documento = new Documento
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = cliente.Id,
+            NombreArchivo = "cliente-pendiente.pdf",
+            TipoMime = "application/pdf",
+            Origen = OrigenDocumento.SUBIDA_WEB,
+            FechaSubida = DateTimeOffset.UtcNow,
+            Estado = EstadoDocumento.SUBIDO
+        };
+        var vinculacion = new Vinculacion
+        {
+            Id = Guid.NewGuid(),
+            AutonomoId = cliente.Id,
+            CodigoAsesoria = "ASE-000123",
+            Estado = EstadoVinculacion.PENDIENTE,
+            FechaSolicitud = DateTimeOffset.UtcNow
+        };
+
+        context.Usuarios.Add(cliente);
+        context.Documentos.Add(documento);
+        context.Vinculaciones.Add(vinculacion);
+        await context.SaveChangesAsync();
+
+        var sinAcceso = await ObtenerListado(CrearControlador(context, Pedro));
+        Assert.DoesNotContain(sinAcceso, item => item.Id == documento.Id);
+
+        vinculacion.Estado = EstadoVinculacion.ACTIVA;
+        await context.SaveChangesAsync();
+
+        var conAcceso = await ObtenerListado(CrearControlador(context, Pedro));
+        Assert.Contains(conAcceso, item => item.Id == documento.Id);
+
+        vinculacion.Estado = EstadoVinculacion.FINALIZADA;
+        await context.SaveChangesAsync();
+
+        var accesoRetirado = await ObtenerListado(CrearControlador(context, Pedro));
+        Assert.DoesNotContain(accesoRetirado, item => item.Id == documento.Id);
+    }
+
+    [Fact]
     public async Task GetDocumento_AutonomoAjenoNoPuedeConsultarlo()
     {
         await using var context = CrearContexto(nameof(GetDocumento_AutonomoAjenoNoPuedeConsultarlo));

@@ -26,6 +26,7 @@ builder.Services.Configure<DocumentosOptions>(builder.Configuration.GetSection(D
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IFileStorageService, LocalFileStorageService>();
 builder.Services.AddScoped<DocumentosService>();
+builder.Services.AddScoped<VinculacionesService>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
@@ -47,6 +48,7 @@ if (app.Environment.IsDevelopment())
     if (builder.Configuration.GetValue<bool>("DatabaseConfig:SeedSampleData"))
     {
         await DbInitializer.SeedAsync(dbContext);
+        await DbInitializer.SeedSolicitudesDemoAsync(dbContext);
     }
 }
 
