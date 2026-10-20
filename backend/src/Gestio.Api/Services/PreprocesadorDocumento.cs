@@ -25,13 +25,36 @@ public static class PreprocesadorDocumento
         { canvas.Clear(SKColors.White); canvas.DrawBitmap(orientada, 0, 0, pintura); }
         var resultado = new List<ImagenOcr> { Guardar(gris, archivo, "gris", "original") };
         ct.ThrowIfCancellationRequested();
+
+        // Foto lejana: el papel ocupa sólo parte de la imagen. Se recorta y endereza
+        // el cuadrilátero del papel para que el texto gane resolución y las zonas
+        // de cabecera/resumen de la relectura caigan sobre la factura y no sobre la mesa.
+        if (DetectarDocumento(orientada) is { } esquinas)
+        {
+            using var documento = Recortar(gris, esquinas, out var ampliacion);
+            ct.ThrowIfCancellationRequested();
+            using var iluminado = NormalizarIluminacion(documento, out _);
+            using var enfocado = ampliacion > 1.3 ? Enfocar(iluminado) : iluminado.Copy();
+            var anguloDocumento = DetectarInclinacion(enfocado);
+            using var recto = Math.Abs(anguloDocumento) >= .25 ? Girar(enfocado, -anguloDocumento) : enfocado.Copy();
+            resultado.Add(Guardar(recto, archivo, "documento", "documento"));
+            ct.ThrowIfCancellationRequested();
+            using var umbralDocumento = UmbralAdaptativo(recto);
+            resultado.Add(Guardar(umbralDocumento, archivo, "documento-umbral", "documento"));
+            return resultado;
+        }
+
         using var perspectiva = Rectificar(gris);
         var angulo = DetectarInclinacion(perspectiva);
         using var corregida = Girar(perspectiva, -angulo);
-        var geometria = "corregida";
-        if (Math.Abs(angulo) >= .25 || !MismosPixeles(gris, perspectiva))
-            resultado.Add(Guardar(corregida, archivo, "rectificada", geometria));
-        else geometria = "original";
+        var cambioGeometrico = Math.Abs(angulo) >= .25 || !MismosPixeles(gris, perspectiva);
+        var geometria = cambioGeometrico ? "corregida" : "original";
+        // Pliegues y luz desigual: sólo se corrige la iluminación cuando hay sombras
+        // claras, para no alterar las fotos que ya se leían bien.
+        using var iluminada = NormalizarIluminacion(corregida, out var variacion);
+        var sombras = variacion >= 35;
+        if (cambioGeometrico || sombras)
+            resultado.Add(Guardar(sombras ? iluminada : corregida, archivo, "rectificada", geometria));
         ct.ThrowIfCancellationRequested();
         using var umbral = UmbralAdaptativo(corregida);
         resultado.Add(Guardar(umbral, archivo, "umbral", geometria));
@@ -64,6 +87,281 @@ public static class PreprocesadorDocumento
             pixeles[dy * salida.Width + dx] = entrada[y * b.Width + x];
         }
         salida.Pixels = pixeles; return salida;
+    }
+
+    // Busca el papel como la mayor región clara sobre un fondo más oscuro. Devuelve las esquinas
+    // (sup-izq, sup-der, inf-der, inf-izq) en píxeles de la imagen, o null si el papel
+    // ya llena la foto o su contorno no es un cuadrilátero fiable (mano, esquina tapada...).
+    public static SKPoint[]? DetectarDocumento(SKBitmap imagen)
+    {
+        var f = Math.Min(1, 480.0 / Math.Max(imagen.Width, imagen.Height));
+        using var mini = imagen.Resize(new SKImageInfo(Math.Max(1, (int)(imagen.Width * f)),
+            Math.Max(1, (int)(imagen.Height * f))), new SKSamplingOptions(SKFilterMode.Linear));
+        var w = mini.Width; var h = mini.Height; var n = w * h;
+        // Luminancia: con luz cálida el canal azul del papel cae casi al nivel de la mesa.
+        var valores = mini.Pixels.Select(p => (byte)(.2126 * p.Red + .7152 * p.Green + .0722 * p.Blue)).ToArray();
+        // Corte por debajo de Otsu: la sombra de un pliegue oscurece el papel y no
+        // debe partirlo en dos; sigue siendo bastante más claro que el fondo.
+        var (mediaFondo, mediaPapel) = Otsu(valores);
+        var umbral = mediaFondo + (mediaPapel - mediaFondo) * .2;
+        var etiquetas = new int[n]; var mayor = 0; var areaMayor = 0; var cola = new Queue<int>();
+        for (int i = 0, etiqueta = 0; i < n; i++)
+        {
+            if (valores[i] <= umbral || etiquetas[i] != 0) continue;
+            etiqueta++; var area = 0; etiquetas[i] = etiqueta; cola.Enqueue(i);
+            while (cola.TryDequeue(out var p))
+            {
+                area++;
+                foreach (var q in Vecinos(p, w, h))
+                    if (valores[q] > umbral && etiquetas[q] == 0) { etiquetas[q] = etiqueta; cola.Enqueue(q); }
+            }
+            if (area > areaMayor) { areaMayor = area; mayor = etiqueta; }
+        }
+        if (mayor == 0) return null;
+        // Rellenar huecos (texto, logos, tablas): lo no alcanzable desde el borde es papel.
+        var fuera = new bool[n];
+        void Sembrar(int p) { if (!fuera[p] && etiquetas[p] != mayor) { fuera[p] = true; cola.Enqueue(p); } }
+        for (var x = 0; x < w; x++) { Sembrar(x); Sembrar((h - 1) * w + x); }
+        for (var y = 0; y < h; y++) { Sembrar(y * w); Sembrar(y * w + w - 1); }
+        while (cola.TryDequeue(out var p))
+            foreach (var q in Vecinos(p, w, h)) Sembrar(q);
+        var areaPapel = fuera.Count(v => !v);
+        // Sólo actuar si el papel es claramente menor que la foto: las fotos cercanas
+        // y los escaneos siguen el flujo anterior sin cambios.
+        if (areaPapel < n * .06 || areaPapel > n * .85) return null;
+        // Papel cortado por el encuadre: sus "esquinas" serían el borde de la foto.
+        var enBorde = 0;
+        for (var x = 0; x < w; x++) enBorde += (etiquetas[x] == mayor ? 1 : 0) + (etiquetas[(h - 1) * w + x] == mayor ? 1 : 0);
+        for (var y = 0; y < h; y++) enBorde += (etiquetas[y * w] == mayor ? 1 : 0) + (etiquetas[y * w + w - 1] == mayor ? 1 : 0);
+        if (enBorde > (w + h) * 2 * .02) return null;
+        // Envolvente convexa del papel y el cuadrilátero inscrito de mayor área: los
+        // bordes irregulares (sombras, esquinas dobladas) no desplazan las esquinas.
+        var contorno = new List<SKPoint>();
+        for (var y = 0; y < h; y++)
+        {
+            var fila = Enumerable.Range(y * w, w).Where(p => etiquetas[p] == mayor).ToArray();
+            if (fila.Length > 0) { contorno.Add(new(fila[0] % w, y)); contorno.Add(new(fila[^1] % w, y)); }
+        }
+        var envolvente = Envolvente(contorno);
+        var m = envolvente.Count;
+        if (m < 4) return null;
+        double Triangulo(int a, int b, int c) => Math.Abs(
+            (envolvente[b].X - envolvente[a].X) * (envolvente[c].Y - envolvente[a].Y) -
+            (envolvente[b].Y - envolvente[a].Y) * (envolvente[c].X - envolvente[a].X)) / 2;
+        var areaCuadrilatero = 0.0; int[] indices = [0, 1, 2, 3];
+        for (var a = 0; a < m - 3; a++)
+        for (var c = a + 2; c < m - 1; c++)
+        {
+            var b = Enumerable.Range(a + 1, c - a - 1).MaxBy(i => Triangulo(a, i, c));
+            var d = Enumerable.Range(c + 1, m - c - 1).MaxBy(i => Triangulo(c, i, a));
+            var area = Triangulo(a, b, c) + Triangulo(c, d, a);
+            if (area > areaCuadrilatero) { areaCuadrilatero = area; indices = [a, b, c, d]; }
+        }
+        var esquinas = indices.Select(i => envolvente[i]).ToArray();
+        if (AreaConSigno(esquinas) < 0) Array.Reverse(esquinas);
+        var inicio = Array.IndexOf(esquinas, esquinas.MinBy(p => p.X + p.Y));
+        esquinas = Enumerable.Range(0, 4).Select(i => esquinas[(inicio + i) % 4]).ToArray();
+        var areaEnvolvente = Math.Abs(AreaConSigno(envolvente));
+        var lados = Enumerable.Range(0, 4).Select(i => SKPoint.Distance(esquinas[i], esquinas[(i + 1) % 4])).ToArray();
+        // El papel debe parecer un cuadrilátero: cuatro esquinas cubren casi toda la
+        // envolvente y la región rellena ocupa casi toda ella (no una mano o un objeto).
+        if (areaCuadrilatero < areaEnvolvente * .85 || areaPapel < areaEnvolvente * .85 ||
+            lados.Min() < Math.Min(w, h) * .2) return null;
+        var centro = new SKPoint(esquinas.Average(p => p.X), esquinas.Average(p => p.Y));
+        int Valor(double x, double y) => valores[Math.Clamp((int)y, 0, h - 1) * w + Math.Clamp((int)x, 0, w - 1)];
+        // Ajustar cada lado al borde real del papel (el umbral deja bordes irregulares en
+        // zonas oscuras) y exigir que exista: si la sombra de un pliegue o de la mano parte
+        // el papel, ese "lado" queda en mitad del papel y no se recorta.
+        var lineas = new (SKPoint A, SKPoint B)[4];
+        for (var i = 0; i < 4; i++)
+        {
+            var a = esquinas[i]; var b = esquinas[(i + 1) % 4];
+            var medio = new SKPoint((a.X + b.X) / 2, (a.Y + b.Y) / 2);
+            var largo = SKPoint.Distance(a, b);
+            var (nx, ny) = (-(b.Y - a.Y) / largo, (b.X - a.X) / largo);
+            if (nx * (centro.X - medio.X) + ny * (centro.Y - medio.Y) > 0) (nx, ny) = (-nx, -ny);
+            // tolerante: dentro se toma el punto más claro cercano (papel entre letras pegadas al borde).
+            IEnumerable<int> Saltos(int desplazamiento, bool tolerante) => Enumerable.Range(1, 19).Select(k =>
+            {
+                var x = a.X + (b.X - a.X) * k / 20.0 + nx * desplazamiento;
+                var y = a.Y + (b.Y - a.Y) * k / 20.0 + ny * desplazamiento;
+                var dentro = tolerante ? Enumerable.Range(2, 5).Max(d => Valor(x - nx * d, y - ny * d)) : Valor(x - nx * 2, y - ny * 2);
+                return dentro - Valor(x + nx * 3, y + ny * 3);
+            });
+            // El borde del papel es la transición más exterior; las líneas de texto paralelas quedan dentro.
+            var exterior = Enumerable.Range(-4, 29).LastOrDefault(d => Saltos(d, true).Count(s => s > 15) >= 14, int.MinValue);
+            if (exterior == int.MinValue) return null;
+            // La comparación tolerante rebasa el borde unos píxeles: afinar al salto más nítido.
+            var ajuste = Enumerable.Range(exterior - 5, 6).MaxBy(d => Saltos(d, false).Sum());
+            lineas[i] = (new(a.X + nx * ajuste, a.Y + ny * ajuste), new(b.X + nx * ajuste, b.Y + ny * ajuste));
+        }
+        esquinas = Enumerable.Range(0, 4).Select(i => Corte(lineas[(i + 3) % 4], lineas[i])).ToArray();
+        centro = new SKPoint(esquinas.Average(p => p.X), esquinas.Average(p => p.Y));
+        // Ampliar un poco hacia fuera para no cortar texto pegado al borde.
+        return esquinas.Select(p => new SKPoint(
+            (float)Math.Clamp((centro.X + (p.X - centro.X) * 1.02) / f, 0, imagen.Width - 1),
+            (float)Math.Clamp((centro.Y + (p.Y - centro.Y) * 1.02) / f, 0, imagen.Height - 1))).ToArray();
+    }
+
+    private static IEnumerable<int> Vecinos(int p, int w, int h)
+    {
+        var x = p % w;
+        if (x > 0) yield return p - 1;
+        if (x < w - 1) yield return p + 1;
+        if (p >= w) yield return p - w;
+        if (p < w * (h - 1)) yield return p + w;
+    }
+
+    // Devuelve la media de cada clase con el umbral de Otsu (fondo oscuro, papel claro).
+    private static (double Fondo, double Papel) Otsu(byte[] valores)
+    {
+        var histograma = new long[256];
+        foreach (var v in valores) histograma[v]++;
+        double total = valores.Length, suma = 0, sumaFondo = 0, pesoFondo = 0, mejor = -1;
+        (double, double) medias = (0, 255);
+        for (var i = 0; i < 256; i++) suma += i * histograma[i];
+        for (var i = 0; i < 256; i++)
+        {
+            pesoFondo += histograma[i];
+            if (pesoFondo == 0) continue;
+            var pesoFrente = total - pesoFondo;
+            if (pesoFrente == 0) break;
+            sumaFondo += i * histograma[i];
+            var (fondo, papel) = (sumaFondo / pesoFondo, (suma - sumaFondo) / pesoFrente);
+            var entreClases = pesoFondo * pesoFrente * (papel - fondo) * (papel - fondo);
+            if (entreClases > mejor) { mejor = entreClases; medias = (fondo, papel); }
+        }
+        return medias;
+    }
+
+    private static SKPoint Corte((SKPoint A, SKPoint B) l, (SKPoint A, SKPoint B) m)
+    {
+        double rx = l.B.X - l.A.X, ry = l.B.Y - l.A.Y, sx = m.B.X - m.A.X, sy = m.B.Y - m.A.Y;
+        var t = ((m.A.X - l.A.X) * sy - (m.A.Y - l.A.Y) * sx) / (rx * sy - ry * sx);
+        return new((float)(l.A.X + rx * t), (float)(l.A.Y + ry * t));
+    }
+
+    // Cadena monótona de Andrew.
+    private static List<SKPoint> Envolvente(IEnumerable<SKPoint> puntos)
+    {
+        var p = puntos.Distinct().OrderBy(q => q.X).ThenBy(q => q.Y).ToArray();
+        if (p.Length < 3) return [.. p];
+        static double Giro(SKPoint o, SKPoint a, SKPoint b) => (a.X - o.X) * (b.Y - o.Y) - (a.Y - o.Y) * (b.X - o.X);
+        var e = new SKPoint[p.Length * 2]; var k = 0;
+        for (var i = 0; i < p.Length; i++)
+        { while (k >= 2 && Giro(e[k - 2], e[k - 1], p[i]) <= 0) k--; e[k++] = p[i]; }
+        for (int i = p.Length - 2, t = k + 1; i >= 0; i--)
+        { while (k >= t && Giro(e[k - 2], e[k - 1], p[i]) <= 0) k--; e[k++] = p[i]; }
+        return e.Take(k - 1).ToList();
+    }
+
+    // Positiva cuando los puntos van en sentido horario en la imagen (eje Y hacia abajo).
+    private static double AreaConSigno(IReadOnlyList<SKPoint> p) => Enumerable.Range(0, p.Count).Sum(i =>
+        (double)p[i].X * p[(i + 1) % p.Count].Y - (double)p[(i + 1) % p.Count].X * p[i].Y) / 2;
+
+    // Lleva el cuadrilátero del papel a un rectángulo con una homografía completa
+    // (corrige la perspectiva en ambos ejes, no sólo la lateral) y lo amplía si hace falta.
+    public static SKBitmap Recortar(SKBitmap imagen, SKPoint[] esquinas, out double ampliacion)
+    {
+        var ancho = Math.Max(SKPoint.Distance(esquinas[0], esquinas[1]), SKPoint.Distance(esquinas[3], esquinas[2]));
+        var alto = Math.Max(SKPoint.Distance(esquinas[0], esquinas[3]), SKPoint.Distance(esquinas[1], esquinas[2]));
+        ampliacion = Math.Min(2.5, 3000.0 / Math.Max(ancho, alto));
+        var w = Math.Max(1, (int)(ancho * ampliacion)); var h = Math.Max(1, (int)(alto * ampliacion));
+        var salida = new SKBitmap(w, h);
+        using var canvas = new SKCanvas(salida);
+        canvas.Clear(SKColors.White);
+        canvas.SetMatrix(Homografia(esquinas, [new(0, 0), new(w, 0), new(w, h), new(0, h)]));
+        using var fuente = SKImage.FromBitmap(imagen);
+        canvas.DrawImage(fuente, 0, 0, new SKSamplingOptions(SKCubicResampler.Mitchell));
+        return salida;
+    }
+
+    private static SKMatrix Homografia(SKPoint[] origen, SKPoint[] destino)
+    {
+        // u = (h0·x + h1·y + h2) / (h6·x + h7·y + 1); v análogo con h3..h5.
+        var a = new double[8, 9];
+        for (var i = 0; i < 4; i++)
+        {
+            double x = origen[i].X, y = origen[i].Y, u = destino[i].X, v = destino[i].Y;
+            a[2*i,0] = x; a[2*i,1] = y; a[2*i,2] = 1; a[2*i,6] = -u*x; a[2*i,7] = -u*y; a[2*i,8] = u;
+            a[2*i+1,3] = x; a[2*i+1,4] = y; a[2*i+1,5] = 1; a[2*i+1,6] = -v*x; a[2*i+1,7] = -v*y; a[2*i+1,8] = v;
+        }
+        for (var c = 0; c < 8; c++)
+        {
+            var pivote = Enumerable.Range(c, 8 - c).MaxBy(f => Math.Abs(a[f, c]));
+            for (var k = 0; k < 9; k++) (a[c, k], a[pivote, k]) = (a[pivote, k], a[c, k]);
+            for (var f = 0; f < 8; f++)
+            {
+                if (f == c) continue;
+                var m = a[f, c] / a[c, c];
+                for (var k = c; k < 9; k++) a[f, k] -= m * a[c, k];
+            }
+        }
+        float H(int i) => (float)(a[i, 8] / a[i, i]);
+        return new SKMatrix(H(0), H(1), H(2), H(3), H(4), H(5), H(6), H(7), 1);
+    }
+
+    // Estima el brillo del papel sin tinta a baja resolución y divide por él:
+    // elimina la sombra de pliegues y la luz desigual. variacion (p95 - p5 del fondo)
+    // indica cuánto cambia la iluminación para decidir si merece la pena aplicarlo.
+    public static SKBitmap NormalizarIluminacion(SKBitmap gris, out int variacion)
+    {
+        var f = Math.Min(1, 160.0 / Math.Max(gris.Width, gris.Height));
+        using var mini = gris.Resize(new SKImageInfo(Math.Max(1, (int)(gris.Width * f)),
+            Math.Max(1, (int)(gris.Height * f))), new SKSamplingOptions(SKFilterMode.Linear));
+        var w = mini.Width; var h = mini.Height;
+        var fondo = mini.Pixels.Select(p => p.Red).ToArray();
+        // Máximo local repetido: las letras desaparecen y queda el papel.
+        for (var paso = 0; paso < 3; paso++)
+        {
+            var previo = fondo; fondo = new byte[previo.Length];
+            for (var y = 0; y < h; y++)
+            for (var x = 0; x < w; x++)
+            {
+                byte maximo = 0;
+                for (var dy = -1; dy <= 1; dy++)
+                for (var dx = -1; dx <= 1; dx++)
+                    maximo = Math.Max(maximo, previo[Math.Clamp(y + dy, 0, h - 1) * w + Math.Clamp(x + dx, 0, w - 1)]);
+                fondo[y * w + x] = maximo;
+            }
+        }
+        var ordenado = fondo.Order().ToArray();
+        variacion = ordenado[ordenado.Length * 95 / 100] - ordenado[ordenado.Length * 5 / 100];
+        using var fondoMini = new SKBitmap(w, h);
+        fondoMini.Pixels = fondo.Select(v => new SKColor(v, v, v)).ToArray();
+        using var suave = Desenfocar(fondoMini, 3);
+        using var luz = suave.Resize(new SKImageInfo(gris.Width, gris.Height), new SKSamplingOptions(SKFilterMode.Linear));
+        var entrada = gris.Pixels; var brillo = luz.Pixels; var destino = new SKColor[entrada.Length];
+        for (var i = 0; i < entrada.Length; i++)
+        {
+            // El mínimo evita disparar el ruido en zonas casi negras (fondo, logos).
+            var v = (byte)Math.Clamp(entrada[i].Red * 255.0 / Math.Max(60, (int)brillo[i].Red), 0, 255);
+            destino[i] = new SKColor(v, v, v);
+        }
+        var salida = new SKBitmap(gris.Width, gris.Height); salida.Pixels = destino; return salida;
+    }
+
+    // Máscara de enfoque suave: las fotos lejanas llegan blandas tras ampliarlas.
+    private static SKBitmap Enfocar(SKBitmap gris)
+    {
+        using var suave = Desenfocar(gris, 1.5f);
+        var a = gris.Pixels; var b = suave.Pixels; var destino = new SKColor[a.Length];
+        for (var i = 0; i < a.Length; i++)
+        {
+            var v = (byte)Math.Clamp(a[i].Red + .7 * (a[i].Red - b[i].Red), 0, 255);
+            destino[i] = new SKColor(v, v, v);
+        }
+        var salida = new SKBitmap(gris.Width, gris.Height); salida.Pixels = destino; return salida;
+    }
+
+    private static SKBitmap Desenfocar(SKBitmap imagen, float sigma)
+    {
+        var salida = new SKBitmap(imagen.Width, imagen.Height);
+        using var canvas = new SKCanvas(salida);
+        using var pintura = new SKPaint { ImageFilter = SKImageFilter.CreateBlur(sigma, sigma, SKShaderTileMode.Clamp) };
+        canvas.Clear(SKColors.White);
+        canvas.DrawBitmap(imagen, 0, 0, pintura);
+        return salida;
     }
 
     public static double DetectarInclinacion(SKBitmap imagen)

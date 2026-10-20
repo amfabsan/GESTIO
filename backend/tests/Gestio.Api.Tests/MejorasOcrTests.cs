@@ -153,4 +153,59 @@ public sealed class MejorasOcrTests
         using var salida = PreprocesadorDocumento.UmbralAdaptativo(imagen);
         Assert.Equal(SKColors.White,salida.GetPixel(20,20)); Assert.Equal(SKColors.Black,salida.GetPixel(83,90));
     }
+
+    [Fact]
+    public void FotoLejana_SeDetectanLasEsquinasDelPapelYSeRecorta()
+    {
+        using var imagen = new SKBitmap(1200,900);
+        SKPoint[] papel = [new(350,200), new(830,240), new(800,760), new(330,720)];
+        using (var canvas = new SKCanvas(imagen))
+        using (var blanco = new SKPaint { Color=SKColors.White })
+        using (var negro = new SKPaint { Color=SKColors.Black })
+        using (var poligono = new SKPath())
+        {
+            canvas.Clear(new SKColor(120,80,50));
+            poligono.AddPoly(papel); canvas.DrawPath(poligono,blanco);
+            for (var y=300;y<650;y+=30) canvas.DrawRect(420,y,300,10,negro);
+        }
+        var esquinas = PreprocesadorDocumento.DetectarDocumento(imagen);
+        Assert.NotNull(esquinas);
+        for (var i=0;i<4;i++) Assert.InRange(SKPoint.Distance(esquinas![i],papel[i]),0,15);
+        using var recorte = PreprocesadorDocumento.Recortar(imagen,esquinas!,out var ampliacion);
+        Assert.True(ampliacion > 1);
+        // Tras recortar no queda fondo marrón en el interior cercano a las esquinas.
+        Assert.True(recorte.GetPixel(recorte.Width/20,recorte.Height/20).Blue > 200);
+        Assert.True(recorte.GetPixel(recorte.Width*19/20,recorte.Height*19/20).Blue > 200);
+    }
+
+    [Fact]
+    public void PapelQueLlenaLaFotoOSaleDelEncuadre_NoSeRecorta()
+    {
+        using var blanca = new SKBitmap(800,600); blanca.Erase(SKColors.White);
+        Assert.Null(PreprocesadorDocumento.DetectarDocumento(blanca));
+        using var cortada = new SKBitmap(1200,900);
+        using (var canvas = new SKCanvas(cortada))
+        using (var blanco = new SKPaint { Color=SKColors.White })
+        { canvas.Clear(new SKColor(30,30,30)); canvas.DrawRect(400,150,400,750,blanco); }
+        Assert.Null(PreprocesadorDocumento.DetectarDocumento(cortada));
+    }
+
+    [Fact]
+    public void Iluminacion_EliminaLaSombraDeUnPliegue()
+    {
+        using var imagen = new SKBitmap(600,800);
+        using (var canvas = new SKCanvas(imagen))
+        using (var sombra = new SKPaint { Color=new SKColor(110,110,110) })
+        using (var tinta = new SKPaint { Color=SKColors.Black })
+        using (var tintaEnSombra = new SKPaint { Color=new SKColor(40,40,40) })
+        {
+            canvas.Clear(new SKColor(235,235,235));
+            canvas.DrawRect(0,400,600,400,sombra);
+            canvas.DrawRect(100,200,200,8,tinta); canvas.DrawRect(100,600,200,8,tintaEnSombra);
+        }
+        using var salida = PreprocesadorDocumento.NormalizarIluminacion(imagen,out var variacion);
+        Assert.True(variacion >= 35);
+        Assert.True(salida.GetPixel(500,200).Red > 230); Assert.True(salida.GetPixel(500,700).Red > 230);
+        Assert.True(salida.GetPixel(200,604).Red < 128);
+    }
 }
