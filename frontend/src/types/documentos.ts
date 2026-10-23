@@ -28,6 +28,16 @@ export type ExtraccionDocumento = {
   advertencias: string[]
 }
 
+export type HistorialValidacion = {
+  id: string
+  campo: string
+  valorAnterior: string | null
+  valorNuevo: string | null
+  tipoCambio: string
+  usuarioId: string
+  fechaCambio: string
+}
+
 export type AnomaliaDocumento = {
   tipo: string
   descripcion: string
@@ -50,6 +60,7 @@ export type Documento = {
   anomalias: AnomaliaDocumento[]
   historial: EventoDocumento[]
   intentos: { id: string; inicio: string; fin: string | null; procesador: string; version: string | null; resultado: string; error: string | null; valoresJson: string | null }[]
+  validacion?: HistorialValidacion[]
 }
 
 export type TipoArchivoPermitido = {
@@ -61,4 +72,9 @@ export type TipoArchivoPermitido = {
 export type ConfiguracionSubida = {
   tamanoMaximoBytes: number
   tiposPermitidos: TipoArchivoPermitido[]
+}
+
+export type CampoValidacion = {
+  campo: string
+  valor: string | null
 }

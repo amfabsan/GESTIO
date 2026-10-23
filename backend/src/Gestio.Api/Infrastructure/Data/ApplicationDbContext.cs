@@ -17,6 +17,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<Vinculacion> Vinculaciones => Set<Vinculacion>();
 
+    public DbSet<HistorialValidacion> HistorialValidacion => Set<HistorialValidacion>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);

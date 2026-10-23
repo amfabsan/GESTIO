@@ -31,6 +31,8 @@ public sealed class Documento
     public ICollection<Anomalia> Anomalias { get; } = [];
 
     public ICollection<EventoDocumento> Eventos { get; } = [];
+
     public ICollection<IntentoProcesamiento> Intentos { get; } = [];
-    
+
+    public ICollection<HistorialValidacion> HistorialValidacion { get; } = [];
 }

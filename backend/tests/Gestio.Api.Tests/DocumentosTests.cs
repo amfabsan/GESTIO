@@ -6,13 +6,13 @@ using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Errores;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Infrastructure.Data;
-using Gestio.Api.Models.Responses;
 using Gestio.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
+using Gestio.Api.Models.Response;
 
 namespace Gestio.Api.Tests;
 

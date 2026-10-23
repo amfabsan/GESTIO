@@ -27,7 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="$(PkgRapidOcrNet)/models/v5/*" Link="models/v5/%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(PkgRapidOcrNet)/models/v5/*" Link="models/v5/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

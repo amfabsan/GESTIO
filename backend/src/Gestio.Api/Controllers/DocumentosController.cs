@@ -1,6 +1,7 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
 using Gestio.Api.Domain.Interfaces;
+using Gestio.Api.Models.Requests;
 using Gestio.Api.Models.Responses;
 using Gestio.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -39,7 +40,6 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         var usuario = await currentUserService.ObtenerAsync(cancellationToken);
         if (usuario is null) return Unauthorized();
 
-        // Si no puede consultarlo se responde 404 para no revelar que el documento existe.
         var documento = await documentosService.ObtenerAsync(usuario, id, cancellationToken);
         return documento is null ? NotFound() : Ok(MapearDocumento(documento));
     }
@@ -74,7 +74,31 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
     {
         var usuario = await currentUserService.ObtenerAsync(cancellationToken);
         if (usuario is null) return Unauthorized();
+
         var resultado = await documentosService.ProcesarAsync(usuario, id, true, CancellationToken.None);
+        return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
+    }
+
+    [HttpPost("{id:guid}/corregir")]
+    public async Task<ActionResult<DocumentoResponse>> Corregir(
+        Guid id,
+        [FromBody] ValidarDocumentoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var resultado = await documentosService.CorregirAsync(usuario, id, request.Campos, cancellationToken);
+        return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
+    }
+
+    [HttpPost("{id:guid}/aprobar")]
+    public async Task<ActionResult<DocumentoResponse>> Aprobar(Guid id, CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var resultado = await documentosService.AprobarAsync(usuario, id, cancellationToken);
         return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
     }
 
@@ -117,6 +141,19 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
             .OrderBy(evento => evento.Fecha)
             .Select(evento => new EventoDocumentoResponse(evento.Tipo.ToString(), evento.Fecha, evento.Detalle))
             .ToList(),
-        documento.Intentos.OrderBy(i => i.Inicio)
-            .Select(i => new IntentoResponse(i.Id, i.Inicio, i.Fin, i.Procesador, i.Version, i.Resultado, i.Error, i.ValoresJson)).ToList());
+        documento.Intentos
+            .OrderBy(i => i.Inicio)
+            .Select(i => new IntentoResponse(i.Id, i.Inicio, i.Fin, i.Procesador, i.Version, i.Resultado, i.Error, i.ValoresJson))
+            .ToList(),
+        documento.HistorialValidacion
+            .OrderByDescending(h => h.FechaCambio)
+            .Select(h => new HistorialValidacionResponse(
+                h.Id,
+                h.Campo,
+                h.ValorAnterior,
+                h.ValorNuevo,
+                h.TipoCambio,
+                h.UsuarioId,
+                h.FechaCambio))
+            .ToList());
 }

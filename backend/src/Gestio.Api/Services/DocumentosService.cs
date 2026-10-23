@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Cryptography;
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
@@ -5,6 +6,8 @@ using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Errores;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Infrastructure.Data;
+using Gestio.Api.Models.Requests;
+using Gestio.Api.Models.Responses;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -87,6 +90,7 @@ public sealed class DocumentosService(
             FechaSubida = ahora,
             Estado = EstadoDocumento.SUBIDO
         };
+
         documento.Eventos.Add(new EventoDocumento(
             usuario.Id,
             TipoEventoDocumento.SUBIDA,
@@ -94,24 +98,27 @@ public sealed class DocumentosService(
             $"Archivo original recibido ({tamanoBytes} bytes)."));
 
         context.Documentos.Add(documento);
+
         try
         {
             await context.SaveChangesAsync(cancellationToken);
         }
         catch
         {
-            // Sin registro en BD no debe quedar un original huérfano.
             await storage.EliminarAsync(storageKey, CancellationToken.None);
             throw;
         }
 
-        // El original y la carga ya están confirmados. La extracción tiene su propio resultado.
-        try { await ProcesarAsync(usuario, documento.Id, false, CancellationToken.None); }
+        try
+        {
+            await ProcesarAsync(usuario, documento.Id, false, CancellationToken.None);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "No se pudo confirmar el procesamiento de {DocumentoId}; la carga original se conserva", documento.Id);
             context.ChangeTracker.Clear();
         }
+
         return (await ObtenerAsync(usuario, documento.Id, CancellationToken.None))!;
     }
 
@@ -119,6 +126,7 @@ public sealed class DocumentosService(
     {
         var documento = await ConsultablesPor(usuario).Include(d => d.Eventos).Include(d => d.ExtraccionIa)
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
         if (documento is null) return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
         if (reintento ? documento.Estado is not (EstadoDocumento.ERROR or EstadoDocumento.PENDIENTE_VALIDACION)
             : documento.Estado != EstadoDocumento.SUBIDO)
@@ -126,12 +134,17 @@ public sealed class DocumentosService(
 
         Stream? contenidoOriginal = null;
         Exception? falloOriginal = null;
+
         try
         {
             if (documento.StorageKey is not null)
                 contenidoOriginal = await storage.AbrirAsync(documento.StorageKey, cancellationToken);
         }
-        catch (Exception ex) { falloOriginal = ex; }
+        catch (Exception ex)
+        {
+            falloOriginal = ex;
+        }
+
         await using var original = contenidoOriginal;
 
         var intento = new IntentoProcesamiento { DocumentoId = id, Inicio = timeProvider.GetUtcNow() };
@@ -140,7 +153,11 @@ public sealed class DocumentosService(
         documento.Eventos.Add(inicio);
         context.Add(inicio);
         context.Add(intento);
-        try { await context.SaveChangesAsync(cancellationToken); }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
         catch (DbUpdateException)
         {
             context.ChangeTracker.Clear();
@@ -150,21 +167,39 @@ public sealed class DocumentosService(
         try
         {
             if (original is null) throw new InvalidOperationException("No se puede acceder al archivo original conservado.", falloOriginal);
+
             var reconocido = await lector.LeerAsync(original, documento.TipoMime, cancellationToken);
             intento.Version = reconocido.Version;
+
             var extraccion = ExtractorCampos.Extraer(reconocido, id);
             if (ExtractorCampos.ContarDatos(extraccion) == 0)
-                throw new InvalidOperationException("Se ha reconocido texto, pero no se ha podido identificar ningún dato de factura. Prueba con el PDF original o una imagen más nítida y completa.");
-            // Guardar una instantánea sin navegaciones para conservar los resultados de cada intento.
+                throw new InvalidOperationException("Se ha reconocido texto, pero no se ha podido identificar ningún dato de factura. Prueba con el PDF original o una imagen más nítida y comprueba que el documento sea legible.");
+
             intento.ValoresJson = System.Text.Json.JsonSerializer.Serialize(new
             {
-                extraccion.EmisorNombre, extraccion.EmisorNif, extraccion.NumeroFactura,
-                extraccion.FechaEmision, extraccion.BaseImponible, extraccion.TipoIva,
-                extraccion.CuotaIva, extraccion.Total, extraccion.DesglosesIva, extraccion.Advertencias, Confianza = (decimal?)null
+                extraccion.EmisorNombre,
+                extraccion.EmisorNif,
+                extraccion.NumeroFactura,
+                extraccion.FechaEmision,
+                extraccion.BaseImponible,
+                extraccion.TipoIva,
+                extraccion.CuotaIva,
+                extraccion.Total,
+                extraccion.DesglosesIva,
+                extraccion.Advertencias,
+                Confianza = (decimal?)null
             });
-            extraccion.DatosCrudosJson = System.Text.Json.JsonSerializer.Serialize(new { texto = reconocido.Texto,
-                lecturas = reconocido.Lecturas, desglosesIva = extraccion.DesglosesIva, advertencias = extraccion.Advertencias });
+
+            extraccion.DatosCrudosJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                texto = reconocido.Texto,
+                lecturas = reconocido.Lecturas,
+                desglosesIva = extraccion.DesglosesIva,
+                advertencias = extraccion.Advertencias
+            });
+
             if (documento.ExtraccionIa is not null) context.Remove(documento.ExtraccionIa);
+
             documento.ExtraccionIa = extraccion;
             context.Add(extraccion);
             documento.Estado = EstadoDocumento.PENDIENTE_VALIDACION;
@@ -178,18 +213,267 @@ public sealed class DocumentosService(
             intento.Resultado = "ERROR";
             documento.Estado = EstadoDocumento.ERROR;
         }
+
         intento.Fin = timeProvider.GetUtcNow();
-        var fin = new EventoDocumento(usuario.Id,
+        var fin = new EventoDocumento(
+            usuario.Id,
             intento.Error is null ? TipoEventoDocumento.PROCESAMIENTO_CORRECTO : TipoEventoDocumento.PROCESAMIENTO_FALLIDO,
-            intento.Fin.Value, intento.Error ?? "PENDIENTE_VALIDACION: datos propuestos disponibles para revisión.");
+            intento.Fin.Value,
+            intento.Error ?? "PENDIENTE_VALIDACION: datos propuestos disponibles para revisión.");
         documento.Eventos.Add(fin);
         context.Add(fin);
+
         await context.SaveChangesAsync(CancellationToken.None);
         return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
     }
 
-    // Regla de acceso (RF7) en un único sitio.
-    private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
+    public async Task<Resultado<Documento>> CorregirAsync(
+        UsuarioActual usuario,
+        Guid id,
+        IEnumerable<CampoValidacionRequest> cambios,
+        CancellationToken cancellationToken)
+    {
+        if (usuario.Rol != Rol.GESTOR)
+            return DocumentoErrores.SinPermisoValidacion;
+
+        var documento = await ConsultablesPor(usuario)
+            .Include(d => d.ExtraccionIa)
+            .Include(d => d.Eventos)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (documento is null)
+            return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
+
+        if (documento.Estado == EstadoDocumento.VALIDADO)
+            return DocumentoErrores.DocumentoYaValidado;
+
+        if (documento.Estado != EstadoDocumento.PENDIENTE_VALIDACION)
+            return DocumentoErrores.EstadoNoPermitidoParaValidacion;
+
+        if (documento.ExtraccionIa is null)
+            return DocumentoErrores.ValidacionCamposObligatorios;
+
+        var listaCambios = cambios.ToList();
+        if (listaCambios.Count == 0)
+            return DocumentoErrores.ValidacionSinCambios;
+
+        foreach (var cambio in listaCambios)
+        {
+            if (string.IsNullOrWhiteSpace(cambio.Campo))
+                return DocumentoErrores.ValidacionCamposObligatorios;
+
+            if (!TryGetPropiedad(documento.ExtraccionIa, cambio.Campo, out var propiedad))
+                return DocumentoErrores.CampoConValorInvalido;
+
+            var valorAnterior = propiedad.GetValue(documento.ExtraccionIa);
+
+            if (!TryConvertirValor(cambio.Campo, cambio.Valor, out var valorNuevo))
+                return DocumentoErrores.CampoConValorInvalido;
+
+            if (Igual(valorAnterior, valorNuevo))
+                continue;
+
+            propiedad.SetValue(documento.ExtraccionIa, valorNuevo);
+
+            context.HistorialValidacion.Add(new HistorialValidacion
+            {
+                Id = Guid.NewGuid(),
+                DocumentoId = documento.Id,
+                UsuarioId = usuario.Id,
+                Campo = cambio.Campo,
+                ValorAnterior = FormatearValor(valorAnterior),
+                ValorNuevo = FormatearValor(valorNuevo),
+                TipoCambio = "CORRECCION",
+                FechaCambio = timeProvider.GetUtcNow()
+            });
+
+            documento.Eventos.Add(new EventoDocumento(
+                usuario.Id,
+                TipoEventoDocumento.VALIDACION_CORREGIDA,
+                timeProvider.GetUtcNow(),
+                $"Campo '{cambio.Campo}' corregido por el gestor."));
+        }
+
+        var errores = ValidarCampos(documento.ExtraccionIa);
+        if (errores.Count > 0)
+            return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
+
+        await context.SaveChangesAsync(cancellationToken);
+        return documento;
+    }
+
+    public async Task<Resultado<Documento>> AprobarAsync(
+        UsuarioActual usuario,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        if (usuario.Rol != Rol.GESTOR)
+            return DocumentoErrores.SinPermisoValidacion;
+
+        var documento = await ConsultablesPor(usuario)
+            .Include(d => d.ExtraccionIa)
+            .Include(d => d.Eventos)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (documento is null)
+            return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
+
+        if (documento.Estado == EstadoDocumento.VALIDADO)
+            return DocumentoErrores.DocumentoYaValidado;
+
+        if (documento.Estado != EstadoDocumento.PENDIENTE_VALIDACION)
+            return DocumentoErrores.EstadoNoPermitidoParaValidacion;
+
+        if (documento.ExtraccionIa is null)
+            return DocumentoErrores.ValidacionCamposObligatorios;
+
+        var errores = ValidarCampos(documento.ExtraccionIa);
+        if (errores.Count > 0)
+            return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
+
+        documento.Estado = EstadoDocumento.VALIDADO;
+
+        documento.Eventos.Add(new EventoDocumento(
+            usuario.Id,
+            TipoEventoDocumento.VALIDACION_APROBADA,
+            timeProvider.GetUtcNow(),
+            $"Documento validado y aprobado por el gestor."));
+
+        context.HistorialValidacion.Add(new HistorialValidacion
+        {
+            Id = Guid.NewGuid(),
+            DocumentoId = documento.Id,
+            UsuarioId = usuario.Id,
+            Campo = "DOCUMENTO",
+            ValorAnterior = EstadoDocumento.PENDIENTE_VALIDACION.ToString(),
+            ValorNuevo = EstadoDocumento.VALIDADO.ToString(),
+            TipoCambio = "APROBACION",
+            FechaCambio = timeProvider.GetUtcNow()
+        });
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return documento;
+    }
+
+    private static List<string> ValidarCampos(ExtraccionIa extraccion)
+    {
+        var errores = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(extraccion.EmisorNombre))
+            errores.Add("EmisorNombre");
+        if (string.IsNullOrWhiteSpace(extraccion.EmisorNif))
+            errores.Add("EmisorNif");
+        if (string.IsNullOrWhiteSpace(extraccion.NumeroFactura))
+            errores.Add("NumeroFactura");
+        if (extraccion.FechaEmision is null)
+            errores.Add("FechaEmision");
+        if (extraccion.Total is null)
+            errores.Add("Total");
+
+        if (!string.IsNullOrWhiteSpace(extraccion.EmisorNif) && !EsNifValido(extraccion.EmisorNif))
+            errores.Add("EmisorNifFormato");
+
+        if (extraccion.FechaEmision is not null && extraccion.FechaEmision.Value > DateOnly.FromDateTime(DateTime.Today.AddDays(30)))
+            errores.Add("FechaEmisionFutura");
+
+        return errores;
+    }
+
+    private static bool EsNifValido(string nif)
+    {
+        var limpio = nif.Trim().ToUpperInvariant();
+        if (limpio.Length < 9) return false;
+
+        if (char.IsLetter(limpio[0]))
+        {
+            var letras = "TRWAGMYFPDXBNJZSQVHLCKE";
+            if (limpio.Length != 9) return false;
+            var numero = 0;
+            for (var i = 1; i < limpio.Length - 1; i++)
+            {
+                if (!char.IsDigit(limpio[i])) return false;
+                numero = numero * 10 + (limpio[i] - '0');
+            }
+
+            var letra = limpio[^1];
+            if (!char.IsLetter(letra)) return false;
+
+            var indice = numero % 23;
+            return letras[indice] == letra;
+        }
+
+        return true;
+    }
+
+    private static bool TryGetPropiedad(object target, string nombreCampo, out PropertyInfo propiedad)
+    {
+        propiedad = target.GetType().GetProperty(nombreCampo, BindingFlags.Instance | BindingFlags.Public)!;
+        return propiedad is not null;
+    }
+
+    private static bool TryConvertirValor(string campo, string? valor, out object? resultado)
+    {
+        resultado = null;
+
+        if (valor is null)
+        {
+            resultado = null;
+            return true;
+        }
+
+        switch (campo)
+        {
+            case "NumeroFactura":
+            case "EmisorNombre":
+            case "EmisorNif":
+            case "CategoriaSugerida":
+                resultado = valor.Trim();
+                return true;
+
+            case "FechaEmision":
+                if (DateOnly.TryParse(valor, out var fecha))
+                {
+                    resultado = fecha;
+                    return true;
+                }
+                return false;
+
+            case "BaseImponible":
+            case "TipoIva":
+            case "CuotaIva":
+            case "Total":
+                if (decimal.TryParse(valor, out var numero))
+                {
+                    resultado = numero;
+                    return true;
+                }
+                return false;
+
+            default:
+                return false;
+        }
+    }
+
+    private static bool Igual(object? a, object? b)
+    {
+        if (a is null && b is null) return true;
+        if (a is null || b is null) return false;
+
+        return a.Equals(b);
+    }
+
+    private static string? FormatearValor(object? valor) =>
+        valor switch
+        {
+            null => null,
+            DateOnly d => d.ToString("yyyy-MM-dd"),
+            DateTimeOffset dto => dto.ToString("o"),
+            decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _ => valor.ToString()
+        };
+
+    private static IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
         usuario.Rol == Rol.GESTOR
             ? context.Documentos.Where(documento =>
                 documento.UsuarioId == usuario.Id ||
@@ -209,5 +493,6 @@ public sealed class DocumentosService(
         .Include(documento => documento.ExtraccionIa)
         .Include(documento => documento.Anomalias)
         .Include(documento => documento.Eventos)
-        .Include(documento => documento.Intentos);
+        .Include(documento => documento.Intentos)
+        .Include(documento => documento.HistorialValidacion);
 }
