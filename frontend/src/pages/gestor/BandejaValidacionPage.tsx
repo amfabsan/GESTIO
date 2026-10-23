@@ -3,7 +3,7 @@ import { AlertCircle, Check, FileText, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/ui/PageHeader'
 import type { Documento } from '../../types/documentos'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
-import { formatearEuros, formatearFecha } from '../../utils/formato'
+import { formatearFecha } from '../../utils/formato'
 
 const CAMPOS_EDITABLES = [
     'NumeroFactura',
@@ -38,7 +38,7 @@ export function BandejaValidacionPage() {
     const guardarCambios = async () => {
         if (!documentoSeleccionado) return
         const payload = Object.entries(cambios)
-            .filter(([_, valor]) => valor != null && valor.trim() !== '')
+            .filter(([, valor]) => valor != null && valor.trim() !== '')
             .map(([campo, valor]) => ({ campo, valor: convertirCampo(campo, valor) }))
         if (payload.length === 0) return
 

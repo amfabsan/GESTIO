@@ -23,7 +23,10 @@ export function useValidacionDocumentos() {
 
     useEffect(() => {
         const controller = new AbortController()
-        void cargar(controller.signal)
+        const cargarAsync = async () => {
+            await cargar(controller.signal)
+        }
+        cargarAsync()
         return () => controller.abort()
     }, [cargar])
 
