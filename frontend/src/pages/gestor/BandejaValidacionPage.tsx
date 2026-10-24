@@ -40,6 +40,18 @@ const CAMPOS: { clave: Campo; etiqueta: string }[] = [
     { clave: 'categoriaSugerida', etiqueta: 'Categoría' },
 ]
 
+const CAMPOS_API: Record<Campo, string> = {
+    emisorNombre: 'EmisorNombre',
+    emisorNif: 'EmisorNif',
+    numeroFactura: 'NumeroFactura',
+    fechaEmision: 'FechaEmision',
+    baseImponible: 'BaseImponible',
+    tipoIva: 'TipoIva',
+    cuotaIva: 'CuotaIva',
+    total: 'Total',
+    categoriaSugerida: 'CategoriaSugerida',
+}
+
 function obtenerValor(documento: Documento, campo: Campo) {
     const extraccion = documento.extraccion
 
@@ -99,16 +111,64 @@ function estadoLegible(estado: Documento['estado']) {
     }
 }
 
-function confianzaDocumento(documento: Documento) {
+function confianzaDocumento(documento: Documento): number | null {
     const confianza = documento.extraccion?.nivelConfianza
 
-    if (!confianza) return 100
+    // No se inventa una confianza si el backend no la proporciona.
+    if (!confianza) return null
 
     const numero = Number.parseInt(confianza.replace('%', ''), 10)
 
-    if (Number.isNaN(numero)) return 100
+    if (Number.isNaN(numero)) return null
 
     return Math.max(0, Math.min(100, numero))
+}
+
+function normalizarValorCampo(campo: Campo, valor: string) {
+    const limpio = valor.trim()
+
+    if (!limpio) {
+        return null
+    }
+
+    if (campo === 'fechaEmision') {
+        const partes = limpio.split('/')
+
+        if (partes.length === 3) {
+            const [dia, mes, anio] = partes
+
+            if (
+                dia.length === 2 &&
+                mes.length === 2 &&
+                anio.length === 4
+            ) {
+                return `${anio}-${mes}-${dia}`
+            }
+        }
+
+        return limpio
+    }
+
+    if (
+        campo === 'baseImponible' ||
+        campo === 'tipoIva' ||
+        campo === 'cuotaIva' ||
+        campo === 'total'
+    ) {
+        const sinMoneda = limpio
+            .replace(/€/g, '')
+            .replace(/\s/g, '')
+
+        // Convierte 1.800,50 a 1800.50.
+        // Mantiene correctamente valores como 1800.50.
+        if (sinMoneda.includes(',')) {
+            return sinMoneda.replace(/\./g, '').replace(',', '.')
+        }
+
+        return sinMoneda
+    }
+
+    return limpio
 }
 
 export function BandejaValidacionPage() {
@@ -146,7 +206,7 @@ export function BandejaValidacionPage() {
 
     const confianza = documentoSeleccionado
         ? confianzaDocumento(documentoSeleccionado)
-        : 100
+        : null
 
     useEffect(() => {
         let urlCreada: string | null = null
@@ -213,10 +273,14 @@ export function BandejaValidacionPage() {
     async function guardarCorrecciones() {
         if (!documentoSeleccionado) return
 
-        const campos = Object.entries(cambios).map(([campo, valor]) => ({
-            campo,
-            valor: valor.trim() === '' ? null : valor.trim(),
-        }))
+        const campos = Object.entries(cambios).map(([campo, valor]) => {
+            const campoFrontend = campo as Campo
+
+            return {
+                campo: CAMPOS_API[campoFrontend] ?? campo,
+                valor: normalizarValorCampo(campoFrontend, valor),
+            }
+        })
 
         if (campos.length === 0) {
             setModoCorreccion(false)
@@ -638,20 +702,32 @@ export function BandejaValidacionPage() {
                                                                     </strong>
                                                                 </div>
 
-                                                                <div className="mt-2 flex items-center gap-2">
-                                                                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e8e5de]">
-                                                                        <div
-                                                                            className="h-full rounded-full bg-[#00bf5b]"
-                                                                            style={{
-                                                                                width: `${confianza}%`,
-                                                                            }}
-                                                                        />
-                                                                    </div>
+                                                                {confianza !==
+                                                                    null ? (
+                                                                    <div className="mt-2 flex items-center gap-2">
+                                                                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e8e5de]">
+                                                                            <div
+                                                                                className="h-full rounded-full bg-[#00bf5b]"
+                                                                                style={{
+                                                                                    width: `${confianza}%`,
+                                                                                }}
+                                                                            />
+                                                                        </div>
 
-                                                                    <span className="w-10 text-right text-xs font-bold text-[#008b45]">
-                                                                        {confianza}%
+                                                                        <span className="w-10 text-right text-xs font-bold text-[#008b45]">
+                                                                            {
+                                                                                confianza
+                                                                            }
+                                                                            %
+                                                                        </span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="mt-2 block text-xs text-[#9a9388]">
+                                                                        Confianza
+                                                                        no
+                                                                        disponible
                                                                     </span>
-                                                                </div>
+                                                                )}
                                                             </div>
                                                         )
                                                     },
@@ -682,9 +758,7 @@ export function BandejaValidacionPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            setModoAclaracion(
-                                                                false,
-                                                            )
+                                                            setModoAclaracion(false)
                                                             setPregunta('')
                                                         }}
                                                         className="rounded-lg bg-[#eeeae1] px-3 py-2 text-sm font-bold text-[#1d2b55]"

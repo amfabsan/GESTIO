@@ -268,7 +268,20 @@ public sealed class DocumentosService(
             var valorAnterior = propiedad.GetValue(documento.ExtraccionIa);
 
             if (!TryConvertirValor(cambio.Campo, cambio.Valor, out var valorNuevo))
-                return DocumentoErrores.CampoConValorInvalido;
+            {
+                return new Error(
+                    "documento.campo_invalido",
+                    $"El valor '{cambio.Valor}' no es válido para el campo '{cambio.Campo}'.",
+                    TipoError.VALIDACION);
+            }
+
+            if (errores.Count > 0)
+            {
+                return new Error(
+                    "documento.validacion.campos_obligatorios",
+                    $"Faltan o son inválidos los campos: {string.Join(", ", errores)}",
+                    TipoError.VALIDACION);
+            }
 
             if (Igual(valorAnterior, valorNuevo))
                 continue;
@@ -280,9 +293,9 @@ public sealed class DocumentosService(
                 Id = Guid.NewGuid(),
                 DocumentoId = documento.Id,
                 UsuarioId = usuario.Id,
-                Campo = cambio.Campo,
+                Campo = propiedad.Name,
                 ValorAnterior = FormatearValor(valorAnterior),
-                ValorNuevo = FormatearValor(valorNuevo),
+                ValorNuevo = FormatearValor(valorNuevo),Campo = propiedad.Name,
                 TipoCambio = "CORRECCION",
                 FechaCambio = timeProvider.GetUtcNow()
             });
@@ -406,48 +419,102 @@ public sealed class DocumentosService(
         return true;
     }
 
-    private static bool TryGetPropiedad(object target, string nombreCampo, out PropertyInfo propiedad)
+    private static bool TryGetPropiedad(
+    object target,
+    string nombreCampo,
+    out PropertyInfo propiedad)
     {
-        propiedad = target.GetType().GetProperty(nombreCampo, BindingFlags.Instance | BindingFlags.Public)!;
+        propiedad = target.GetType().GetProperty(
+            nombreCampo,
+            BindingFlags.Instance |
+            BindingFlags.Public |
+            BindingFlags.IgnoreCase)!;
+
         return propiedad is not null;
     }
 
-    private static bool TryConvertirValor(string campo, string? valor, out object? resultado)
+    private static bool TryConvertirValor(
+    string campo,
+    string? valor,
+    out object? resultado)
     {
         resultado = null;
 
         if (valor is null)
         {
-            resultado = null;
             return true;
         }
 
-        switch (campo)
+        var nombreCampo = campo.Trim().ToLowerInvariant();
+        var valorLimpio = valor.Trim();
+
+        switch (nombreCampo)
         {
-            case "NumeroFactura":
-            case "EmisorNombre":
-            case "EmisorNif":
-            case "CategoriaSugerida":
-                resultado = valor.Trim();
+            case "numerofactura":
+                resultado = valorLimpio;
                 return true;
 
-            case "FechaEmision":
-                if (DateOnly.TryParse(valor, out var fecha))
+            case "emisornombre":
+                resultado = valorLimpio;
+                return true;
+
+            case "emisornif":
+                resultado = valorLimpio;
+                return true;
+
+            case "categoriasugerida":
+                resultado = valorLimpio;
+                return true;
+
+            case "fechaemision":
+                if (DateOnly.TryParse(
+                        valorLimpio,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None,
+                        out var fecha))
                 {
                     resultado = fecha;
                     return true;
                 }
+
+                if (DateOnly.TryParse(
+                        valorLimpio,
+                        new System.Globalization.CultureInfo("es-ES"),
+                        System.Globalization.DateTimeStyles.None,
+                        out fecha))
+                {
+                    resultado = fecha;
+                    return true;
+                }
+
                 return false;
 
-            case "BaseImponible":
-            case "TipoIva":
-            case "CuotaIva":
-            case "Total":
-                if (decimal.TryParse(valor, out var numero))
+            case "baseimponible":
+            case "tipoiva":
+            case "cuotaiva":
+            case "total":
+                var numeroNormalizado = valorLimpio
+                    .Replace("€", string.Empty)
+                    .Replace(" ", string.Empty);
+
+                if (numeroNormalizado.Contains(','))
+                {
+                    numeroNormalizado = numeroNormalizado
+                        .Replace(".", string.Empty)
+                        .Replace(',', '.');
+                }
+
+                if (decimal.TryParse(
+                        numeroNormalizado,
+                        System.Globalization.NumberStyles.AllowDecimalPoint |
+                        System.Globalization.NumberStyles.AllowLeadingSign,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var numero))
                 {
                     resultado = numero;
                     return true;
                 }
+
                 return false;
 
             default:
