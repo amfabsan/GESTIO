@@ -1,1 +1,2 @@
-﻿declare module 'lucide-react';
+﻿// frontend/src/types/lucide-react.d.ts
+declare module 'lucide-react';

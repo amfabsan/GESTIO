@@ -201,6 +201,44 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("extracciones_ia", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialValidacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Campo")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("FechaCambio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TipoCambio")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ValorAnterior")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ValorNuevo")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentoId");
+
+                    b.ToTable("historial_validacion", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.IntentoProcesamiento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -403,6 +441,17 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialValidacion", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
+                        .WithMany("HistorialValidacion")
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Documento");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.IntentoProcesamiento", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", null)
@@ -440,6 +489,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Eventos");
 
                     b.Navigation("ExtraccionIa");
+
+                    b.Navigation("HistorialValidacion");
 
                     b.Navigation("Intentos");
                 });

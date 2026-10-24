@@ -473,18 +473,18 @@ public sealed class DocumentosService(
             _ => valor.ToString()
         };
 
-    private static IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
-        usuario.Rol == Rol.GESTOR
-            ? context.Documentos.Where(documento =>
-                documento.UsuarioId == usuario.Id ||
-                context.Vinculaciones.Any(vinculacion =>
-                    vinculacion.AutonomoId == documento.UsuarioId &&
-                    vinculacion.CodigoAsesoria == context.Usuarios
-                        .Where(administrador => administrador.Id == usuario.Id)
-                        .Select(administrador => administrador.CodigoAsesoria)
-                        .FirstOrDefault() &&
-                    vinculacion.Estado == EstadoVinculacion.ACTIVA))
-            : context.Documentos.Where(documento => documento.UsuarioId == usuario.Id);
+    private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
+    usuario.Rol == Rol.GESTOR
+        ? context.Documentos.Where(documento =>
+            documento.UsuarioId == usuario.Id ||
+            context.Vinculaciones.Any(vinculacion =>
+                vinculacion.AutonomoId == documento.UsuarioId &&
+                vinculacion.CodigoAsesoria == context.Usuarios
+                    .Where(administrador => administrador.Id == usuario.Id)
+                    .Select(administrador => administrador.CodigoAsesoria)
+                    .FirstOrDefault() &&
+                vinculacion.Estado == EstadoVinculacion.ACTIVA))
+        : context.Documentos.Where(documento => documento.UsuarioId == usuario.Id);
 
     private static IQueryable<Documento> ConDetalle(IQueryable<Documento> consulta) => consulta
         .AsNoTracking()
