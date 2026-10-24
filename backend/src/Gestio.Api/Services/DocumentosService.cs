@@ -293,12 +293,14 @@ public sealed class DocumentosService(
                 FechaCambio = timeProvider.GetUtcNow()
             });
 
-            documento.Eventos.Add(EventoDocumento.Correccion(
+            var correccion = EventoDocumento.Correccion(
                 usuario.Id,
                 timeProvider.GetUtcNow(),
                 propiedad.Name,
                 FormatearValor(valorAnterior),
-                FormatearValor(valorNuevo)));
+                FormatearValor(valorNuevo));
+            documento.Eventos.Add(correccion);
+            context.Add(correccion);
         }
 
         var errores = ValidarCampos(documento.ExtraccionIa);
@@ -306,7 +308,7 @@ public sealed class DocumentosService(
             return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
 
         await context.SaveChangesAsync(cancellationToken);
-        return documento;
+        return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
     }
 
     public async Task<Resultado<Documento>> AprobarAsync(
@@ -340,11 +342,13 @@ public sealed class DocumentosService(
 
         documento.Estado = EstadoDocumento.VALIDADO;
 
-        documento.Eventos.Add(new EventoDocumento(
+        var aprobacion = new EventoDocumento(
             usuario.Id,
             TipoEventoDocumento.VALIDACION_APROBADA,
             timeProvider.GetUtcNow(),
-            $"Documento validado y aprobado por el gestor."));
+            $"Documento validado y aprobado por el gestor.");
+        documento.Eventos.Add(aprobacion);
+        context.Add(aprobacion);
 
         context.HistorialValidacion.Add(new HistorialValidacion
         {
@@ -360,7 +364,7 @@ public sealed class DocumentosService(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return documento;
+        return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
     }
 
     private static List<string> ValidarCampos(ExtraccionIa extraccion)
