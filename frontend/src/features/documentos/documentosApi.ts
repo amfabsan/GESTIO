@@ -1,5 +1,6 @@
 import { apiClient } from '../../services/apiClient'
-import type { ConfiguracionSubida, Documento } from '../../types/documentos'
+import type { ConfiguracionSubida, Documento, EventoHistorial } from '../../types/documentos'
+import type { Pagina } from '../../types/paginacion'
 
 export async function obtenerDocumentos(signal?: AbortSignal) {
     const { data } = await apiClient.get<Documento[]>('/documentos', { signal })
@@ -33,6 +34,11 @@ export async function reintentarDocumento(id: string) {
 
 export async function corregirDocumento(id: string, campos: { campo: string, valor: string | null }[]) {
     const { data } = await apiClient.post<Documento>(`/documentos/${id}/corregir`, { campos })
+    return data
+}
+
+export async function obtenerHistorialDocumento(id: string, pagina: number, signal?: AbortSignal) {
+    const { data } = await apiClient.get<Pagina<EventoHistorial>>(`/documentos/${id}/historial`, { params: { pagina }, signal })
     return data
 }
 

@@ -12,6 +12,41 @@ export type EventoDocumento = {
   detalle: string | null
 }
 
+export type TipoEventoDocumento =
+  | 'SUBIDA'
+  | 'PROCESAMIENTO_INICIADO'
+  | 'PROCESAMIENTO_CORRECTO'
+  | 'PROCESAMIENTO_FALLIDO'
+  | 'PROCESAMIENTO_COMPLETADO'
+  | 'PROCESAMIENTO_ERROR'
+  | 'VALIDACION_INICIADA'
+  | 'VALIDACION_CORREGIDA'
+  | 'VALIDACION_APROBADA'
+  | 'VALIDACION_RECHAZADA'
+  | 'VALIDACION_ERROR'
+
+export type ActorEvento = {
+  id: string
+  nombre: string
+  primerApellido: string
+  segundoApellido: string
+}
+
+export type CambioCampo = {
+  campo: string
+  valorAnterior: string | null
+  valorNuevo: string | null
+}
+
+export type EventoHistorial = {
+  id: string
+  tipo: TipoEventoDocumento
+  fecha: string
+  detalle: string | null
+  actor: ActorEvento | null
+  cambio: CambioCampo | null
+}
+
 export type ExtraccionDocumento = {
   numeroFactura: string | null
   emisorNombre: string | null

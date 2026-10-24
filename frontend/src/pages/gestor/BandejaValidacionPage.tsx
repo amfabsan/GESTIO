@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react'
 import {
     AlertCircle,
-    Bot,
     Check,
     FileText,
     HelpCircle,
@@ -10,10 +9,10 @@ import {
     RefreshCw,
     Save,
     Send,
-    Upload,
 } from 'lucide-react'
 import type { Documento } from '../../types/documentos'
 import { obtenerOriginal } from '../../features/documentos/documentosApi'
+import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
 import { formatearFecha } from '../../utils/formato'
 
@@ -580,49 +579,9 @@ export function BandejaValidacionPage() {
                                             </div>
                                         )}
 
-                                        {documentoSeleccionado.historial.length > 0 && (
-                                            <div className="mt-6">
-                                                <h3 className="text-sm font-bold uppercase tracking-wide text-[#766e61]">
-                                                    Historial
-                                                </h3>
-
-                                                <div className="mt-3 space-y-3">
-                                                    {documentoSeleccionado.historial
-                                                        .slice(0, 3)
-                                                        .map((evento) => (
-                                                            <div
-                                                                key={`${evento.tipo}-${evento.fecha}`}
-                                                                className="flex gap-2"
-                                                            >
-                                                                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#eeeae1]">
-                                                                    {evento.tipo
-                                                                        .toLowerCase()
-                                                                        .includes(
-                                                                            'ia',
-                                                                        ) ? (
-                                                                        <Bot className="size-4 text-[#1d2b55]" />
-                                                                    ) : (
-                                                                        <Upload className="size-4 text-[#766e61]" />
-                                                                    )}
-                                                                </span>
-
-                                                                <div className="min-w-0">
-                                                                    <p className="text-sm font-semibold text-[#1d2b55]">
-                                                                        {evento.detalle ||
-                                                                            evento.tipo}
-                                                                    </p>
-
-                                                                    <p className="text-xs text-[#766e61]">
-                                                                        {formatearFecha(
-                                                                            evento.fecha,
-                                                                        )}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                </div>
-                                            </div>
-                                        )}
+                                        <div className="mt-6">
+                                            <HistorialDocumento documentoId={documentoSeleccionado.id} />
+                                        </div>
                                     </section>
 
                                     <aside className="flex min-h-0 flex-col p-6">

@@ -6,6 +6,7 @@ import { card, etiqueta } from '../../components/ui/estilos'
 import { useAuth } from '../../context/useAuth'
 import { DropzoneSubida } from '../../features/documentos/components/DropzoneSubida'
 import { EstadoBadge } from '../../features/documentos/components/EstadoBadge'
+import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
 import { FILTROS_BUZON, cumpleFiltro, tieneAnomaliaAbierta, type FiltroBuzon } from '../../features/documentos/filtrosBuzon'
 import { useDocumentos } from '../../features/documentos/hooks/useDocumentos'
 import { formatearEuros, formatearFecha } from '../../utils/formato'
@@ -110,6 +111,7 @@ export function BuzonPage() {
                                 {documento.extraccion?.advertencias?.map(aviso => <p key={aviso} className="mt-2 text-amber-800">{aviso}</p>)}
                                 {documento.intentos.map(intento => <p key={intento.id} className="mt-2">{formatearFecha(intento.inicio)} · {intento.resultado}{intento.error && `: ${intento.error}`}</p>)}
                                 {documento.tieneOriginal && (documento.estado === 'ERROR' || documento.estado === 'PENDIENTE_VALIDACION') && <button type="button" disabled={reintentando !== null} onClick={() => void reintentar(documento.id)} className="mt-2 text-[#c8651a] hover:underline">{reintentando === documento.id ? 'Procesando…' : documento.estado === 'ERROR' ? 'Reintentar extracción' : 'Volver a extraer'}</button>}
+                                <HistorialDocumento documentoId={documento.id} />
                               </details>
                             </div>
                           </div>
