@@ -272,7 +272,7 @@ public sealed class DocumentosService(
             {
                 return new Error(
                     "documento.campo_invalido",
-                    $"El valor '{cambio.Valor}' no es válido para el campo '{cambio.Campo}'.",
+                    $"{Etiqueta(cambio.Campo)}: «{cambio.Valor}» no tiene un formato válido.",
                     TipoError.VALIDACION);
             }
 
@@ -307,7 +307,7 @@ public sealed class DocumentosService(
 
         var errores = ValidarCampos(documento.ExtraccionIa);
         if (errores.Count > 0)
-            return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
+            return ErrorDeValidacion(errores);
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -343,7 +343,7 @@ public sealed class DocumentosService(
 
         var errores = ValidarCampos(documento.ExtraccionIa);
         if (errores.Count > 0)
-            return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
+            return ErrorDeValidacion(errores);
 
         documento.Estado = EstadoDocumento.VALIDADO;
 
@@ -372,28 +372,86 @@ public sealed class DocumentosService(
         return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
     }
 
+    private static readonly Dictionary<string, string> Etiquetas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [nameof(ExtraccionIa.EmisorNombre)] = "Proveedor",
+        [nameof(ExtraccionIa.EmisorNif)] = "NIF",
+        [nameof(ExtraccionIa.NumeroFactura)] = "N.º factura",
+        [nameof(ExtraccionIa.FechaEmision)] = "Fecha",
+        [nameof(ExtraccionIa.BaseImponible)] = "Base imponible",
+        [nameof(ExtraccionIa.TipoIva)] = "IVA",
+        [nameof(ExtraccionIa.CuotaIva)] = "Cuota de IVA",
+        [nameof(ExtraccionIa.Total)] = "Total",
+        [nameof(ExtraccionIa.CategoriaSugerida)] = "Categoría",
+    };
+
+    // Margen de redondeo entre importes calculados y leídos.
+    private const decimal ToleranciaImportes = 0.02m;
+
+    // Tipos de retención de IRPF habituales: el total puede ser base + cuota - retención.
+    private static readonly decimal[] RetencionesIrpf = [1m, 2m, 7m, 15m, 19m];
+
+    private static string Etiqueta(string campo) => Etiquetas.GetValueOrDefault(campo.Trim(), campo);
+
+    private static string Euros(decimal importe) =>
+        importe.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-ES")) + " €";
+
+    private static Error ErrorDeValidacion(IEnumerable<string> errores) => new(
+        "documento.validacion.campos_obligatorios",
+        $"Revisa estos campos: {string.Join("; ", errores)}.",
+        TipoError.VALIDACION);
+
     private static List<string> ValidarCampos(ExtraccionIa extraccion)
     {
         var errores = new List<string>();
 
+        void Falta(string campo) => errores.Add($"{Etiqueta(campo)} es obligatorio");
+
         if (string.IsNullOrWhiteSpace(extraccion.EmisorNombre))
-            errores.Add("EmisorNombre");
+            Falta(nameof(ExtraccionIa.EmisorNombre));
         if (string.IsNullOrWhiteSpace(extraccion.EmisorNif))
-            errores.Add("EmisorNif");
+            Falta(nameof(ExtraccionIa.EmisorNif));
         if (string.IsNullOrWhiteSpace(extraccion.NumeroFactura))
-            errores.Add("NumeroFactura");
+            Falta(nameof(ExtraccionIa.NumeroFactura));
         if (extraccion.FechaEmision is null)
-            errores.Add("FechaEmision");
+            Falta(nameof(ExtraccionIa.FechaEmision));
         if (extraccion.Total is null)
-            errores.Add("Total");
+            Falta(nameof(ExtraccionIa.Total));
 
         if (!string.IsNullOrWhiteSpace(extraccion.EmisorNif) && !EsNifValido(extraccion.EmisorNif))
-            errores.Add("EmisorNifFormato");
+            errores.Add($"{Etiqueta(nameof(ExtraccionIa.EmisorNif))} no tiene un formato válido");
 
         if (extraccion.FechaEmision is not null && extraccion.FechaEmision.Value > DateOnly.FromDateTime(DateTime.Today.AddDays(30)))
-            errores.Add("FechaEmisionFutura");
+            errores.Add($"{Etiqueta(nameof(ExtraccionIa.FechaEmision))} es posterior a hoy en más de 30 días");
+
+        errores.AddRange(ValidarImportes(extraccion));
 
         return errores;
+    }
+
+    private static IEnumerable<string> ValidarImportes(ExtraccionIa extraccion)
+    {
+        var baseImponible = extraccion.BaseImponible;
+        var tipo = extraccion.TipoIva;
+        // Con varios tipos de IVA, TipoIva no describe toda la base: solo se comprueba el total.
+        var tipoUnico = extraccion.DesglosesIva.Count <= 1;
+
+        if (baseImponible is { } b && tipo is { } t && extraccion.CuotaIva is { } cuota && tipoUnico &&
+            Math.Abs(Math.Round(b * t / 100m, 2) - cuota) > ToleranciaImportes)
+            yield return $"{Etiqueta(nameof(ExtraccionIa.CuotaIva))} ({Euros(cuota)}) no es el {t:0.##} % de la base imponible ({Euros(Math.Round(b * t / 100m, 2))})";
+
+        var cuotaEfectiva = extraccion.CuotaIva ??
+            (baseImponible is { } bc && tipo is { } tc && tipoUnico ? Math.Round(bc * tc / 100m, 2) : null);
+
+        if (baseImponible is { } bt && cuotaEfectiva is { } ct && extraccion.Total is { } total)
+        {
+            var diferencia = bt + ct - total;
+            var cuadra = Math.Abs(diferencia) <= ToleranciaImportes ||
+                RetencionesIrpf.Any(r => Math.Abs(diferencia - Math.Round(bt * r / 100m, 2)) <= ToleranciaImportes);
+
+            if (!cuadra)
+                yield return $"{Etiqueta(nameof(ExtraccionIa.Total))} ({Euros(total)}) no coincide con base imponible + cuota de IVA ({Euros(bt + ct)})";
+        }
     }
 
     private static bool EsNifValido(string nif)

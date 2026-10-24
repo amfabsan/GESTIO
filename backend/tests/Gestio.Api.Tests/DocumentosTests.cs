@@ -401,9 +401,10 @@ public sealed class DocumentosTests
         var vacio = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
         Assert.False(vacio.EsCorrecto);
         Assert.Equal(TipoError.VALIDACION, vacio.Error!.Tipo);
-        Assert.Contains("EmisorNif", vacio.Error.Mensaje);
-        Assert.Contains("NumeroFactura", vacio.Error.Mensaje);
-        Assert.Contains("FechaEmision", vacio.Error.Mensaje);
+        Assert.Contains("NIF es obligatorio", vacio.Error.Mensaje);
+        Assert.Contains("N.º factura es obligatorio", vacio.Error.Mensaje);
+        Assert.Contains("Fecha es obligatorio", vacio.Error.Mensaje);
+        Assert.DoesNotContain("Proveedor", vacio.Error.Mensaje);
 
         context.ChangeTracker.Clear();
         var trasVacio = await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id);
@@ -418,11 +419,98 @@ public sealed class DocumentosTests
         ], CancellationToken.None);
         Assert.False(formato.EsCorrecto);
         Assert.Equal(TipoError.VALIDACION, formato.Error!.Tipo);
-        Assert.Contains("EmisorNif", formato.Error.Mensaje);
+        Assert.Contains("NIF no tiene un formato válido", formato.Error.Mensaje);
 
         context.ChangeTracker.Clear();
         var trasFormato = await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id);
         Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, trasFormato.Estado);
+    }
+
+    // PA 73-2 / 75-1 (UT07): los importes deben ser coherentes para aprobar.
+    // errorEsperado es la etiqueta del campo señalado, o null si el documento se aprueba.
+    [Theory]
+    [InlineData(100.0, 21.0, 21.0, 121.0, null)]
+    [InlineData(82.64, 21.0, 17.35, 99.99, null)]
+    [InlineData(100.0, 21.0, 21.0, 106.0, null)]
+    [InlineData(100.0, 21.0, null, 121.0, null)]
+    [InlineData(99.0, null, null, 109.70, null)]
+    [InlineData(100.0, 21.0, 21.0, 130.0, "Total")]
+    [InlineData(100.0, null, 21.0, 130.0, "Total")]
+    [InlineData(100.0, 21.0, null, 110.0, "Total")]
+    [InlineData(100.0, 21.0, 25.0, 125.0, "Cuota de IVA")]
+    public async Task Aprobar_ValidaCoherenciaDeImportes(
+        double baseImponible, double? tipoIva, double? cuotaIva, double total, string? errorEsperado)
+    {
+        await using var context = CrearContexto(
+            $"{nameof(Aprobar_ValidaCoherenciaDeImportes)}-{baseImponible}-{tipoIva}-{cuotaIva}-{total}");
+        await DbInitializer.SeedAsync(context);
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "ticket.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+
+        // Se fijan los importes directamente, como si los hubiera propuesto la extracción.
+        var extraccion = await context.ExtraccionesIa.SingleAsync(e => e.DocumentoId == id);
+        extraccion.EmisorNombre = "Comercio SL";
+        extraccion.EmisorNif = "X8019576M";
+        extraccion.NumeroFactura = "A19";
+        extraccion.FechaEmision = new DateOnly(2026, 1, 19);
+        extraccion.BaseImponible = (decimal)baseImponible;
+        extraccion.TipoIva = (decimal?)tipoIva;
+        extraccion.CuotaIva = (decimal?)cuotaIva;
+        extraccion.Total = (decimal)total;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var resultado = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
+        context.ChangeTracker.Clear();
+        var estado = (await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id)).Estado;
+
+        if (errorEsperado is null)
+        {
+            Assert.True(resultado.EsCorrecto, resultado.Error?.Mensaje);
+            Assert.Equal(EstadoDocumento.VALIDADO, estado);
+        }
+        else
+        {
+            Assert.Equal(TipoError.VALIDACION, resultado.Error!.Tipo);
+            Assert.Contains($"{errorEsperado} (", resultado.Error.Mensaje);
+            Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, estado);
+        }
+    }
+
+    // PA 75-1 (UT07): una corrección que deja los importes incoherentes no se guarda.
+    [Fact]
+    public async Task Corregir_ConImportesIncoherentes_NoGuardaCambios()
+    {
+        await using var context = CrearContexto(nameof(Corregir_ConImportesIncoherentes_NoGuardaCambios));
+        await DbInitializer.SeedAsync(context);
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "ticket.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+        context.ChangeTracker.Clear();
+
+        var correccion = await servicio.CorregirAsync(Pedro, id,
+        [
+            new CampoValidacionRequest("EmisorNif", "X8019576M"),
+            new CampoValidacionRequest("NumeroFactura", "A19"),
+            new CampoValidacionRequest("FechaEmision", "2026-01-19"),
+            new CampoValidacionRequest("BaseImponible", "10,00"),
+            new CampoValidacionRequest("CuotaIva", "2,10")
+        ], CancellationToken.None);
+
+        Assert.Equal(TipoError.VALIDACION, correccion.Error!.Tipo);
+        Assert.Contains("Total (", correccion.Error.Mensaje);
+
+        context.ChangeTracker.Clear();
+        var guardada = await context.ExtraccionesIa.AsNoTracking().SingleAsync(e => e.DocumentoId == id);
+        Assert.Null(guardada.BaseImponible);
+        Assert.Null(guardada.CuotaIva);
+        Assert.Equal(12.34m, guardada.Total);
+        Assert.Empty(await context.HistorialValidacion.Where(h => h.DocumentoId == id).ToListAsync());
     }
 
     // PA 77-1 (UT07): intentar aprobar un documento en estados que no son PENDIENTE_VALIDACION

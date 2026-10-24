@@ -549,13 +549,27 @@ export function BandejaValidacionPage() {
 
                                             {!cargandoOriginal &&
                                                 !errorOriginal &&
-                                                originalUrl && (
+                                                originalUrl &&
+                                                (documentoSeleccionado.tipoMime.startsWith('image/') ? (
+                                                    <a
+                                                        href={originalUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        title="Abrir a tamaño completo"
+                                                    >
+                                                        <img
+                                                            src={originalUrl}
+                                                            alt={`Documento original: ${documentoSeleccionado.nombreArchivo}`}
+                                                            className="max-h-[390px] w-auto max-w-full rounded-lg bg-white object-contain shadow-md"
+                                                        />
+                                                    </a>
+                                                ) : (
                                                     <iframe
                                                         title={`Documento original: ${documentoSeleccionado.nombreArchivo}`}
                                                         src={originalUrl}
                                                         className="h-[390px] w-full rounded-lg bg-white shadow-md"
                                                     />
-                                                )}
+                                                ))}
 
                                             {!cargandoOriginal &&
                                                 !errorOriginal &&
