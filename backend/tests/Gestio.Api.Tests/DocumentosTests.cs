@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
-using Gestio.Api.Models.Response;
+using Gestio.Api.Models.Responses;
 
 namespace Gestio.Api.Tests;
 

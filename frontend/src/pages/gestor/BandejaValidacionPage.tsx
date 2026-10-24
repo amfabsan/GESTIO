@@ -1,215 +1,800 @@
-﻿import { useMemo, useState } from 'react'
-import { AlertCircle, Check, FileText, Loader2 } from 'lucide-react'
-import { PageHeader } from '../../components/ui/PageHeader'
+﻿import { useEffect, useMemo, useState } from 'react'
+import {
+    AlertCircle,
+    Bot,
+    Check,
+    FileText,
+    HelpCircle,
+    Loader2,
+    Pencil,
+    RefreshCw,
+    Save,
+    Send,
+    Upload,
+} from 'lucide-react'
 import type { Documento } from '../../types/documentos'
+import { obtenerOriginal } from '../../features/documentos/documentosApi'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
 import { formatearFecha } from '../../utils/formato'
 
-const CAMPOS_EDITABLES = [
-    'NumeroFactura',
-    'EmisorNombre',
-    'EmisorNif',
-    'FechaEmision',
-    'BaseImponible',
-    'TipoIva',
-    'CuotaIva',
-    'Total',
+type Campo =
+    | 'emisorNombre'
+    | 'emisorNif'
+    | 'numeroFactura'
+    | 'fechaEmision'
+    | 'baseImponible'
+    | 'tipoIva'
+    | 'cuotaIva'
+    | 'total'
+    | 'categoriaSugerida'
+
+const CAMPOS: { clave: Campo; etiqueta: string }[] = [
+    { clave: 'emisorNombre', etiqueta: 'Proveedor' },
+    { clave: 'emisorNif', etiqueta: 'NIF' },
+    { clave: 'numeroFactura', etiqueta: 'N.º factura' },
+    { clave: 'fechaEmision', etiqueta: 'Fecha' },
+    { clave: 'baseImponible', etiqueta: 'Base imponible' },
+    { clave: 'tipoIva', etiqueta: 'IVA' },
+    { clave: 'cuotaIva', etiqueta: 'Cuota de IVA' },
+    { clave: 'total', etiqueta: 'Total' },
+    { clave: 'categoriaSugerida', etiqueta: 'Categoría' },
 ]
 
-function convertirCampo(campo: string, valor: string | null) {
-    if (valor == null || valor === '') return null
-    return valor
+function obtenerValor(documento: Documento, campo: Campo) {
+    const extraccion = documento.extraccion
+
+    if (!extraccion) return ''
+
+    const valor = extraccion[campo]
+
+    return valor == null ? '' : String(valor)
+}
+
+function formatearImporte(valor: string) {
+    if (!valor) return '—'
+
+    const numero = Number(valor.replace(',', '.'))
+
+    if (Number.isNaN(numero)) return valor
+
+    return `${numero.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })} €`
+}
+
+function esImporte(campo: Campo) {
+    return ['baseImponible', 'cuotaIva', 'total'].includes(campo)
+}
+
+function obtenerTotal(documento: Documento) {
+    const total = documento.extraccion?.total
+
+    if (total == null) return '—'
+
+    return `${total.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })} €`
+}
+
+function tieneAnomalia(documento: Documento) {
+    return documento.anomalias.some((anomalia) => !anomalia.resuelta)
+}
+
+function estadoLegible(estado: Documento['estado']) {
+    switch (estado) {
+        case 'PENDIENTE_VALIDACION':
+            return 'Pendiente de validar'
+        case 'ACLARACION_SOLICITADA':
+            return 'En aclaración'
+        case 'VALIDADO':
+            return 'Aprobado'
+        case 'PROCESANDO':
+            return 'Procesando'
+        case 'ERROR':
+            return 'Error'
+        default:
+            return estado
+    }
+}
+
+function confianzaDocumento(documento: Documento) {
+    const confianza = documento.extraccion?.nivelConfianza
+
+    if (!confianza) return 100
+
+    const numero = Number.parseInt(confianza.replace('%', ''), 10)
+
+    if (Number.isNaN(numero)) return 100
+
+    return Math.max(0, Math.min(100, numero))
 }
 
 export function BandejaValidacionPage() {
-    const { documentos, cargando, error, procesando, corregir, aprobar } = useValidacionDocumentos()
+    const {
+        documentos,
+        cargando,
+        error,
+        procesando,
+        cargar,
+        corregir,
+        aprobar,
+    } = useValidacionDocumentos()
+
     const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null)
+    const [modoCorreccion, setModoCorreccion] = useState(false)
+    const [modoAclaracion, setModoAclaracion] = useState(false)
+    const [pregunta, setPregunta] = useState('')
     const [cambios, setCambios] = useState<Record<string, string>>({})
 
+    const [originalUrl, setOriginalUrl] = useState<string | null>(null)
+    const [cargandoOriginal, setCargandoOriginal] = useState(false)
+    const [errorOriginal, setErrorOriginal] = useState<string | null>(null)
+
     const documentoSeleccionado = useMemo(() => {
-        if (!seleccionadoId) return documentos[0] ?? null
-        return documentos.find(d => d.id === seleccionadoId) ?? documentos[0] ?? null
+        if (!seleccionadoId) {
+            return documentos[0] ?? null
+        }
+
+        return (
+            documentos.find((documento) => documento.id === seleccionadoId) ??
+            documentos[0] ??
+            null
+        )
     }, [documentos, seleccionadoId])
 
-    const actualizarCambio = (campo: string, valor: string) => {
-        setCambios((actual) => ({ ...actual, [campo]: valor }))
-    }
+    const confianza = documentoSeleccionado
+        ? confianzaDocumento(documentoSeleccionado)
+        : 100
 
-    const guardarCambios = async () => {
-        if (!documentoSeleccionado) return
-        const payload = Object.entries(cambios)
-            .filter(([, valor]) => valor != null && valor.trim() !== '')
-            .map(([campo, valor]) => ({ campo, valor: convertirCampo(campo, valor) }))
-        if (payload.length === 0) return
+    useEffect(() => {
+        let urlCreada: string | null = null
+        let cancelado = false
 
-        await corregir(documentoSeleccionado.id, payload)
-    }
+        async function cargarArchivoOriginal() {
+            if (!documentoSeleccionado?.tieneOriginal) {
+                setOriginalUrl(null)
+                setErrorOriginal(null)
+                setCargandoOriginal(false)
+                return
+            }
 
-    const aprobarActual = async () => {
-        if (!documentoSeleccionado) return
-        await aprobar(documentoSeleccionado.id)
-        setSeleccionadoId(null)
+            setCargandoOriginal(true)
+            setErrorOriginal(null)
+            setOriginalUrl(null)
+
+            try {
+                const archivo = await obtenerOriginal(documentoSeleccionado.id)
+
+                if (cancelado) return
+
+                urlCreada = URL.createObjectURL(archivo)
+                setOriginalUrl(urlCreada)
+            } catch {
+                if (!cancelado) {
+                    setErrorOriginal(
+                        'No se ha podido cargar el documento original.',
+                    )
+                }
+            } finally {
+                if (!cancelado) {
+                    setCargandoOriginal(false)
+                }
+            }
+        }
+
+        void cargarArchivoOriginal()
+
+        return () => {
+            cancelado = true
+
+            if (urlCreada) {
+                URL.revokeObjectURL(urlCreada)
+            }
+        }
+    }, [documentoSeleccionado?.id, documentoSeleccionado?.tieneOriginal])
+
+    function seleccionarDocumento(id: string) {
+        setSeleccionadoId(id)
+        setModoCorreccion(false)
+        setModoAclaracion(false)
         setCambios({})
+        setPregunta('')
+    }
+
+    function cambiarCampo(campo: Campo, valor: string) {
+        setCambios((actuales) => ({
+            ...actuales,
+            [campo]: valor,
+        }))
+    }
+
+    async function guardarCorrecciones() {
+        if (!documentoSeleccionado) return
+
+        const campos = Object.entries(cambios).map(([campo, valor]) => ({
+            campo,
+            valor: valor.trim() === '' ? null : valor.trim(),
+        }))
+
+        if (campos.length === 0) {
+            setModoCorreccion(false)
+            return
+        }
+
+        const actualizado = await corregir(
+            documentoSeleccionado.id,
+            campos,
+        )
+
+        if (actualizado) {
+            setCambios({})
+            setModoCorreccion(false)
+        }
+    }
+
+    async function aprobarDocumento() {
+        if (!documentoSeleccionado) return
+
+        const actualizado = await aprobar(documentoSeleccionado.id)
+
+        if (actualizado) {
+            setSeleccionadoId(null)
+            setCambios({})
+            setModoCorreccion(false)
+        }
     }
 
     if (cargando) {
         return (
-            <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f4f0] p-6">
-                <div className="mx-auto max-w-6xl">
-                    <PageHeader titulo="Bandeja de validación" subtitulo="Documentos de clientes pendientes de revisión" />
-                    <div className="mt-6 rounded-xl border bg-white p-8 text-center text-sm text-slate-600">
-                        <Loader2 className="mx-auto size-5 animate-spin" />
-                        Cargando documentos…
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    if (documentos.length === 0) {
-        return (
-            <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f4f0] p-6">
-                <div className="mx-auto max-w-6xl">
-                    <PageHeader titulo="Bandeja de validación" subtitulo="Documentos de clientes pendientes de revisión" />
-                    <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
-                        <p className="text-lg font-semibold text-slate-700">No hay documentos pendientes de validación.</p>
-                    </div>
-                </div>
-            </div>
+            <main className="flex min-h-[calc(100dvh-7rem)] items-center justify-center bg-[#f7f6f2]">
+                <Loader2 className="size-7 animate-spin text-[#1d2b55]" />
+            </main>
         )
     }
 
     return (
-        <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f4f0] p-6">
-            <div className="mx-auto max-w-7xl">
-                <PageHeader titulo="Bandeja de validación" subtitulo="Revisa el documento original, corrige los datos y aprueba la información." />
+        <main className="min-h-[calc(100dvh-7rem)] bg-[#f7f6f2] px-5 py-6 lg:px-8">
+            <div className="mx-auto max-w-[1450px]">
+                <header className="flex items-start justify-between gap-6">
+                    <div>
+                        <h1 className="font-serif text-4xl font-bold tracking-tight text-[#1d2b55]">
+                            Bandeja de validación
+                        </h1>
+
+                        <p className="mt-2 text-lg text-[#766e61]">
+                            Revisa lo que ha leído la IA y apruébalo con un clic
+                        </p>
+                    </div>
+
+                    <div className="shrink-0 rounded-full bg-[#d66b13] px-5 py-2.5 text-base font-bold text-white">
+                        {documentos.length} por validar
+                    </div>
+                </header>
+
+                <div className="mt-6 flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        className="rounded-full bg-[#1d2b55] px-5 py-2 text-base font-bold text-white"
+                    >
+                        Pendientes ({documentos.length})
+                    </button>
+
+                    <button
+                        type="button"
+                        className="rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61]"
+                    >
+                        En aclaración (0)
+                    </button>
+
+                    <button
+                        type="button"
+                        className="rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61]"
+                    >
+                        Aprobados (0)
+                    </button>
+
+                    <button
+                        type="button"
+                        className="rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61]"
+                    >
+                        Todos
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => void cargar()}
+                        disabled={procesando}
+                        className="ml-auto inline-flex items-center gap-2 rounded-full border-2 border-[#ddd8ce] bg-white px-4 py-2 text-sm font-bold text-[#1d2b55] transition hover:bg-[#f0eee8] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <RefreshCw className="size-4" />
+                        Actualizar
+                    </button>
+                </div>
 
                 {error && (
-                    <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
-                        <AlertCircle className="mt-0.5 size-4" />
+                    <div
+                        role="alert"
+                        className="mt-4 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+                    >
+                        <AlertCircle className="size-5 shrink-0" />
                         <span>{error}</span>
                     </div>
                 )}
 
-                <div className="mt-6 grid gap-5 lg:grid-cols-[350px_minmax(0,1fr)]">
-                    <aside className="rounded-2xl border bg-white p-4 shadow-sm">
-                        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Documentos pendientes</h2>
-                        <ul className="mt-4 space-y-3">
-                            {documentos.map((doc: Documento) => (
-                                <li key={doc.id}>
+                {documentos.length === 0 ? (
+                    <section className="mt-6 rounded-3xl border border-[#ddd8ce] bg-white p-16 text-center">
+                        <Check className="mx-auto size-10 text-emerald-600" />
+
+                        <h2 className="mt-4 text-xl font-bold text-[#1d2b55]">
+                            No hay documentos pendientes
+                        </h2>
+
+                        <p className="mt-2 text-sm text-[#766e61]">
+                            Todos los documentos han sido revisados.
+                        </p>
+                    </section>
+                ) : (
+                    <section className="mt-6 grid min-h-[620px] grid-cols-[300px_minmax(0,1fr)] overflow-hidden rounded-3xl border border-[#d9d4ca] bg-white">
+                        <aside className="overflow-y-auto border-r border-[#e6e1d8]">
+                            {documentos.map((documento) => {
+                                const seleccionado =
+                                    documento.id === documentoSeleccionado?.id
+
+                                return (
                                     <button
+                                        key={documento.id}
                                         type="button"
-                                        onClick={() => setSeleccionadoId(doc.id)}
-                                        className={`w-full rounded-xl border p-3 text-left transition ${doc.id === documentoSeleccionado?.id ? 'border-[#1b2a4a] bg-[#eef3ff]' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}
+                                        onClick={() =>
+                                            seleccionarDocumento(documento.id)
+                                        }
+                                        className={`relative w-full border-b border-[#e6e1d8] px-5 py-4 text-left transition ${seleccionado
+                                                ? 'bg-[#efede8]'
+                                                : 'bg-white hover:bg-[#faf9f6]'
+                                            }`}
                                     >
-                                        <div className="flex items-center gap-2 text-sm font-semibold">
-                                            <FileText className="size-4" />
-                                            {doc.nombreArchivo}
-                                        </div>
-                                        <div className="mt-1 text-xs text-slate-500">
-                                            {doc.usuario} · {formatearFecha(doc.fechaSubida)}
+                                        {seleccionado && (
+                                            <span className="absolute inset-y-0 left-0 w-1 bg-[#d66b13]" />
+                                        )}
+
+                                        <p className="truncate text-base font-bold text-[#151515]">
+                                            {documento.nombreArchivo}
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-[#766e61]">
+                                            {documento.usuario} ·{' '}
+                                            {formatearFecha(
+                                                documento.fechaSubida,
+                                            )}
+                                        </p>
+
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <span className="text-base font-bold text-[#008b45]">
+                                                {obtenerTotal(documento)}
+                                            </span>
+
+                                            {tieneAnomalia(documento) && (
+                                                <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                    Anomalía
+                                                </span>
+                                            )}
                                         </div>
                                     </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </aside>
+                                )
+                            })}
+                        </aside>
 
-                    <section className="rounded-2xl border bg-white p-4 shadow-sm">
                         {documentoSeleccionado && (
-                            <>
-                                <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-                                    <div>
-                                        <h2 className="text-xl font-semibold">{documentoSeleccionado.nombreArchivo}</h2>
-                                        <p className="text-sm text-slate-500">Cliente: {documentoSeleccionado.usuario}</p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => void guardarCambios()}
-                                            disabled={procesando}
-                                            className="rounded-lg border border-[#1b2a4a] px-3 py-2 text-sm font-medium text-[#1b2a4a] disabled:opacity-60"
-                                        >
-                                            Guardar correcciones
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => void aprobarActual()}
-                                            disabled={procesando}
-                                            className="rounded-lg bg-[#1b2a4a] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                                        >
-                                            Aprobar
-                                        </button>
-                                    </div>
-                                </div>
+                            <section className="flex min-w-0 flex-col">
+                                <header className="flex items-center justify-between gap-4 border-b border-[#e6e1d8] px-7 py-5">
+                                    <div className="min-w-0">
+                                        <h2 className="truncate text-2xl font-bold text-[#1d2b55]">
+                                            {documentoSeleccionado.nombreArchivo}
+                                        </h2>
 
-                                <div className="mt-5 grid gap-5 xl:grid-cols-2">
-                                    <div>
-                                        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Documento original</h3>
-                                        <iframe
-                                            title="original"
-                                            src={documentoSeleccionado.tieneOriginal ? `/api/documentos/${documentoSeleccionado.id}/archivo` : undefined}
-                                            className="h-[420px] w-full rounded-xl border bg-slate-100"
-                                        />
+                                        <p className="mt-1 text-sm text-[#766e61]">
+                                            {documentoSeleccionado.usuario} ·{' '}
+                                            {documentoSeleccionado.origen ||
+                                                'Documento'}{' '}
+                                            ·{' '}
+                                            {formatearFecha(
+                                                documentoSeleccionado.fechaSubida,
+                                            )}
+                                        </p>
                                     </div>
 
-                                    <div>
-                                        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Datos propuestos / confianza</h3>
-                                        <div className="space-y-3">
-                                            {CAMPOS_EDITABLES.map((campo) => {
-                                                const valorActual =
-                                                    documentoSeleccionado.extraccion?.[
-                                                    campo as keyof NonNullable<typeof documentoSeleccionado.extraccion>
-                                                    ] as unknown as string | number | null
+                                    <div className="flex shrink-0 items-center gap-3">
+                                        <span className="rounded-full bg-[#fff0bf] px-3 py-1.5 text-sm font-bold text-[#a95500]">
+                                            {estadoLegible(
+                                                documentoSeleccionado.estado,
+                                            )}
+                                        </span>
 
-                                                const valorTexto = valorActual == null ? '' : String(valorActual)
+                                        <strong className="text-xl text-[#1d2b55]">
+                                            {obtenerTotal(documentoSeleccionado)}
+                                        </strong>
+                                    </div>
+                                </header>
 
-                                                return (
-                                                    <label key={campo} className="block">
-                                                        <span className="mb-1 block text-sm font-medium text-slate-700">{campo}</span>
-                                                        <input
-                                                            type="text"
-                                                            value={cambios[campo] ?? valorTexto}
-                                                            onChange={(event) => actualizarCambio(campo, event.target.value)}
-                                                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-0 focus:border-[#1b2a4a]"
-                                                        />
-                                                    </label>
-                                                )
-                                            })}
+                                <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_390px]">
+                                    <section className="min-w-0 overflow-y-auto border-r border-[#e6e1d8] p-6">
+                                        <div className="flex items-center gap-2">
+                                            <FileText className="size-5 text-[#1d2b55]" />
+
+                                            <h3 className="text-sm font-bold uppercase tracking-wide text-[#766e61]">
+                                                Documento original
+                                            </h3>
                                         </div>
 
-                                        <div className="mt-5 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
-                                            <div className="font-medium text-slate-700">Confianza por campo</div>
-                                            <div className="mt-2">No disponible en esta versión del backend; se puede añadir al next sprint.</div>
+                                        <div
+                                            id="documento-original"
+                                            className="mt-4 flex min-h-[330px] items-center justify-center overflow-hidden rounded-2xl border border-[#d9d4ca] bg-[#eeeae1] p-5"
+                                        >
+                                            {cargandoOriginal && (
+                                                <div className="text-center">
+                                                    <Loader2 className="mx-auto size-7 animate-spin text-[#1d2b55]" />
+
+                                                    <p className="mt-2 text-sm text-[#766e61]">
+                                                        Cargando documento…
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {!cargandoOriginal &&
+                                                errorOriginal && (
+                                                    <div className="text-center text-sm text-red-700">
+                                                        <AlertCircle className="mx-auto size-7" />
+
+                                                        <p className="mt-2 font-semibold">
+                                                            {errorOriginal}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                            {!cargandoOriginal &&
+                                                !errorOriginal &&
+                                                originalUrl && (
+                                                    <iframe
+                                                        title={`Documento original: ${documentoSeleccionado.nombreArchivo}`}
+                                                        src={originalUrl}
+                                                        className="h-[390px] w-full rounded-lg bg-white shadow-md"
+                                                    />
+                                                )}
+
+                                            {!cargandoOriginal &&
+                                                !errorOriginal &&
+                                                !originalUrl && (
+                                                    <p className="text-sm text-[#766e61]">
+                                                        No hay documento original disponible.
+                                                    </p>
+                                                )}
                                         </div>
 
-                                        {documentoSeleccionado.extraccion?.advertencias?.length ? (
-                                            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                                                <p className="text-sm font-medium text-amber-800">Advertencias IA</p>
-                                                <ul className="mt-2 list-disc pl-5 text-sm text-amber-700">
-                                                    {documentoSeleccionado.extraccion.advertencias.map((aviso) => (
-                                                        <li key={aviso}>{aviso}</li>
-                                                    ))}
-                                                </ul>
+                                        {tieneAnomalia(documentoSeleccionado) && (
+                                            <div className="mt-5 rounded-2xl border border-red-200 bg-[#fff4f4] p-4">
+                                                <div className="flex gap-3">
+                                                    <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" />
+
+                                                    <div>
+                                                        <p className="text-sm font-bold text-red-700">
+                                                            Posible anomalía detectada
+                                                        </p>
+
+                                                        {documentoSeleccionado.anomalias
+                                                            .filter(
+                                                                (anomalia) =>
+                                                                    !anomalia.resuelta,
+                                                            )
+                                                            .map((anomalia) => (
+                                                                <p
+                                                                    key={`${anomalia.tipo}-${anomalia.fechaDeteccion}`}
+                                                                    className="mt-1 text-sm leading-5 text-red-700"
+                                                                >
+                                                                    {anomalia.descripcion}
+                                                                </p>
+                                                            ))}
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                document
+                                                                    .getElementById(
+                                                                        'documento-original',
+                                                                    )
+                                                                    ?.scrollIntoView({
+                                                                        behavior:
+                                                                            'smooth',
+                                                                    })
+                                                            }
+                                                            className="mt-3 text-sm font-bold text-red-700 underline"
+                                                        >
+                                                            Ver documento original →
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        ) : null}
-                                    </div>
-                                </div>
+                                        )}
 
-                                <div className="mt-6 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3">
-                                    <div className="text-sm text-slate-600">
-                                        <span className="font-medium text-slate-700">Estado:</span> {documentoSeleccionado.estado}
-                                    </div>
-                                    <div className="inline-flex items-center gap-2 text-sm text-emerald-700">
-                                        <Check className="size-4" />
-                                        Se valida antes de aprobar
-                                    </div>
+                                        {documentoSeleccionado.historial.length > 0 && (
+                                            <div className="mt-6">
+                                                <h3 className="text-sm font-bold uppercase tracking-wide text-[#766e61]">
+                                                    Historial
+                                                </h3>
+
+                                                <div className="mt-3 space-y-3">
+                                                    {documentoSeleccionado.historial
+                                                        .slice(0, 3)
+                                                        .map((evento) => (
+                                                            <div
+                                                                key={`${evento.tipo}-${evento.fecha}`}
+                                                                className="flex gap-2"
+                                                            >
+                                                                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#eeeae1]">
+                                                                    {evento.tipo
+                                                                        .toLowerCase()
+                                                                        .includes(
+                                                                            'ia',
+                                                                        ) ? (
+                                                                        <Bot className="size-4 text-[#1d2b55]" />
+                                                                    ) : (
+                                                                        <Upload className="size-4 text-[#766e61]" />
+                                                                    )}
+                                                                </span>
+
+                                                                <div className="min-w-0">
+                                                                    <p className="text-sm font-semibold text-[#1d2b55]">
+                                                                        {evento.detalle ||
+                                                                            evento.tipo}
+                                                                    </p>
+
+                                                                    <p className="text-xs text-[#766e61]">
+                                                                        {formatearFecha(
+                                                                            evento.fecha,
+                                                                        )}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <aside className="flex min-h-0 flex-col p-6">
+                                        <div className="flex items-center gap-2">
+                                            <span className="flex size-9 items-center justify-center rounded-lg bg-[#1d2b55] text-xs font-bold text-white">
+                                                IA
+                                            </span>
+
+                                            <h3 className="text-sm font-bold uppercase tracking-wide text-[#766e61]">
+                                                {modoCorreccion
+                                                    ? 'Corrige los campos'
+                                                    : 'Datos extraídos'}
+                                            </h3>
+                                        </div>
+
+                                        {modoCorreccion ? (
+                                            <div className="mt-5 min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+                                                {CAMPOS.map(
+                                                    ({ clave, etiqueta }) => (
+                                                        <label
+                                                            key={clave}
+                                                            className="block"
+                                                        >
+                                                            <span className="mb-1.5 block text-sm font-semibold text-[#766e61]">
+                                                                {etiqueta}
+                                                            </span>
+
+                                                            <input
+                                                                type="text"
+                                                                value={
+                                                                    cambios[
+                                                                    clave
+                                                                    ] ??
+                                                                    obtenerValor(
+                                                                        documentoSeleccionado,
+                                                                        clave,
+                                                                    )
+                                                                }
+                                                                onChange={(event) =>
+                                                                    cambiarCampo(
+                                                                        clave,
+                                                                        event.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="w-full rounded-lg border border-[#d9d4ca] bg-[#faf9f6] px-3 py-2 text-sm text-[#151515] outline-none focus:border-[#1d2b55] focus:ring-2 focus:ring-[#1d2b55]/10"
+                                                            />
+                                                        </label>
+                                                    ),
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+                                                {CAMPOS.map(
+                                                    ({ clave, etiqueta }) => {
+                                                        const valor = obtenerValor(
+                                                            documentoSeleccionado,
+                                                            clave,
+                                                        )
+
+                                                        return (
+                                                            <div key={clave}>
+                                                                <div className="flex items-end justify-between gap-3">
+                                                                    <span className="text-sm text-[#766e61]">
+                                                                        {etiqueta}
+                                                                    </span>
+
+                                                                    <strong className="text-right text-sm text-[#151515]">
+                                                                        {esImporte(
+                                                                            clave,
+                                                                        )
+                                                                            ? formatearImporte(
+                                                                                valor,
+                                                                            )
+                                                                            : valor ||
+                                                                            'Sin detectar'}
+                                                                    </strong>
+                                                                </div>
+
+                                                                <div className="mt-2 flex items-center gap-2">
+                                                                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e8e5de]">
+                                                                        <div
+                                                                            className="h-full rounded-full bg-[#00bf5b]"
+                                                                            style={{
+                                                                                width: `${confianza}%`,
+                                                                            }}
+                                                                        />
+                                                                    </div>
+
+                                                                    <span className="w-10 text-right text-xs font-bold text-[#008b45]">
+                                                                        {confianza}%
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    },
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {modoAclaracion && (
+                                            <div className="mt-4 rounded-2xl border border-[#d9d4ca] bg-[#faf9f6] p-3">
+                                                <p className="mb-2 text-sm font-bold text-[#1d2b55]">
+                                                    ¿Qué necesitas que aclare el
+                                                    cliente?
+                                                </p>
+
+                                                <textarea
+                                                    value={pregunta}
+                                                    onChange={(event) =>
+                                                        setPregunta(
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                    rows={3}
+                                                    placeholder="Escribe tu pregunta..."
+                                                    className="w-full resize-none rounded-lg border border-[#1d2b55] bg-white p-3 text-sm outline-none"
+                                                />
+
+                                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setModoAclaracion(
+                                                                false,
+                                                            )
+                                                            setPregunta('')
+                                                        }}
+                                                        className="rounded-lg bg-[#eeeae1] px-3 py-2 text-sm font-bold text-[#1d2b55]"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={
+                                                            !pregunta.trim()
+                                                        }
+                                                        className="rounded-lg bg-[#d66b13] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                                    >
+                                                        <Send className="mr-1 inline size-3.5" />
+                                                        Enviar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {!modoAclaracion && !modoCorreccion && (
+                                            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#e6e1d8] pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void aprobarDocumento()
+                                                    }
+                                                    disabled={procesando}
+                                                    className="flex items-center justify-center gap-1.5 rounded-lg bg-[#1d2b55] px-2 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                                >
+                                                    {procesando ? (
+                                                        <Loader2 className="size-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Check className="size-3.5" />
+                                                    )}
+                                                    Aprobar
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setModoCorreccion(true)
+                                                    }
+                                                    className="flex items-center justify-center gap-1.5 rounded-lg bg-[#eeeae1] px-2 py-2 text-sm font-bold text-[#1d2b55]"
+                                                >
+                                                    <Pencil className="size-3.5" />
+                                                    Corregir
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setModoAclaracion(true)
+                                                    }
+                                                    className="flex items-center justify-center gap-1.5 rounded-lg bg-[#eeeae1] px-2 py-2 text-sm font-bold text-[#1d2b55]"
+                                                >
+                                                    <HelpCircle className="size-3.5" />
+                                                    Aclaración
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {modoCorreccion && (
+                                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#e6e1d8] pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setModoCorreccion(false)
+                                                        setCambios({})
+                                                    }}
+                                                    className="rounded-lg bg-[#eeeae1] px-3 py-2 text-sm font-bold text-[#1d2b55]"
+                                                >
+                                                    Cancelar
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void guardarCorrecciones()
+                                                    }
+                                                    disabled={procesando}
+                                                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1d2b55] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                                >
+                                                    {procesando ? (
+                                                        <Loader2 className="size-4 animate-spin" />
+                                                    ) : (
+                                                        <Save className="size-4" />
+                                                    )}
+                                                    Guardar
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        <div className="mt-4 flex items-center gap-2 text-xs text-[#766e61]">
+                                            <Check className="size-3.5 text-[#008b45]" />
+                                            Revisión manual requerida.
+                                        </div>
+                                    </aside>
                                 </div>
-                            </>
+                            </section>
                         )}
                     </section>
-                </div>
+                )}
+
+                <footer className="mt-6 flex justify-between border-t border-[#d9d4ca] pt-4 text-xs text-[#766e61]">
+                    <span>Gestio · Bandeja de validación</span>
+                    <span>Verifactu-ready</span>
+                </footer>
             </div>
-        </div>
+        </main>
     )
 }
