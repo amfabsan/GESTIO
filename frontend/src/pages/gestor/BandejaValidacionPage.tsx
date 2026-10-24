@@ -10,7 +10,7 @@ import {
     Save,
     Send,
 } from 'lucide-react'
-import type { Documento } from '../../types/documentos'
+import type { Documento, EstadoDocumento } from '../../types/documentos'
 import { obtenerOriginal } from '../../features/documentos/documentosApi'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
@@ -38,6 +38,21 @@ const CAMPOS: { clave: Campo; etiqueta: string }[] = [
     { clave: 'total', etiqueta: 'Total' },
     { clave: 'categoriaSugerida', etiqueta: 'Categoría' },
 ]
+
+type Pestana = 'PENDIENTES' | 'ACLARACION' | 'APROBADOS' | 'TODOS'
+
+const PESTANAS: { clave: Pestana; etiqueta: string; estado: EstadoDocumento | null }[] = [
+    { clave: 'PENDIENTES', etiqueta: 'Pendientes', estado: 'PENDIENTE_VALIDACION' },
+    { clave: 'ACLARACION', etiqueta: 'En aclaración', estado: 'ACLARACION_SOLICITADA' },
+    { clave: 'APROBADOS', etiqueta: 'Aprobados', estado: 'VALIDADO' },
+    { clave: 'TODOS', etiqueta: 'Todos', estado: null },
+]
+
+function documentosDePestana(documentos: Documento[], pestana: Pestana) {
+    const estado = PESTANAS.find((p) => p.clave === pestana)?.estado ?? null
+
+    return estado ? documentos.filter((d) => d.estado === estado) : documentos
+}
 
 const CAMPOS_API: Record<Campo, string> = {
     emisorNombre: 'EmisorNombre',
@@ -110,11 +125,20 @@ function estadoLegible(estado: Documento['estado']) {
     }
 }
 
-function confianzaDocumento(documento: Documento, campo: Campo): number | null {
-        const valor = obtenerValor(documento, campo)
-        
-            return valor.trim() !== '' ? 100 : null
-            }
+const NIVELES_CONFIANZA: Record<string, { etiqueta: string; clases: string }> = {
+    ALTO: { etiqueta: 'Confianza alta', clases: 'bg-[#e3f6ea] text-[#008b45]' },
+    MEDIO: { etiqueta: 'Confianza media', clases: 'bg-[#fff0bf] text-[#a95500]' },
+    DUDOSO: { etiqueta: 'Confianza dudosa', clases: 'bg-[#ffe0e0] text-[#c62828]' },
+}
+
+// Solo se muestra la confianza que calcula el backend; nunca se inventa en el cliente.
+function confianzaCampo(documento: Documento, campo: Campo) {
+    const nivel = documento.extraccion?.nivelConfianza
+
+    if (!nivel || obtenerValor(documento, campo).trim() === '') return null
+
+    return NIVELES_CONFIANZA[nivel] ?? null
+}
 
 function normalizarValorCampo(campo: Campo, valor: string) {
     const limpio = valor.trim()
@@ -174,6 +198,7 @@ export function BandejaValidacionPage() {
         aprobar,
     } = useValidacionDocumentos()
 
+    const [pestana, setPestana] = useState<Pestana>('PENDIENTES')
     const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null)
     const [modoCorreccion, setModoCorreccion] = useState(false)
     const [modoAclaracion, setModoAclaracion] = useState(false)
@@ -184,17 +209,30 @@ export function BandejaValidacionPage() {
     const [cargandoOriginal, setCargandoOriginal] = useState(false)
     const [errorOriginal, setErrorOriginal] = useState<string | null>(null)
 
+    const visibles = useMemo(
+        () => documentosDePestana(documentos, pestana),
+        [documentos, pestana],
+    )
+
+    const pendientes = useMemo(
+        () => documentosDePestana(documentos, 'PENDIENTES').length,
+        [documentos],
+    )
+
     const documentoSeleccionado = useMemo(() => {
         if (!seleccionadoId) {
-            return documentos[0] ?? null
+            return visibles[0] ?? null
         }
 
         return (
-            documentos.find((documento) => documento.id === seleccionadoId) ??
-            documentos[0] ??
+            visibles.find((documento) => documento.id === seleccionadoId) ??
+            visibles[0] ??
             null
         )
-    }, [documentos, seleccionadoId])
+    }, [visibles, seleccionadoId])
+
+    const admiteValidacion =
+        documentoSeleccionado?.estado === 'PENDIENTE_VALIDACION'
 
     useEffect(() => {
         let urlCreada: string | null = null
@@ -245,6 +283,15 @@ export function BandejaValidacionPage() {
 
     function seleccionarDocumento(id: string) {
         setSeleccionadoId(id)
+        setModoCorreccion(false)
+        setModoAclaracion(false)
+        setCambios({})
+        setPregunta('')
+    }
+
+    function cambiarPestana(nueva: Pestana) {
+        setPestana(nueva)
+        setSeleccionadoId(null)
         setModoCorreccion(false)
         setModoAclaracion(false)
         setCambios({})
@@ -321,38 +368,30 @@ export function BandejaValidacionPage() {
                     </div>
 
                     <div className="shrink-0 rounded-full bg-[#d66b13] px-5 py-2.5 text-base font-bold text-white">
-                        {documentos.length} por validar
+                        {pendientes} por validar
                     </div>
                 </header>
 
                 <div className="mt-6 flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        className="rounded-full bg-[#1d2b55] px-5 py-2 text-base font-bold text-white"
-                    >
-                        Pendientes ({documentos.length})
-                    </button>
+                    {PESTANAS.map(({ clave, etiqueta }) => {
+                        const activa = clave === pestana
 
-                    <button
-                        type="button"
-                        className="rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61]"
-                    >
-                        En aclaración (0)
-                    </button>
-
-                    <button
-                        type="button"
-                        className="rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61]"
-                    >
-                        Aprobados (0)
-                    </button>
-
-                    <button
-                        type="button"
-                        className="rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61]"
-                    >
-                        Todos
-                    </button>
+                        return (
+                            <button
+                                key={clave}
+                                type="button"
+                                aria-pressed={activa}
+                                onClick={() => cambiarPestana(clave)}
+                                className={
+                                    activa
+                                        ? 'rounded-full border-2 border-[#1d2b55] bg-[#1d2b55] px-5 py-2 text-base font-bold text-white'
+                                        : 'rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61] hover:bg-[#f0eee8]'
+                                }
+                            >
+                                {etiqueta} ({documentosDePestana(documentos, clave).length})
+                            </button>
+                        )
+                    })}
 
                     <button
                         type="button"
@@ -375,22 +414,26 @@ export function BandejaValidacionPage() {
                     </div>
                 )}
 
-                {documentos.length === 0 ? (
+                {visibles.length === 0 ? (
                     <section className="mt-6 rounded-3xl border border-[#ddd8ce] bg-white p-16 text-center">
                         <Check className="mx-auto size-10 text-emerald-600" />
 
                         <h2 className="mt-4 text-xl font-bold text-[#1d2b55]">
-                            No hay documentos pendientes
+                            {pestana === 'PENDIENTES'
+                                ? 'No hay documentos pendientes'
+                                : 'No hay documentos en esta pestaña'}
                         </h2>
 
-                        <p className="mt-2 text-sm text-[#766e61]">
-                            Todos los documentos han sido revisados.
-                        </p>
+                        {pestana === 'PENDIENTES' && (
+                            <p className="mt-2 text-sm text-[#766e61]">
+                                Todos los documentos han sido revisados.
+                            </p>
+                        )}
                     </section>
                 ) : (
                     <section className="mt-6 grid min-h-[620px] grid-cols-[300px_minmax(0,1fr)] overflow-hidden rounded-3xl border border-[#d9d4ca] bg-white">
                         <aside className="overflow-y-auto border-r border-[#e6e1d8]">
-                            {documentos.map((documento) => {
+                            {visibles.map((documento) => {
                                 const seleccionado =
                                     documento.id === documentoSeleccionado?.id
 
@@ -631,9 +674,9 @@ export function BandejaValidacionPage() {
                                                             clave,
                                                         )
                                                         const confianza =
-                                                            confianzaDocumento(
-                                                               documentoSeleccionado,
-                                                               clave,
+                                                            confianzaCampo(
+                                                                documentoSeleccionado,
+                                                                clave,
                                                             )
 
                                                         return (
@@ -655,26 +698,12 @@ export function BandejaValidacionPage() {
                                                                     </strong>
                                                                 </div>
 
-                                                                {confianza !==
-                                                                    null && (
-                                                                    <div className="mt-2 flex items-center gap-2">
-                                                                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e8e5de]">
-                                                                            <div
-                                                                                className="h-full rounded-full bg-[#00bf5b]"
-                                                                                style={{
-                                                                                    width: `${confianza}%`,
-                                                                                }}
-                                                                            />
-                                                                        </div>
-
-                                                                        <span className="w-10 text-right text-xs font-bold text-[#008b45]">
-                                                                            {
-                                                                                confianza
-                                                                            }
-                                                                            %
-                                                                        </span>
-                                                                    </div>
-                                                                
+                                                                {confianza && (
+                                                                    <span
+                                                                        className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${confianza.clases}`}
+                                                                    >
+                                                                        {confianza.etiqueta}
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                         )
@@ -728,7 +757,15 @@ export function BandejaValidacionPage() {
                                             </div>
                                         )}
 
-                                        {!modoAclaracion && !modoCorreccion && (
+                                        {!admiteValidacion && (
+                                            <p className="mt-4 border-t border-[#e6e1d8] pt-4 text-sm text-[#766e61]">
+                                                Este documento está en estado «
+                                                {estadoLegible(documentoSeleccionado.estado)}
+                                                » y no admite correcciones ni aprobación.
+                                            </p>
+                                        )}
+
+                                        {admiteValidacion && !modoAclaracion && !modoCorreccion && (
                                             <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#e6e1d8] pt-4">
                                                 <button
                                                     type="button"
@@ -770,7 +807,7 @@ export function BandejaValidacionPage() {
                                             </div>
                                         )}
 
-                                        {modoCorreccion && (
+                                        {admiteValidacion && modoCorreccion && (
                                             <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#e6e1d8] pt-4">
                                                 <button
                                                     type="button"

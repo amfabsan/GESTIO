@@ -381,6 +381,140 @@ public sealed class DocumentosTests
         Assert.Equal("X8019576M", nif.Cambio.ValorNuevo);
     }
 
+    // PA 75-1 (UT07): aprobar con campos obligatorios ausentes o con formato incorrecto
+    // devuelve VALIDACION indicando los campos afectados y el documento permanece
+    // en PENDIENTE_VALIDACION.
+    [Fact]
+    public async Task Aprobar_ConDatosInvalidos_DejaPendienteYSeñalaCamposAfectados()
+    {
+        await using var context = CrearContexto(nameof(Aprobar_ConDatosInvalidos_DejaPendienteYSeñalaCamposAfectados));
+        await DbInitializer.SeedAsync(context);
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "ticket.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+        context.ChangeTracker.Clear();
+
+        // El LectorParaPruebaDeFlujo deja la extracción solo con EmisorNombre y Total.
+        // Faltan EmisorNif, NumeroFactura y FechaEmision: aprobar debe fallar.
+        var vacio = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
+        Assert.False(vacio.EsCorrecto);
+        Assert.Equal(TipoError.VALIDACION, vacio.Error!.Tipo);
+        Assert.Contains("EmisorNif", vacio.Error.Mensaje);
+        Assert.Contains("NumeroFactura", vacio.Error.Mensaje);
+        Assert.Contains("FechaEmision", vacio.Error.Mensaje);
+
+        context.ChangeTracker.Clear();
+        var trasVacio = await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id);
+        Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, trasVacio.Estado);
+
+        // NIF con formato incorrecto: CorregirAsync rechaza el formato antes de persistir.
+        var formato = await servicio.CorregirAsync(Pedro, id,
+        [
+            new CampoValidacionRequest("EmisorNif", "ABC"),
+            new CampoValidacionRequest("NumeroFactura", "A1"),
+            new CampoValidacionRequest("FechaEmision", "2026-01-01")
+        ], CancellationToken.None);
+        Assert.False(formato.EsCorrecto);
+        Assert.Equal(TipoError.VALIDACION, formato.Error!.Tipo);
+        Assert.Contains("EmisorNif", formato.Error.Mensaje);
+
+        context.ChangeTracker.Clear();
+        var trasFormato = await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id);
+        Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, trasFormato.Estado);
+    }
+
+    // PA 77-1 (UT07): intentar aprobar un documento en estados que no son PENDIENTE_VALIDACION
+    // se rechaza con EstadoNoPermitidoParaValidacion y el estado del documento no cambia.
+    [Theory]
+    [InlineData(EstadoDocumento.PROCESANDO)]
+    [InlineData(EstadoDocumento.ERROR)]
+    [InlineData(EstadoDocumento.SUBIDO)]
+    public async Task Aprobar_EstadoNoValido_SeRechazaYNoCambiaEstado(EstadoDocumento estado)
+    {
+        await using var context = CrearContexto($"{nameof(Aprobar_EstadoNoValido_SeRechazaYNoCambiaEstado)}-{estado}");
+        await DbInitializer.SeedAsync(context);
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "ticket.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+
+        var documento = await context.Documentos.SingleAsync(d => d.Id == id);
+        documento.Estado = estado;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var resultado = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
+        Assert.Equal(DocumentoErrores.EstadoNoPermitidoParaValidacion, resultado.Error);
+
+        var sinCambios = await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id);
+        Assert.Equal(estado, sinCambios.Estado);
+    }
+
+    // PA 77-1 (UT07, caso VALIDADO): un documento ya validado no puede aprobarse de nuevo.
+    [Fact]
+    public async Task Aprobar_DocumentoYaValidado_SeRechaza()
+    {
+        await using var context = CrearContexto(nameof(Aprobar_DocumentoYaValidado_SeRechaza));
+        await DbInitializer.SeedAsync(context);
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "ticket.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+
+        var correccion = await servicio.CorregirAsync(Pedro, id,
+        [
+            new CampoValidacionRequest("EmisorNombre", "Comercio SL"),
+            new CampoValidacionRequest("EmisorNif", "X8019576M"),
+            new CampoValidacionRequest("NumeroFactura", "A19"),
+            new CampoValidacionRequest("FechaEmision", "2026-01-19")
+        ], CancellationToken.None);
+        Assert.True(correccion.EsCorrecto, correccion.Error?.Mensaje);
+        context.ChangeTracker.Clear();
+
+        var primera = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
+        Assert.True(primera.EsCorrecto, primera.Error?.Mensaje);
+        Assert.Equal(EstadoDocumento.VALIDADO, primera.Valor!.Estado);
+        context.ChangeTracker.Clear();
+
+        var segunda = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
+        Assert.Equal(DocumentoErrores.DocumentoYaValidado, segunda.Error);
+    }
+
+    // PA 76-1 (UT07): un gestor sin vinculación activa con el autónomo no puede
+    // consultar ni aprobar sus documentos. Las comprobaciones viven en la API,
+    // independientemente de la interfaz.
+    [Fact]
+    public async Task GestorSinVinculacionActiva_NoPuedeConsultarNiAprobar()
+    {
+        await using var context = CrearContexto(nameof(GestorSinVinculacionActiva_NoPuedeConsultarNiAprobar));
+        await DbInitializer.SeedAsync(context);
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "ticket.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+        context.ChangeTracker.Clear();
+
+        // Se finaliza la vinculación: el acceso debe retirarse de inmediato.
+        var vinculo = await context.Vinculaciones.FirstAsync(v => v.AutonomoId == Ramon.Id);
+        vinculo.Estado = EstadoVinculacion.FINALIZADA;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        Assert.Null(await servicio.ObtenerAsync(Pedro, id, CancellationToken.None));
+
+        var aprobacion = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
+        Assert.False(aprobacion.EsCorrecto);
+        Assert.Equal(TipoError.NO_ENCONTRADO, aprobacion.Error!.Tipo);
+
+        var sinCambios = await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id);
+        Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, sinCambios.Estado);
+    }
+
     [Fact]
     public async Task Historial_SinPermisoSeRespondeComoNoEncontrado_YSinSesionNoAutenticado()
     {
