@@ -19,6 +19,7 @@ public static class ErrorHttpExtensions
             TipoError.TIPO_NO_SOPORTADO => StatusCodes.Status415UnsupportedMediaType,
             TipoError.NO_DISPONIBLE => StatusCodes.Status503ServiceUnavailable,
             TipoError.CONFLICTO => StatusCodes.Status409Conflict,
+            TipoError.NO_AUTENTICADO => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status500InternalServerError
 
         };

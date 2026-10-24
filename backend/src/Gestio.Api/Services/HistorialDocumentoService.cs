@@ -14,17 +14,19 @@ public sealed record CambioCampo(string Campo, string? ValorAnterior, string? Va
 public sealed record EventoHistorial(Guid Id, TipoEventoDocumento Tipo, DateTimeOffset Fecha, string? Detalle, ActorEvento? Actor, CambioCampo? Cambio);
 
 // Consulta de solo lectura de la línea temporal de un documento.
-public sealed class HistorialDocumentoService(ApplicationDbContext context, AccesoDocumentos acceso)
+public sealed class HistorialDocumentoService(ApplicationDbContext context, AccesoDocumentos acceso, ICurrentUserService currentUserService)
 {
     public const int TamanoMaximoPagina = 100;
 
     public async Task<Resultado<Pagina<EventoHistorial>>> ObtenerAsync(
-        UsuarioActual usuario,
         Guid documentoId,
         int numeroPagina,
         int tamanoPagina,
         CancellationToken cancellationToken)
     {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return DocumentoErrores.NoAutenticado;
+
         if (numeroPagina < 1 || tamanoPagina is < 1 or > TamanoMaximoPagina)
             return DocumentoErrores.PaginacionNoValida(TamanoMaximoPagina);
 

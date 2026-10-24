@@ -81,4 +81,9 @@ public static class DocumentoErrores
         "documento.historial.paginacion_no_valida",
         $"La página debe ser 1 o superior y el tamaño estar entre 1 y {tamanoMaximo}.",
         TipoError.VALIDACION);
+
+    public static readonly Error NoAutenticado = new(
+        "documento.no_autenticado",
+        "Debes identificarte para consultar el documento.",
+        TipoError.NO_AUTENTICADO);
 }

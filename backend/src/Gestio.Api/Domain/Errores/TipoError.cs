@@ -8,5 +8,6 @@ public enum TipoError
     TAMANO_EXCEDIDO,
     TIPO_NO_SOPORTADO,
     NO_DISPONIBLE,
-    CONFLICTO
+    CONFLICTO,
+    NO_AUTENTICADO
 }
