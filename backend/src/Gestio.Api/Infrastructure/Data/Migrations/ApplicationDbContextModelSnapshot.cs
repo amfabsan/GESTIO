@@ -121,6 +121,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Campo")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Detalle")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -136,8 +140,14 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
-                    b.Property<Guid>("UsuarioId")
+                    b.Property<Guid?>("UsuarioId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ValorAnterior")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ValorNuevo")
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -421,13 +431,14 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", null)
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Documento");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ExtraccionIa", b =>
