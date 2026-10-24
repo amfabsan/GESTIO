@@ -3,12 +3,13 @@ using Gestio.Api.Domain.Enums;
 namespace Gestio.Api.Domain.Entities;
 
 // Registro del historial: una vez creado no se modifica; cada cambio del documento añade un evento nuevo.
+// Un evento sin usuario es una acción automática del sistema.
 public sealed class EventoDocumento
 {
 
     private EventoDocumento() { } // para EF Core
 
-    public EventoDocumento(Guid usuarioId, TipoEventoDocumento tipo, DateTimeOffset fecha, string? detalle)
+    public EventoDocumento(Guid? usuarioId, TipoEventoDocumento tipo, DateTimeOffset fecha, string? detalle)
     {
 
         Id = Guid.NewGuid();
@@ -16,14 +17,22 @@ public sealed class EventoDocumento
         Tipo = tipo;
         Fecha = fecha;
         Detalle = detalle;
-        
+
     }
+
+    public static EventoDocumento Correccion(Guid usuarioId, DateTimeOffset fecha, string campo, string? valorAnterior, string? valorNuevo) =>
+        new(usuarioId, TipoEventoDocumento.VALIDACION_CORREGIDA, fecha, $"Campo '{campo}' corregido por el gestor.")
+        {
+            Campo = campo,
+            ValorAnterior = valorAnterior,
+            ValorNuevo = valorNuevo
+        };
 
     public Guid Id { get; private set; }
 
     public Guid DocumentoId { get; private set; }
 
-    public Guid UsuarioId { get; private set; }
+    public Guid? UsuarioId { get; private set; }
 
     public TipoEventoDocumento Tipo { get; private set; }
 
@@ -31,5 +40,14 @@ public sealed class EventoDocumento
 
     public string? Detalle { get; private set; }
 
+    // Solo en correcciones: campo afectado y sus valores antes y después del cambio.
+    public string? Campo { get; private set; }
+
+    public string? ValorAnterior { get; private set; }
+
+    public string? ValorNuevo { get; private set; }
+
     public Documento Documento { get; private set; } = null!;
+
+    public Usuario? Usuario { get; private set; }
 }

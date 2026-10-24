@@ -24,12 +24,21 @@ public sealed class EventoDocumentoConfiguration : IEntityTypeConfiguration<Even
         builder.Property(evento => evento.Detalle)
             .HasMaxLength(500);
 
+        builder.Property(evento => evento.Campo)
+            .HasMaxLength(200);
+
+        builder.Property(evento => evento.ValorAnterior)
+            .HasColumnType("text");
+
+        builder.Property(evento => evento.ValorNuevo)
+            .HasColumnType("text");
+
         builder.HasOne(evento => evento.Documento)
             .WithMany(documento => documento.Eventos)
             .HasForeignKey(evento => evento.DocumentoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<Usuario>()
+        builder.HasOne(evento => evento.Usuario)
             .WithMany()
             .HasForeignKey(evento => evento.UsuarioId)
             .OnDelete(DeleteBehavior.Restrict);
