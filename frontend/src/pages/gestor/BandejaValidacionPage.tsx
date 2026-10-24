@@ -204,6 +204,8 @@ export function BandejaValidacionPage() {
     const [modoAclaracion, setModoAclaracion] = useState(false)
     const [pregunta, setPregunta] = useState('')
     const [cambios, setCambios] = useState<Record<string, string>>({})
+    // Documento en el que falló la última acción: su error se muestra junto a sus datos.
+    const [errorAccionDe, setErrorAccionDe] = useState<string | null>(null)
 
     const [originalUrl, setOriginalUrl] = useState<string | null>(null)
     const [cargandoOriginal, setCargandoOriginal] = useState(false)
@@ -233,6 +235,11 @@ export function BandejaValidacionPage() {
 
     const admiteValidacion =
         documentoSeleccionado?.estado === 'PENDIENTE_VALIDACION'
+
+    const errorAccion =
+        error && errorAccionDe !== null && errorAccionDe === documentoSeleccionado?.id
+            ? error
+            : null
 
     useEffect(() => {
         let urlCreada: string | null = null
@@ -330,6 +337,9 @@ export function BandejaValidacionPage() {
         if (actualizado) {
             setCambios({})
             setModoCorreccion(false)
+            setErrorAccionDe(null)
+        } else {
+            setErrorAccionDe(documentoSeleccionado.id)
         }
     }
 
@@ -342,6 +352,9 @@ export function BandejaValidacionPage() {
             setSeleccionadoId(null)
             setCambios({})
             setModoCorreccion(false)
+            setErrorAccionDe(null)
+        } else {
+            setErrorAccionDe(documentoSeleccionado.id)
         }
     }
 
@@ -395,7 +408,10 @@ export function BandejaValidacionPage() {
 
                     <button
                         type="button"
-                        onClick={() => void cargar()}
+                        onClick={() => {
+                            setErrorAccionDe(null)
+                            void cargar()
+                        }}
                         disabled={procesando}
                         className="ml-auto inline-flex items-center gap-2 rounded-full border-2 border-[#ddd8ce] bg-white px-4 py-2 text-sm font-bold text-[#1d2b55] transition hover:bg-[#f0eee8] disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -404,7 +420,7 @@ export function BandejaValidacionPage() {
                     </button>
                 </div>
 
-                {error && (
+                {error && errorAccionDe === null && (
                     <div
                         role="alert"
                         className="mt-4 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
@@ -768,6 +784,16 @@ export function BandejaValidacionPage() {
                                                         Enviar
                                                     </button>
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {errorAccion && (
+                                            <div
+                                                role="alert"
+                                                className="mt-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm leading-5 text-red-800"
+                                            >
+                                                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                                                <span>{errorAccion}</span>
                                             </div>
                                         )}
 

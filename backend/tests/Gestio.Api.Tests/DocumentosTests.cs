@@ -40,8 +40,11 @@ public sealed class DocumentosTests
         Assert.Equal(3, deRamon.Count);
         Assert.All(deRamon, documento => Assert.Equal("Ramón", documento.Usuario));
 
+        // El gestor solo ve los de sus clientes con vinculación activa, no los suyos propios.
         var dePedro = await ObtenerListado(CrearControlador(context, Pedro));
-        Assert.Equal(5, dePedro.Count);
+        Assert.Equal(3, dePedro.Count);
+        Assert.All(dePedro, documento => Assert.Equal("Ramón", documento.Usuario));
+        Assert.DoesNotContain(dePedro, documento => documento.NombreArchivo == "factura-proveedor-demo.pdf");
         Assert.Contains(dePedro, documento => documento.NombreArchivo == "factura-luz-enero.pdf");
         Assert.Contains(dePedro, documento => documento.Extraccion is not null);
         Assert.Contains(dePedro, documento => documento.Anomalias.Count > 0);
