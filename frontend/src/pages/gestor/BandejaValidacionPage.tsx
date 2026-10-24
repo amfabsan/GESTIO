@@ -110,18 +110,11 @@ function estadoLegible(estado: Documento['estado']) {
     }
 }
 
-function confianzaDocumento(documento: Documento): number | null {
-    const confianza = documento.extraccion?.nivelConfianza
-
-    // No se inventa una confianza si el backend no la proporciona.
-    if (!confianza) return null
-
-    const numero = Number.parseInt(confianza.replace('%', ''), 10)
-
-    if (Number.isNaN(numero)) return null
-
-    return Math.max(0, Math.min(100, numero))
-}
+function confianzaDocumento(documento: Documento, campo: Campo): number | null {
+        const valor = obtenerValor(documento, campo)
+        
+            return valor.trim() !== '' ? 100 : null
+            }
 
 function normalizarValorCampo(campo: Campo, valor: string) {
     const limpio = valor.trim()
@@ -202,10 +195,6 @@ export function BandejaValidacionPage() {
             null
         )
     }, [documentos, seleccionadoId])
-
-    const confianza = documentoSeleccionado
-        ? confianzaDocumento(documentoSeleccionado)
-        : null
 
     useEffect(() => {
         let urlCreada: string | null = null
@@ -641,6 +630,11 @@ export function BandejaValidacionPage() {
                                                             documentoSeleccionado,
                                                             clave,
                                                         )
+                                                        const confianza =
+                                                            confianzaDocumento(
+                                                               documentoSeleccionado,
+                                                               clave,
+                                                            )
 
                                                         return (
                                                             <div key={clave}>
@@ -662,7 +656,7 @@ export function BandejaValidacionPage() {
                                                                 </div>
 
                                                                 {confianza !==
-                                                                    null ? (
+                                                                    null && (
                                                                     <div className="mt-2 flex items-center gap-2">
                                                                         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e8e5de]">
                                                                             <div
@@ -680,12 +674,7 @@ export function BandejaValidacionPage() {
                                                                             %
                                                                         </span>
                                                                     </div>
-                                                                ) : (
-                                                                    <span className="mt-2 block text-xs text-[#9a9388]">
-                                                                        Confianza
-                                                                        no
-                                                                        disponible
-                                                                    </span>
+                                                                
                                                                 )}
                                                             </div>
                                                         )
