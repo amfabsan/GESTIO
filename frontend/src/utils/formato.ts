@@ -12,3 +12,14 @@ export function formatearEuros(importe: number, decimales = 2) {
   const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
   return `${importe < 0 ? '−' : ''}${miles}${decimal ? `,${decimal}` : ''} €`
 }
+
+// utils/formato.ts (al final)
+export function formatearFechaHora(iso: string) {
+    const fecha = new Date(iso)
+          const hora = `${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`
+              const esHoy = fecha.toDateString() === new Date().toDateString()
+                  const dia = esHoy
+                        ? 'hoy'
+                    : `${String(fecha.getDate()).padStart(2, '0')} ${MESES[fecha.getMonth()]}`
+                  return `${dia} · ${hora}`
+                    }

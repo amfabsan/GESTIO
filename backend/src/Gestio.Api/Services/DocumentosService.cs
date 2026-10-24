@@ -292,11 +292,15 @@ public sealed class DocumentosService(
                 FechaCambio = timeProvider.GetUtcNow()
             });
 
-            documento.Eventos.Add(new EventoDocumento(
+            // context.Add explícito, igual que en ProcesarAsync: sin él, EF Core puede tratar
+            // el evento (con Id ya asignado) como existente y lanzar un UPDATE en vez de un INSERT.
+            var evento = new EventoDocumento(
                 usuario.Id,
                 TipoEventoDocumento.VALIDACION_CORREGIDA,
                 timeProvider.GetUtcNow(),
-                $"Campo '{cambio.Campo}' corregido por el gestor."));
+                $"Campo '{propiedad.Name}' corregido: '{FormatearValor(valorAnterior) ?? "vacío"}' → '{FormatearValor(valorNuevo) ?? "vacío"}'.");
+            documento.Eventos.Add(evento);
+            context.Add(evento);
         }
 
         var errores = ValidarCampos(documento.ExtraccionIa);
@@ -304,7 +308,10 @@ public sealed class DocumentosService(
             return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
 
         await context.SaveChangesAsync(cancellationToken);
-        return documento;
+
+        // Se devuelve el documento con todo su detalle (Usuario, Anomalias, Historial…),
+        // porque MapearDocumento necesita documento.Usuario.
+        return (await ObtenerAsync(usuario, id, cancellationToken))!;
     }
 
     public async Task<Resultado<Documento>> AprobarAsync(
@@ -338,11 +345,13 @@ public sealed class DocumentosService(
 
         documento.Estado = EstadoDocumento.VALIDADO;
 
-        documento.Eventos.Add(new EventoDocumento(
+        var evento = new EventoDocumento(
             usuario.Id,
             TipoEventoDocumento.VALIDACION_APROBADA,
             timeProvider.GetUtcNow(),
-            $"Documento validado y aprobado por el gestor."));
+            "Documento validado y aprobado por el gestor.");
+        documento.Eventos.Add(evento);
+        context.Add(evento);
 
         context.HistorialValidacion.Add(new HistorialValidacion
         {
@@ -358,7 +367,7 @@ public sealed class DocumentosService(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return documento;
+        return (await ObtenerAsync(usuario, id, cancellationToken))!;
     }
 
     private static List<string> ValidarCampos(ExtraccionIa extraccion)
@@ -392,20 +401,23 @@ public sealed class DocumentosService(
 
         if (char.IsLetter(limpio[0]))
         {
-            var letras = "TRWAGMYFPDXBNJZSQVHLCKE";
             if (limpio.Length != 9) return false;
-            var numero = 0;
-            for (var i = 1; i < limpio.Length - 1; i++)
+
+            var cuerpo = limpio[1..8];
+            if (!cuerpo.All(char.IsAsciiDigit)) return false;
+
+            // NIE: X/Y/Z + 7 dígitos + letra de control (X=0, Y=1, Z=2 delante del número).
+            if (limpio[0] is 'X' or 'Y' or 'Z')
             {
-                if (!char.IsDigit(limpio[i])) return false;
-                numero = numero * 10 + (limpio[i] - '0');
+                const string letras = "TRWAGMYFPDXBNJZSQVHLCKE";
+                var prefijo = limpio[0] - 'X';
+                var numero = int.Parse($"{prefijo}{cuerpo}");
+                return char.IsAsciiLetter(limpio[8]) && letras[numero % 23] == limpio[8];
             }
 
-            var letra = limpio[^1];
-            if (!char.IsLetter(letra)) return false;
-
-            var indice = numero % 23;
-            return letras[indice] == letra;
+            // CIF (sociedades): letra + 7 dígitos + dígito o letra de control.
+            // Solo se comprueba el formato, no el dígito de control.
+            return char.IsAsciiLetterOrDigit(limpio[8]);
         }
 
         return true;
