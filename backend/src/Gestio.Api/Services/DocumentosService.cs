@@ -275,14 +275,6 @@ public sealed class DocumentosService(
                     TipoError.VALIDACION);
             }
 
-            if (errores.Count > 0)
-            {
-                return new Error(
-                    "documento.validacion.campos_obligatorios",
-                    $"Faltan o son inválidos los campos: {string.Join(", ", errores)}",
-                    TipoError.VALIDACION);
-            }
-
             if (Igual(valorAnterior, valorNuevo))
                 continue;
 
@@ -295,7 +287,7 @@ public sealed class DocumentosService(
                 UsuarioId = usuario.Id,
                 Campo = propiedad.Name,
                 ValorAnterior = FormatearValor(valorAnterior),
-                ValorNuevo = FormatearValor(valorNuevo),Campo = propiedad.Name,
+                ValorNuevo = FormatearValor(valorNuevo),
                 TipoCambio = "CORRECCION",
                 FechaCambio = timeProvider.GetUtcNow()
             });
