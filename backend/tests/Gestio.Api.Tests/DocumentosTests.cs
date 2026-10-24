@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
+using Gestio.Api.Models.Requests;
 using Gestio.Api.Models.Responses;
 
 namespace Gestio.Api.Tests;
@@ -335,6 +336,76 @@ public sealed class DocumentosTests
         Assert.Null(subida.Valor.ExtraccionIa);
         Assert.Contains("ningún dato", Assert.Single(subida.Valor.Intentos).Error!);
         Assert.Single(storage.Archivos);
+    }
+
+    [Fact]
+    public async Task CorregirYAprobar_QuedanEnElHistorialConSuActorYValores()
+    {
+        await using var context = CrearContexto(nameof(CorregirYAprobar_QuedanEnElHistorialConSuActorYValores));
+        await DbInitializer.SeedAsync(context);
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "ticket.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+        context.ChangeTracker.Clear();
+
+        var correccion = await servicio.CorregirAsync(Pedro, id,
+        [
+            new CampoValidacionRequest("EmisorNombre", "Comercio Corregido SL"),
+            new CampoValidacionRequest("EmisorNif", "X8019576M"),
+            new CampoValidacionRequest("NumeroFactura", "A19"),
+            new CampoValidacionRequest("FechaEmision", "2026-01-19")
+        ], CancellationToken.None);
+        Assert.True(correccion.EsCorrecto, correccion.Error?.Mensaje);
+        Assert.Equal("Ramón", correccion.Valor!.Usuario.Nombre);
+        context.ChangeTracker.Clear();
+        var aprobacion = await servicio.AprobarAsync(Pedro, id, CancellationToken.None);
+        Assert.True(aprobacion.EsCorrecto, aprobacion.Error?.Mensaje);
+        Assert.Equal("Ramón", aprobacion.Valor!.Usuario.Nombre);
+
+        context.ChangeTracker.Clear();
+        var historial = new HistorialDocumentoService(context, new AccesoDocumentos(context), new UsuarioActualFijo(Ramon));
+        var eventos = (await historial.ObtenerAsync(id, 1, 20, CancellationToken.None)).Valor!.Elementos;
+
+        Assert.Equal(
+            [TipoEventoDocumento.SUBIDA, TipoEventoDocumento.PROCESAMIENTO_INICIADO, TipoEventoDocumento.PROCESAMIENTO_CORRECTO,
+             TipoEventoDocumento.VALIDACION_CORREGIDA, TipoEventoDocumento.VALIDACION_CORREGIDA, TipoEventoDocumento.VALIDACION_CORREGIDA,
+             TipoEventoDocumento.VALIDACION_CORREGIDA, TipoEventoDocumento.VALIDACION_APROBADA],
+            eventos.Select(evento => evento.Tipo));
+        Assert.All(eventos.Where(evento => evento.Tipo is TipoEventoDocumento.PROCESAMIENTO_INICIADO or TipoEventoDocumento.PROCESAMIENTO_CORRECTO),
+            evento => Assert.Null(evento.Actor));
+        var nif = Assert.Single(eventos, evento => evento.Cambio?.Campo == "EmisorNif");
+        Assert.Equal(DbInitializer.PedroId, nif.Actor!.Id);
+        Assert.Null(nif.Cambio!.ValorAnterior);
+        Assert.Equal("X8019576M", nif.Cambio.ValorNuevo);
+    }
+
+    [Fact]
+    public async Task Historial_SinPermisoSeRespondeComoNoEncontrado_YSinSesionNoAutenticado()
+    {
+        await using var context = CrearContexto(nameof(Historial_SinPermisoSeRespondeComoNoEncontrado_YSinSesionNoAutenticado));
+        await DbInitializer.SeedAsync(context);
+        var documentoId = await context.Documentos.Where(d => d.UsuarioId == Ramon.Id).Select(d => d.Id).FirstAsync();
+
+        Task<Resultado<Pagina<EventoHistorial>>> Consultar(UsuarioActual? usuario) =>
+            new HistorialDocumentoService(context, new AccesoDocumentos(context), new UsuarioActualFijo(usuario!))
+                .ObtenerAsync(documentoId, 1, 20, CancellationToken.None);
+
+        Assert.True((await Consultar(Pedro)).EsCorrecto);
+
+        var otroAutonomo = await Consultar(new UsuarioActual(Guid.NewGuid(), Rol.AUTONOMO));
+        Assert.Equal(DocumentoErrores.NoEncontrado, otroAutonomo.Error);
+        Assert.Null(otroAutonomo.Valor);
+
+        var vinculo = await context.Vinculaciones.FirstAsync(v => v.AutonomoId == Ramon.Id);
+        vinculo.Estado = EstadoVinculacion.FINALIZADA;
+        await context.SaveChangesAsync();
+        var gestorSinVinculacionActiva = await Consultar(Pedro);
+        Assert.Equal(DocumentoErrores.NoEncontrado, gestorSinVinculacionActiva.Error);
+        Assert.Null(gestorSinVinculacionActiva.Valor);
+
+        Assert.Equal(DocumentoErrores.NoAutenticado, (await Consultar(null)).Error);
     }
 
     private static ApplicationDbContext CrearContexto(string nombre) =>

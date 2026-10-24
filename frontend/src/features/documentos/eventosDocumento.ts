@@ -1,4 +1,5 @@
-import type { CambioCampo, EventoHistorial, TipoEventoDocumento } from '../../types/documentos'
+import type { EventoHistorial, TipoEventoDocumento } from '../../types/documentos'
+import { formatearEuros, formatearFecha } from '../../utils/formato'
 import { obtenerNombreCompleto } from '../../utils/usuarios'
 
 const TEXTO_EVENTO: Record<TipoEventoDocumento, string> = {
@@ -30,6 +31,30 @@ export function nombreActor(evento: EventoHistorial) {
     : 'Sistema'
 }
 
-export function valorCorregido(valor: CambioCampo['valorAnterior']) {
-  return valor ?? 'vacío'
+// La API identifica el campo por su nombre interno; se muestra con la etiqueta de la bandeja de validación.
+const ETIQUETA_CAMPO: Record<string, string> = {
+  EmisorNombre: 'Proveedor',
+  EmisorNif: 'NIF',
+  NumeroFactura: 'N.º factura',
+  FechaEmision: 'Fecha',
+  BaseImponible: 'Base imponible',
+  TipoIva: 'IVA',
+  CuotaIva: 'Cuota de IVA',
+  Total: 'Total',
+  CategoriaSugerida: 'Categoría',
+}
+
+const CAMPOS_IMPORTE = ['BaseImponible', 'CuotaIva', 'Total']
+
+export function etiquetaCampo(campo: string) {
+  return ETIQUETA_CAMPO[campo] ?? campo
+}
+
+// Los valores llegan en formato neutro (96.00, 2026-09-01) y se muestran como en el resto de la app.
+export function valorCorregido(campo: string, valor: string | null) {
+  if (valor === null) return 'vacío'
+  if (CAMPOS_IMPORTE.includes(campo)) return formatearEuros(Number(valor))
+  if (campo === 'TipoIva') return `${valor}%`
+  if (campo === 'FechaEmision') return formatearFecha(valor)
+  return valor
 }
