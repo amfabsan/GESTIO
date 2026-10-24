@@ -71,4 +71,14 @@ public static class DocumentoErrores
         "documento.validacion.error_guardado",
         "No se pudo guardar la corrección o la aprobación del documento.",
         TipoError.NO_DISPONIBLE);
+
+    public static readonly Error NoEncontrado = new(
+        "documento.no_encontrado",
+        "Documento no encontrado.",
+        TipoError.NO_ENCONTRADO);
+
+    public static Error PaginacionNoValida(int tamanoMaximo) => new(
+        "documento.historial.paginacion_no_valida",
+        $"La página debe ser 1 o superior y el tamaño estar entre 1 y {tamanoMaximo}.",
+        TipoError.VALIDACION);
 }

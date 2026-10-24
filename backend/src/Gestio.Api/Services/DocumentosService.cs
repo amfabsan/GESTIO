@@ -23,7 +23,8 @@ public sealed class DocumentosService(
     IOptions<DocumentosOptions> options,
     TimeProvider timeProvider,
     ILogger<DocumentosService> logger,
-    ILectorDocumento lector)
+    ILectorDocumento lector,
+    AccesoDocumentos acceso)
 {
     public ReglasSubida ObtenerReglasSubida() => new(options.Value.TamanoMaximoBytes, ValidadorArchivo.TiposPermitidos);
 
@@ -149,7 +150,7 @@ public sealed class DocumentosService(
 
         var intento = new IntentoProcesamiento { DocumentoId = id, Inicio = timeProvider.GetUtcNow() };
         documento.Estado = EstadoDocumento.PROCESANDO;
-        var inicio = new EventoDocumento(usuario.Id, TipoEventoDocumento.PROCESAMIENTO_INICIADO, intento.Inicio, "PROCESANDO: inicio de extracción del original.");
+        var inicio = new EventoDocumento(reintento ? usuario.Id : null, TipoEventoDocumento.PROCESAMIENTO_INICIADO, intento.Inicio, "PROCESANDO: inicio de extracción del original.");
         documento.Eventos.Add(inicio);
         context.Add(inicio);
         context.Add(intento);
@@ -216,7 +217,7 @@ public sealed class DocumentosService(
 
         intento.Fin = timeProvider.GetUtcNow();
         var fin = new EventoDocumento(
-            usuario.Id,
+            null,
             intento.Error is null ? TipoEventoDocumento.PROCESAMIENTO_CORRECTO : TipoEventoDocumento.PROCESAMIENTO_FALLIDO,
             intento.Fin.Value,
             intento.Error ?? "PENDIENTE_VALIDACION: datos propuestos disponibles para revisión.");
@@ -292,11 +293,12 @@ public sealed class DocumentosService(
                 FechaCambio = timeProvider.GetUtcNow()
             });
 
-            documento.Eventos.Add(new EventoDocumento(
+            documento.Eventos.Add(EventoDocumento.Correccion(
                 usuario.Id,
-                TipoEventoDocumento.VALIDACION_CORREGIDA,
                 timeProvider.GetUtcNow(),
-                $"Campo '{cambio.Campo}' corregido por el gestor."));
+                propiedad.Name,
+                FormatearValor(valorAnterior),
+                FormatearValor(valorNuevo)));
         }
 
         var errores = ValidarCampos(documento.ExtraccionIa);
@@ -532,18 +534,7 @@ public sealed class DocumentosService(
             _ => valor.ToString()
         };
 
-    private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
-    usuario.Rol == Rol.GESTOR
-        ? context.Documentos.Where(documento =>
-            documento.UsuarioId == usuario.Id ||
-            context.Vinculaciones.Any(vinculacion =>
-                vinculacion.AutonomoId == documento.UsuarioId &&
-                vinculacion.CodigoAsesoria == context.Usuarios
-                    .Where(administrador => administrador.Id == usuario.Id)
-                    .Select(administrador => administrador.CodigoAsesoria)
-                    .FirstOrDefault() &&
-                vinculacion.Estado == EstadoVinculacion.ACTIVA))
-        : context.Documentos.Where(documento => documento.UsuarioId == usuario.Id);
+    private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) => acceso.ConsultablesPor(usuario);
 
     private static IQueryable<Documento> ConDetalle(IQueryable<Documento> consulta) => consulta
         .AsNoTracking()

@@ -282,7 +282,7 @@ public sealed class DocumentosTests
         // Doble sólo para comprobar la orquestación; no verifica el motor OCR.
         var servicio = new DocumentosService(context, storage,
             Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
-            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo());
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo(), new AccesoDocumentos(context));
         using var contenido = new MemoryStream(PdfValido);
         var subida = await servicio.SubirAsync(Ramon, "original.pdf", contenido, PdfValido.Length, CancellationToken.None);
         Assert.True(subida.EsCorrecto);
@@ -327,7 +327,7 @@ public sealed class DocumentosTests
         var storage = new AlmacenamientoEnMemoria();
         var servicio = new DocumentosService(context, storage,
             Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
-            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo("Texto legible sin datos fiscales identificables"));
+            NullLogger<DocumentosService>.Instance, new LectorParaPruebaDeFlujo("Texto legible sin datos fiscales identificables"), new AccesoDocumentos(context));
         using var contenido = new MemoryStream(PdfValido);
         var subida = await servicio.SubirAsync(Ramon, "documento.pdf", contenido, PdfValido.Length, CancellationToken.None);
         Assert.True(subida.EsCorrecto);
@@ -350,7 +350,8 @@ public sealed class DocumentosTests
             new LectorDocumentoLocal(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Ocr:Tesseract"] = "gestio-test-motor-no-instalado"
-            }).Build()));
+            }).Build()),
+            new AccesoDocumentos(context));
 
     private static DocumentosController CrearControlador(ApplicationDbContext context, UsuarioActual usuario) =>
         new(CrearServicio(context, new AlmacenamientoEnMemoria()), new UsuarioActualFijo(usuario));
