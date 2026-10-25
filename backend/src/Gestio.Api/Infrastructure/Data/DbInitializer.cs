@@ -179,7 +179,8 @@ public static class DbInitializer
                 TipoIva = 21.00m,
                 CuotaIva = 10.50m,
                 Total = 60.50m,
-                CategoriaSugerida = "Suministros",
+                // Propuesta errónea a propósito: el gestor la corrige a GASTO en la PA 105 (PB-09).
+                CategoriaSugerida = "INGRESO",
                 NivelConfianza = NivelConfianza.ALTO,
                 DatosCrudosJson = "{\"origen\":\"demo\",\"modelo\":\"gestio-ia-v1\"}"
             },
@@ -194,7 +195,7 @@ public static class DbInitializer
                 TipoIva = 21.00m,
                 CuotaIva = 21.00m,
                 Total = 121.00m,
-                CategoriaSugerida = "Servicios profesionales",
+                CategoriaSugerida = "GASTO",
                 NivelConfianza = NivelConfianza.MEDIO,
                 DatosCrudosJson = "{\"origen\":\"demo\",\"modelo\":\"gestio-ia-v1\",\"revisionManual\":true}"
             }
