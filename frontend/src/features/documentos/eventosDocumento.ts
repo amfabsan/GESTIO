@@ -14,6 +14,7 @@ const TEXTO_EVENTO: Record<TipoEventoDocumento, string> = {
   VALIDACION_APROBADA: 'Documento validado',
   VALIDACION_RECHAZADA: 'Documento rechazado',
   VALIDACION_ERROR: 'Error de validación',
+  POSIBLE_DUPLICADO: 'Posible duplicado detectado respecto a otro documento',
 }
 
 export function textoEvento(evento: EventoHistorial) {

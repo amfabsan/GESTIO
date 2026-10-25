@@ -48,11 +48,11 @@ export async function aprobarDocumento(id: string) {
 }
 
 export async function solicitarAclaracion(id: string, pregunta: string) {
-        const { data } = await apiClient.post<Documento>(`/documentos/${id}/aclaracion`, { pregunta })
-            return data
-            }
+    const { data } = await apiClient.post<Documento>(`/documentos/${id}/aclaracion`, { pregunta })
+    return data
+}
 
 export async function enviarNotaDocumento(id: string, nota: string) {
-            const { data } = await apiClient.post<Documento>(`/documentos/${id}/nota`, { nota })
-                return data
-                }
+    const { data } = await apiClient.post<Documento>(`/documentos/${id}/nota`, { nota })
+    return data
+}

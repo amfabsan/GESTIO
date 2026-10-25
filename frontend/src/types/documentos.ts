@@ -24,6 +24,7 @@ export type TipoEventoDocumento =
   | 'VALIDACION_APROBADA'
   | 'VALIDACION_RECHAZADA'
   | 'VALIDACION_ERROR'
+  | 'POSIBLE_DUPLICADO'
 
 export type ActorEvento = {
   id: string
@@ -79,6 +80,7 @@ export type AnomaliaDocumento = {
   severidad: string
   resuelta: boolean
   fechaDeteccion: string
+  documentoRelacionadoId?: string | null
 }
 
 export type Documento = {

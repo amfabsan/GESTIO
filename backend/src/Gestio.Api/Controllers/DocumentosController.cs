@@ -1,5 +1,6 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
+using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Models.Requests;
 using Gestio.Api.Models.Responses;
@@ -102,6 +103,32 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
     }
 
+    [HttpPost("{id:guid}/aclaracion")]
+    public async Task<ActionResult<DocumentoResponse>> SolicitarAclaracion(
+        Guid id,
+        [FromBody] SolicitarAclaracionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var resultado = await documentosService.SolicitarAclaracionAsync(usuario, id, request.Pregunta, cancellationToken);
+        return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
+    }
+
+    [HttpPost("{id:guid}/nota")]
+    public async Task<ActionResult<DocumentoResponse>> EnviarNota(
+        Guid id,
+        [FromBody] NotaDocumentoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var resultado = await documentosService.EnviarNotaAsync(usuario, id, request.Nota, cancellationToken);
+        return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
+    }
+
     private static DocumentoResponse MapearDocumento(Documento documento) => new(
         documento.Id,
         documento.NombreArchivo,
@@ -135,11 +162,12 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 anomalia.Descripcion,
                 anomalia.Severidad.ToString(),
                 anomalia.Resuelta,
-                anomalia.FechaDeteccion))
+                anomalia.FechaDeteccion,
+                anomalia.DocumentoRelacionadoId))
             .ToList(),
         documento.Eventos
             .OrderBy(evento => evento.Fecha)
-            .Select(evento => new EventoDocumentoResponse(evento.Tipo.ToString(), evento.Fecha, evento.Detalle))
+            .Select(evento => new EventoDocumentoResponse(evento.Tipo.ToString(), evento.Fecha, evento.Detalle, ActorDeEvento(evento)))
             .ToList(),
         documento.Intentos
             .OrderBy(i => i.Inicio)
@@ -155,5 +183,31 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 h.TipoCambio,
                 h.UsuarioId,
                 h.FechaCambio))
-            .ToList());
+            .ToList(),
+        TipoDocumento(documento));
+
+    private static string? ActorDeEvento(EventoDocumento evento) =>
+        evento.Tipo switch
+        {
+            TipoEventoDocumento.PROCESAMIENTO_INICIADO
+                or TipoEventoDocumento.PROCESAMIENTO_CORRECTO
+                or TipoEventoDocumento.PROCESAMIENTO_FALLIDO
+                or TipoEventoDocumento.PROCESAMIENTO_COMPLETADO
+                or TipoEventoDocumento.PROCESAMIENTO_ERROR
+                or TipoEventoDocumento.POSIBLE_DUPLICADO => "IA",
+            _ => evento.Usuario is null
+                ? null
+                : $"{evento.Usuario.Nombre} {evento.Usuario.PrimerApellido}".Trim(),
+        };
+
+    private static string TipoDocumento(Documento documento)
+    {
+        var nifEmisor = documento.ExtraccionIa?.EmisorNif?.Trim();
+        var nifPropietario = documento.Usuario.Nif.Trim();
+
+        return !string.IsNullOrEmpty(nifEmisor)
+               && string.Equals(nifEmisor, nifPropietario, StringComparison.OrdinalIgnoreCase)
+            ? "INGRESO"
+            : "GASTO";
+    }
 }

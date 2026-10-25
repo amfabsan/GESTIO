@@ -30,5 +30,14 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             b.Property(i => i.ValoresJson).HasColumnType("jsonb");
             b.HasIndex(i => i.DocumentoId).IsUnique().HasFilter("\"Fin\" IS NULL");
         });
+
+        modelBuilder.Entity<Anomalia>(b =>
+        {
+            b.HasOne<Documento>()
+                            .WithMany()
+                            .HasForeignKey(a => a.DocumentoRelacionadoId)
+                            .OnDelete(DeleteBehavior.SetNull);
+            b.HasIndex(a => a.DocumentoRelacionadoId);
+        });
     }
 }

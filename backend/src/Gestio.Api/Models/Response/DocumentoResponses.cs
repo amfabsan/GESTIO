@@ -14,7 +14,7 @@ public sealed record DocumentoResponse(
     IReadOnlyList<AnomaliaResponse> Anomalias,
     IReadOnlyList<EventoDocumentoResponse> Historial,
     IReadOnlyList<IntentoResponse> Intentos,
-    IReadOnlyList<HistorialValidacionResponse>? Validacion);
+    IReadOnlyList<HistorialValidacionResponse>? Validacion, string Tipo);
 
 public sealed record IntentoResponse(Guid Id, DateTimeOffset Inicio, DateTimeOffset? Fin,
     string Procesador, string? Version, string Resultado, string? Error, string? ValoresJson);
@@ -39,9 +39,9 @@ public sealed record AnomaliaResponse(
     string Descripcion,
     string Severidad,
     bool Resuelta,
-    DateTimeOffset FechaDeteccion);
+    DateTimeOffset FechaDeteccion,Guid? DocumentoRelacionadoId);
 
-public sealed record EventoDocumentoResponse(string Tipo, DateTimeOffset Fecha, string? Detalle);
+public sealed record EventoDocumentoResponse(string Tipo, DateTimeOffset Fecha, string? Detalle, string? Actor);
 
 public sealed record HistorialValidacionResponse(
     Guid Id,
