@@ -14,6 +14,7 @@ const TEXTO_EVENTO: Record<TipoEventoDocumento, string> = {
   VALIDACION_APROBADA: 'Documento validado',
   VALIDACION_RECHAZADA: 'Documento rechazado',
   VALIDACION_ERROR: 'Error de validación',
+  CATEGORIZACION_ACTUALIZADA: 'Categoría cambiada',
 }
 
 export function textoEvento(evento: EventoHistorial) {
@@ -41,7 +42,8 @@ const ETIQUETA_CAMPO: Record<string, string> = {
   TipoIva: 'IVA',
   CuotaIva: 'Cuota de IVA',
   Total: 'Total',
-  CategoriaSugerida: 'Categoría',
+  CategoriaSugerida: 'Categoría propuesta',
+  Categoria: 'Categoría',
 }
 
 const CAMPOS_IMPORTE = ['BaseImponible', 'CuotaIva', 'Total']

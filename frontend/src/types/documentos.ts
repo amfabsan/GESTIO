@@ -24,6 +24,7 @@ export type TipoEventoDocumento =
   | 'VALIDACION_APROBADA'
   | 'VALIDACION_RECHAZADA'
   | 'VALIDACION_ERROR'
+  | 'CATEGORIZACION_ACTUALIZADA'
 
 export type ActorEvento = {
   id: string
@@ -83,6 +84,8 @@ export type AnomaliaDocumento = {
 
 export type CategoriaDocumento = 'SIN_CLASIFICAR' | 'INGRESO' | 'GASTO' | 'OTRO'
 
+export type NivelConfianza = 'ALTO' | 'MEDIO' | 'DUDOSO'
+
 export type Documento = {
   id: string
   nombreArchivo: string
@@ -95,7 +98,7 @@ export type Documento = {
   tieneOriginal: boolean
   categoria: CategoriaDocumento
   categoriaPropuesta: string | null
-  confianzaPropuesta: number | null
+  nivelConfianzaPropuesta: NivelConfianza | null
   extraccion: ExtraccionDocumento | null
   anomalias: AnomaliaDocumento[]
   historial: EventoDocumento[]

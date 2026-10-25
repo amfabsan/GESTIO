@@ -25,8 +25,9 @@ type Campo =
     | 'tipoIva'
     | 'cuotaIva'
     | 'total'
-    | 'categoriaSugerida'
 
+// La categoría propuesta por la IA no se corrige aquí: se conserva para evaluar la IA (PB-09)
+// y el gestor elige la categoría vigente en el bloque «Categoría».
 const CAMPOS: { clave: Campo; etiqueta: string }[] = [
     { clave: 'emisorNombre', etiqueta: 'Proveedor' },
     { clave: 'emisorNif', etiqueta: 'NIF' },
@@ -36,7 +37,6 @@ const CAMPOS: { clave: Campo; etiqueta: string }[] = [
     { clave: 'tipoIva', etiqueta: 'IVA' },
     { clave: 'cuotaIva', etiqueta: 'Cuota de IVA' },
     { clave: 'total', etiqueta: 'Total' },
-    { clave: 'categoriaSugerida', etiqueta: 'Categoría' },
 ]
 
 type Pestana = 'PENDIENTES' | 'ACLARACION' | 'APROBADOS' | 'TODOS'
@@ -65,7 +65,6 @@ const CAMPOS_API: Record<Campo, string> = {
     tipoIva: 'TipoIva',
     cuotaIva: 'CuotaIva',
     total: 'Total',
-    categoriaSugerida: 'CategoriaSugerida',
 }
 
 function obtenerValor(documento: Documento, campo: Campo) {
@@ -238,6 +237,9 @@ export function BandejaValidacionPage() {
 
     const admiteValidacion =
         documentoSeleccionado?.estado === 'PENDIENTE_VALIDACION'
+
+    const nivelPropuesta = documentoSeleccionado?.nivelConfianzaPropuesta
+    const confianzaPropuesta = nivelPropuesta ? NIVELES_CONFIANZA[nivelPropuesta] ?? null : null
 
     const errorAccion =
         error && errorAccionDe !== null && errorAccionDe === documentoSeleccionado?.id
@@ -657,7 +659,11 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         <div className="mt-6">
-                                            <HistorialDocumento documentoId={documentoSeleccionado.id} />
+                                            {/* La key cambia con cada evento nuevo (categoría, corrección…) para recargar el historial. */}
+                                            <HistorialDocumento
+                                                key={`${documentoSeleccionado.id}-${documentoSeleccionado.historial.length}`}
+                                                documentoId={documentoSeleccionado.id}
+                                            />
                                         </div>
                                     </section>
 
@@ -669,13 +675,13 @@ export function BandejaValidacionPage() {
                                                         IA
                                                     </span>
                                                     <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#766e61]">
-                                                        Tipo de documento
+                                                        Categoría
                                                     </span>
                                                 </div>
 
-                                                {documentoSeleccionado.categoriaPropuesta && (
-                                                    <span className="text-xs font-bold text-[#008b45]">
-                                                        {Math.round((documentoSeleccionado.confianzaPropuesta ?? 0.94) * 100)}% confianza
+                                                {documentoSeleccionado.categoriaPropuesta && confianzaPropuesta && (
+                                                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${confianzaPropuesta.clases}`}>
+                                                        {confianzaPropuesta.etiqueta}
                                                     </span>
                                                 )}
                                             </div>
@@ -686,8 +692,15 @@ export function BandejaValidacionPage() {
                                                 </p>
                                             )}
 
+                                            {documentoSeleccionado.categoria === 'SIN_CLASIFICAR' && (
+                                                <p className="mt-2 text-sm text-[#766e61]">
+                                                    Sin clasificar: elige una categoría para guardarla.
+                                                </p>
+                                            )}
+
                                             <div className="mt-3 grid grid-cols-3 gap-2">
                                                 {CATEGORIAS.map((categoria) => {
+                                                    // La categoría se puede cambiar en cualquier estado, igual que en la API.
                                                     const activa = documentoSeleccionado.categoria === categoria
                                                     const propuesta = documentoSeleccionado.categoriaPropuesta === categoria
 
@@ -696,9 +709,10 @@ export function BandejaValidacionPage() {
                                                             key={categoria}
                                                             type="button"
                                                             onClick={() => void guardarCategoria(categoria)}
-                                                            disabled={procesando || !admiteValidacion}
+                                                            disabled={procesando}
+                                                            aria-pressed={activa}
                                                             className={[
-                                                                'rounded-xl border px-3 py-2.5 text-sm font-bold transition',
+                                                                'rounded-xl border px-3 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
                                                                 activa
                                                                     ? 'border-[#1d2b55] bg-[#1d2b55] text-white shadow-sm'
                                                                     : propuesta
