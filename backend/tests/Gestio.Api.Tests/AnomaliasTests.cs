@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 
 namespace Gestio.Api.Tests;
 
-// PB-10: avisos por datos ausentes o importes incoherentes (PA 1534 y 1535).
+// PB-11: avisos por datos ausentes o importes incoherentes (PA 1534 y 1535).
 public sealed class AnomaliasTests
 {
     private static readonly byte[] PdfValido = "%PDF-1.7\nContenido de prueba"u8.ToArray();

@@ -593,7 +593,7 @@ public sealed class DocumentosService(
         return (await ObtenerAsync(usuario, id, cancellationToken))!;
     }
 
-    // Aplica las reglas de PB-10 a los valores vigentes. Crea las anomalías nuevas y da por resueltas las
+    // Aplica las reglas de PB-11 a los valores vigentes. Crea las anomalías nuevas y da por resueltas las
     // que una corrección ha eliminado, sin borrarlas: queda el registro de que se detectaron.
     private void RevisarAnomalias(Documento documento)
     {

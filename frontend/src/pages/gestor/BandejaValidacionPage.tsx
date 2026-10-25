@@ -110,7 +110,7 @@ function tieneAnomalia(documento: Documento) {
     return documento.anomalias.some((anomalia) => !anomalia.resuelta)
 }
 
-// Regla que originó cada aviso (PB-10). La explicación concreta llega en la descripción.
+// Regla que originó cada aviso (PB-11). La explicación concreta llega en la descripción.
 const REGLAS_ANOMALIA: Record<string, string> = {
     NIF_AUSENTE: 'NIF del emisor ausente',
     DESCUADRE_ARITMETICO: 'Importes que no cuadran',

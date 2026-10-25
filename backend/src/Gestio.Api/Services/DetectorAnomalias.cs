@@ -9,7 +9,7 @@ namespace Gestio.Api.Services;
 
 public sealed record AnomaliaDetectada(TipoAnomalia Tipo, string Campo, string Descripcion);
 
-// Reglas explicables (PB-10) sobre los valores vigentes de la extracción. Solo avisan de qué dato
+// Reglas explicables (PB-11) sobre los valores vigentes de la extracción. Solo avisan de qué dato
 // revisar: no corrigen importes ni deciden si la factura es fiscalmente válida.
 public static class DetectorAnomalias
 {
