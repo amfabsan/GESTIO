@@ -176,8 +176,6 @@ function normalizarValorCampo(campo: Campo, valor: string) {
             .replace(/€/g, '')
             .replace(/\s/g, '')
 
-        // Convierte 1.800,50 a 1800.50.
-        // Mantiene correctamente valores como 1800.50.
         if (sinMoneda.includes(',')) {
             return sinMoneda.replace(/\./g, '').replace(',', '.')
         }
@@ -198,6 +196,7 @@ export function BandejaValidacionPage() {
         corregir,
         aprobar,
         clasificar,
+        pedirAclaracion,
     } = useValidacionDocumentos()
 
     const [pestana, setPestana] = useState<Pestana>('PENDIENTES')
@@ -310,6 +309,11 @@ export function BandejaValidacionPage() {
         setPregunta('')
     }
 
+    function abrirDocumentoRelacionado(id: string) {
+        cambiarPestana('TODOS')
+        setSeleccionadoId(id)
+    }
+
     function cambiarCampo(campo: Campo, valor: string) {
         setCambios((actuales) => ({
             ...actuales,
@@ -369,6 +373,21 @@ export function BandejaValidacionPage() {
         const actualizado = await clasificar(documentoSeleccionado.id, categoria)
 
         if (actualizado) {
+            setErrorAccionDe(null)
+        } else {
+            setErrorAccionDe(documentoSeleccionado.id)
+        }
+    }
+
+    async function enviarAclaracion() {
+        if (!documentoSeleccionado || !pregunta.trim()) return
+
+        const enviada = await pedirAclaracion(documentoSeleccionado.id, pregunta.trim())
+
+        if (enviada) {
+            setPregunta('')
+            setModoAclaracion(false)
+            setSeleccionadoId(null)
             setErrorAccionDe(null)
         } else {
             setErrorAccionDe(documentoSeleccionado.id)
@@ -478,8 +497,8 @@ export function BandejaValidacionPage() {
                                             seleccionarDocumento(documento.id)
                                         }
                                         className={`relative w-full border-b border-[#e6e1d8] px-5 py-4 text-left transition ${seleccionado
-                                                ? 'bg-[#efede8]'
-                                                : 'bg-white hover:bg-[#faf9f6]'
+                                            ? 'bg-[#efede8]'
+                                            : 'bg-white hover:bg-[#faf9f6]'
                                             }`}
                                     >
                                         {seleccionado && (
@@ -629,12 +648,28 @@ export function BandejaValidacionPage() {
                                                                     !anomalia.resuelta,
                                                             )
                                                             .map((anomalia) => (
-                                                                <p
+                                                                <div
                                                                     key={`${anomalia.tipo}-${anomalia.fechaDeteccion}`}
-                                                                    className="mt-1 text-sm leading-5 text-red-700"
+                                                                    className="mt-1"
                                                                 >
-                                                                    {anomalia.descripcion}
-                                                                </p>
+                                                                    <p className="text-sm leading-5 text-red-700">
+                                                                        {anomalia.descripcion}
+                                                                    </p>
+
+                                                                    {anomalia.documentoRelacionadoId && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() =>
+                                                                                abrirDocumentoRelacionado(
+                                                                                    anomalia.documentoRelacionadoId!,
+                                                                                )
+                                                                            }
+                                                                            className="mt-2 mr-4 text-sm font-bold text-red-700 underline"
+                                                                        >
+                                                                            Ver documento anterior →
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             ))}
 
                                                         <button
@@ -659,10 +694,9 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         <div className="mt-6">
-                                            {/* Con cada evento nuevo (categoría, corrección…) el historial se recarga sin cerrarse. */}
                                             <HistorialDocumento
+                                                key={`${documentoSeleccionado.id}-${documentoSeleccionado.estado}`}
                                                 documentoId={documentoSeleccionado.id}
-                                                version={documentoSeleccionado.historial.length}
                                             />
                                         </div>
                                     </section>
@@ -700,7 +734,6 @@ export function BandejaValidacionPage() {
 
                                             <div className="mt-3 grid grid-cols-3 gap-2">
                                                 {CATEGORIAS.map((categoria) => {
-                                                    // La categoría se puede cambiar en cualquier estado, igual que en la API.
                                                     const activa = documentoSeleccionado.categoria === categoria
                                                     const propuesta = documentoSeleccionado.categoriaPropuesta === categoria
 
@@ -836,6 +869,7 @@ export function BandejaValidacionPage() {
                                                             event.target.value,
                                                         )
                                                     }
+                                                    maxLength={500}
                                                     rows={3}
                                                     placeholder="Escribe tu pregunta..."
                                                     className="w-full resize-none rounded-lg border border-[#1d2b55] bg-white p-3 text-sm outline-none"
@@ -855,12 +889,17 @@ export function BandejaValidacionPage() {
 
                                                     <button
                                                         type="button"
+                                                        onClick={() => void enviarAclaracion()}
                                                         disabled={
-                                                            !pregunta.trim()
+                                                            !pregunta.trim() || procesando
                                                         }
-                                                        className="rounded-lg bg-[#d66b13] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                                        className="rounded-lg bg-[#d66b13] px-3 py-2 text-sm font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1"
                                                     >
-                                                        <Send className="mr-1 inline size-3.5" />
+                                                        {procesando ? (
+                                                            <Loader2 className="size-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Send className="size-3.5" />
+                                                        )}
                                                         Enviar
                                                     </button>
                                                 </div>

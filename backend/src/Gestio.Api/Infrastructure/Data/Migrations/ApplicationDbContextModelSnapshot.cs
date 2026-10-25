@@ -36,6 +36,9 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Property<Guid>("DocumentoId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("DocumentoRelacionadoId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("FechaDeteccion")
                         .HasColumnType("timestamp with time zone");
 
@@ -57,6 +60,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DocumentoId");
+
+                    b.HasIndex("DocumentoRelacionadoId");
 
                     b.ToTable("anomalias", (string)null);
                 });
@@ -445,6 +450,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasForeignKey("DocumentoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentoRelacionadoId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Documento");
                 });
