@@ -8,32 +8,41 @@ public sealed class ExtraccionIa
 {
     private IReadOnlyList<DesgloseIva>? desgloses;
     private IReadOnlyList<string>? advertencias;
+    private IReadOnlyDictionary<string, NivelConfianza>? confianzaCampos;
 
     // Se conservan con la evidencia y las propuestas en el JSON existente.
     [NotMapped]
     public IReadOnlyList<DesgloseIva> DesglosesIva
     {
-        get => desgloses ?? LeerLista<DesgloseIva>("desglosesIva");
+        get => desgloses ?? Leer<DesgloseIva[]>("desglosesIva") ?? [];
         set => desgloses = value;
     }
 
     [NotMapped]
     public IReadOnlyList<string> Advertencias
     {
-        get => advertencias ?? LeerLista<string>("advertencias");
+        get => advertencias ?? Leer<string[]>("advertencias") ?? [];
         set => advertencias = value;
     }
 
-    private IReadOnlyList<T> LeerLista<T>(string propiedad)
+    // Confianza de cada campo propuesto, según la lectura del motor que lo respalda.
+    // Un campo que no aparece no tenía puntuación disponible: no se inventa.
+    [NotMapped]
+    public IReadOnlyDictionary<string, NivelConfianza> ConfianzaCampos
     {
-        if (string.IsNullOrWhiteSpace(DatosCrudosJson)) return [];
+        get => confianzaCampos ?? Leer<Dictionary<string, NivelConfianza>>("confianzaCampos") ?? [];
+        set => confianzaCampos = value;
+    }
+
+    private T? Leer<T>(string propiedad) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(DatosCrudosJson)) return null;
         try
         {
             using var json = JsonDocument.Parse(DatosCrudosJson);
-            return json.RootElement.TryGetProperty(propiedad, out var lista)
-                ? lista.Deserialize<T[]>() ?? [] : [];
+            return json.RootElement.TryGetProperty(propiedad, out var valor) ? valor.Deserialize<T>() : null;
         }
-        catch (JsonException) { return []; }
+        catch (JsonException) { return null; }
     }
     public Guid Id { get; set; }
 

@@ -35,7 +35,8 @@ public sealed record ExtraccionResponse(
     string? NivelConfianza,
     string? DatosCrudosJson,
     IReadOnlyList<Gestio.Api.Domain.Entities.DesgloseIva> DesglosesIva,
-    IReadOnlyList<string> Advertencias);
+    IReadOnlyList<string> Advertencias,
+    IReadOnlyDictionary<string, string> ConfianzaCampos);
 
 public sealed record AnomaliaResponse(
     Guid Id,

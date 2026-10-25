@@ -189,7 +189,8 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 documento.ExtraccionIa.NivelConfianza?.ToString(),
                 documento.ExtraccionIa.DatosCrudosJson,
                 documento.ExtraccionIa.DesglosesIva,
-                documento.ExtraccionIa.Advertencias),
+                documento.ExtraccionIa.Advertencias,
+                documento.ExtraccionIa.ConfianzaCampos.ToDictionary(c => c.Key, c => c.Value.ToString())),
         documento.Anomalias
             .OrderByDescending(anomalia => anomalia.FechaDeteccion)
             .Select(anomalia => new AnomaliaResponse(

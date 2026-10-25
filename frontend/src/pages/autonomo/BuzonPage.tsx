@@ -57,7 +57,7 @@ export function BuzonPage() {
                                     <thead>
                                         <tr className="border-b border-[#ede9e0]">
                                             <th className={`${etiqueta} px-5 py-3 text-left`}>Documento</th>
-                                            <th className={`${etiqueta} hidden px-3 py-3 text-left md:table-cell`}>Categoría IA</th>
+                                            <th className={`${etiqueta} hidden px-3 py-3 text-left md:table-cell`}>Categoría</th>
                                             <th className={`${etiqueta} px-3 py-3 text-right`}>Importe</th>
                                             <th className={`${etiqueta} hidden px-3 py-3 text-center sm:table-cell`}>Estado</th>
                                             <th className="px-5 py-3"><span className="sr-only">Original</span></th>
@@ -133,7 +133,8 @@ export function BuzonPage() {
                                                     </div>
                                                 </td>
                                                 <td className="hidden px-3 py-3.5 md:table-cell">
-                                                    <span className="text-sm text-[#3d3a30]">{documento.extraccion?.categoriaSugerida ?? '—'}</span>
+                                                    {/* El autónomo ve la categoría vigente que fija el gestor, no la propuesta de la IA (PB-09). */}
+                                                    <span className="text-sm text-[#3d3a30]">{documento.categoria === 'SIN_CLASIFICAR' ? 'Sin clasificar' : documento.categoria}</span>
                                                 </td>
                                                 <td className="px-3 py-3.5 text-right">
                                                     <span className="text-sm font-semibold text-[#1a1916]">

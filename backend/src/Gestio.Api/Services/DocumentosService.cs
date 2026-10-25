@@ -183,8 +183,9 @@ public sealed class DocumentosService(
         };
         context.Add(anomalia);
 
+        // Sin usuario: es una detección automática y el historial la muestra como «Sistema» (PB-08).
         var evento = new EventoDocumento(
-            nuevo.UsuarioId,
+            null,
             TipoEventoDocumento.POSIBLE_DUPLICADO,
             ahora,
             Truncar($"Anomalía: posible duplicado de {anterior.NombreArchivo}", 500));
@@ -259,7 +260,7 @@ public sealed class DocumentosService(
                 extraccion.Total,
                 extraccion.DesglosesIva,
                 extraccion.Advertencias,
-                Confianza = (decimal?)null
+                extraccion.ConfianzaCampos
             });
 
             extraccion.DatosCrudosJson = System.Text.Json.JsonSerializer.Serialize(new
@@ -267,7 +268,8 @@ public sealed class DocumentosService(
                 texto = reconocido.Texto,
                 lecturas = reconocido.Lecturas,
                 desglosesIva = extraccion.DesglosesIva,
-                advertencias = extraccion.Advertencias
+                advertencias = extraccion.Advertencias,
+                confianzaCampos = extraccion.ConfianzaCampos
             });
 
             if (documento.ExtraccionIa is not null) context.Remove(documento.ExtraccionIa);

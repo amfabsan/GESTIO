@@ -65,6 +65,8 @@ export type ExtraccionDocumento = {
     datosCrudosJson: string | null
     desglosesIva: { baseImponible: number | null; tipoIva: number | null; cuotaIva: number | null }[]
     advertencias: string[]
+    // Confianza de cada campo propuesto (EmisorNif, Total…). Un campo ausente no tenía puntuación.
+    confianzaCampos?: Record<string, NivelConfianza>
 }
 
 export type HistorialValidacion = {

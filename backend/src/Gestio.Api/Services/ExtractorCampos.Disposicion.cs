@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Gestio.Api.Domain.Entities;
+using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Interfaces;
 
 namespace Gestio.Api.Services;
@@ -166,8 +167,20 @@ public static partial class ExtractorCampos
                 g.Key.TipoIva == f.TipoIva && g.Key.CuotaIva == f.CuotaIva)).OrderBy(f => f.TipoIva).ToArray();
         if (resultado.DesglosesIva.Count > 1) resultado.TipoIva = resultado.CuotaIva = null;
         Comprobar(resultado);
+        // Confianza de cada valor elegido: la mejor puntuación del motor entre las lecturas que lo
+        // respaldan. El texto nativo de un PDF no trae puntuación, así que no se le asigna ninguna.
+        resultado.ConfianzaCampos = Valores(resultado)
+            .Where(v => v.Value is not null)
+            .Select(v => (Campo: v.Key, Puntuacion: candidatos.Concat(cabeceras)
+                .Where(c => c.Campo == v.Key && Equals(c.Valor, v.Value)).Max(c => c.Confianza)))
+            .Where(c => c.Puntuacion is not null)
+            .ToDictionary(c => c.Campo, c => Nivel(c.Puntuacion!.Value));
         return resultado;
     }
+
+    // Mismos umbrales con los que se eligen las lecturas: 85 es una lectura fuerte y 40 la mínima aceptable.
+    private static NivelConfianza Nivel(double puntuacion) =>
+        puntuacion >= 85 ? NivelConfianza.ALTO : puntuacion >= 40 ? NivelConfianza.MEDIO : NivelConfianza.DUDOSO;
 
     private static bool Dentro(PalabraDocumento palabra, RegionDocumento? region) => region is not null &&
         palabra.CentroX >= region.X && palabra.CentroX <= region.X + region.Ancho &&

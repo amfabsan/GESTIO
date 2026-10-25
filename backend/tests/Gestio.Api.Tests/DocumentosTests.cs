@@ -193,6 +193,52 @@ public sealed class DocumentosTests
         Assert.Equal(2, await context.Documentos.CountAsync(documento => documento.NombreArchivo == "factura.pdf"));
     }
 
+    // PA 126 (UT10) y PA 80 (UT08): la alerta de duplicado es automática, así que su evento no tiene actor.
+    [Fact]
+    public async Task SubirAsync_Duplicado_RegistraElEventoComoDelSistema()
+    {
+        await using var context = CrearContexto(nameof(SubirAsync_Duplicado_RegistraElEventoComoDelSistema));
+        await DbInitializer.SeedAsync(context);
+        var servicio = CrearServicio(context, new AlmacenamientoEnMemoria());
+
+        Guid id = default;
+        for (var i = 0; i < 2; i++)
+        {
+            using var contenido = new MemoryStream(PdfValido);
+            id = (await servicio.SubirAsync(Ramon, "factura.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+        }
+        context.ChangeTracker.Clear();
+
+        var evento = await context.EventosDocumento.SingleAsync(e => e.DocumentoId == id && e.Tipo == TipoEventoDocumento.POSIBLE_DUPLICADO);
+        Assert.Null(evento.UsuarioId);
+    }
+
+    // PA 102 (UT06) / PA 67 (UT07): la confianza de cada campo se guarda con la extracción y llega a la bandeja.
+    [Fact]
+    public async Task Procesar_GuardaLaConfianzaDeCadaCampo_YLaDevuelveLaApi()
+    {
+        await using var context = CrearContexto(nameof(Procesar_GuardaLaConfianzaDeCadaCampo_YLaDevuelveLaApi));
+        await DbInitializer.SeedAsync(context);
+        PalabraDocumento P(string texto, double x, double y) => new(texto, x, y, .08, .02, 95);
+        PalabraDocumento[] palabras = [P("BASE", .05, .70), P("IVA", .25, .70), P("CUOTA", .45, .70), P("TOTAL", .7, .70),
+            P("92,95", .82, .70), P("84,50", .05, .74), P("10%", .25, .74), P("8,45", .45, .74)];
+        var lector = new LectorConLecturas(new TextoDocumento(DisposicionDocumento.Texto(palabras), "motor-prueba",
+            [new LecturaDocumento(1, "pagina", "psm-3", false, palabras)]));
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, lector, new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var id = (await servicio.SubirAsync(Ramon, "factura.pdf", contenido, PdfValido.Length, CancellationToken.None)).Valor!.Id;
+        context.ChangeTracker.Clear();
+
+        var respuesta = await CrearControlador(context, Pedro).GetDocumento(id, CancellationToken.None);
+        var documento = Assert.IsType<DocumentoResponse>(Assert.IsType<OkObjectResult>(respuesta.Result).Value);
+
+        Assert.Equal("ALTO", documento.Extraccion!.ConfianzaCampos["Total"]);
+        Assert.Equal("ALTO", documento.Extraccion.ConfianzaCampos["CuotaIva"]);
+        Assert.False(documento.Extraccion.ConfianzaCampos.ContainsKey("EmisorNif"));
+    }
+
     [Theory]
     [InlineData("virus.pdf", new byte[] { 0x4D, 0x5A, 0x90, 0x00, 0x03 })]
     [InlineData("foto.png", new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00 })]
@@ -823,6 +869,13 @@ file sealed class LectorParaPruebaDeFlujo(string? texto = null) : ILectorDocumen
 {
     public Task<TextoDocumento> LeerAsync(Stream original, string tipoMime, CancellationToken cancellationToken) =>
         Task.FromResult(new TextoDocumento(texto ?? "Emisor: Comercio de prueba\nTotal: 12,34", "doble-unitario"));
+}
+
+// Devuelve un reconocimiento con posiciones y puntuaciones, como el motor OCR.
+file sealed class LectorConLecturas(TextoDocumento reconocido) : ILectorDocumento
+{
+    public Task<TextoDocumento> LeerAsync(Stream original, string tipoMime, CancellationToken cancellationToken) =>
+        Task.FromResult(reconocido);
 }
 
 file sealed class UsuarioActualFijo(UsuarioActual usuario) : ICurrentUserService

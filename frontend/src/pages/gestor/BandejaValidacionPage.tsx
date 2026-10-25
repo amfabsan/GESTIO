@@ -153,12 +153,25 @@ const NIVELES_CONFIANZA: Record<string, { etiqueta: string; clases: string }> = 
 }
 
 // Solo se muestra la confianza que calcula el backend; nunca se inventa en el cliente.
+// Cada campo lleva la suya; los documentos sin confianza por campo usan la del documento.
 function confianzaCampo(documento: Documento, campo: Campo) {
-    const nivel = documento.extraccion?.nivelConfianza
+    const extraccion = documento.extraccion
 
-    if (!nivel || obtenerValor(documento, campo).trim() === '') return null
+    if (!extraccion || obtenerValor(documento, campo).trim() === '') return null
 
-    return NIVELES_CONFIANZA[nivel] ?? null
+    const porCampo = extraccion.confianzaCampos ?? {}
+    const nivel = Object.keys(porCampo).length > 0
+        ? porCampo[CAMPOS_API[campo]]
+        : extraccion.nivelConfianza
+
+    return nivel ? NIVELES_CONFIANZA[nivel] ?? null : null
+}
+
+// Un valor corregido por el gestor ya no es la propuesta: su confianza de lectura no aplica.
+function campoCorregido(documento: Documento, campo: Campo) {
+    return (documento.validacion ?? []).some(
+        (cambio) => cambio.tipoCambio === 'CORRECCION' && cambio.campo === CAMPOS_API[campo],
+    )
 }
 
 function normalizarValorCampo(campo: Campo, valor: string) {
@@ -743,9 +756,10 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         <div className="mt-6">
+                                            {/* Con cada evento nuevo (categoría, corrección…) el historial se recarga sin cerrarse. */}
                                             <HistorialDocumento
-                                                key={`${documentoSeleccionado.id}-${documentoSeleccionado.estado}`}
                                                 documentoId={documentoSeleccionado.id}
+                                                version={documentoSeleccionado.historial.length}
                                             />
                                         </div>
                                     </section>
@@ -900,7 +914,11 @@ export function BandejaValidacionPage() {
                                                                     </strong>
                                                                 </div>
 
-                                                                {confianza && (
+                                                                {campoCorregido(documentoSeleccionado, clave) ? (
+                                                                    <span className="mt-1.5 inline-block rounded-full bg-[#e7f1fb] px-2 py-0.5 text-xs font-bold text-[#1d2b55]">
+                                                                        Corregido por el gestor
+                                                                    </span>
+                                                                ) : confianza && (
                                                                     <span
                                                                         className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${confianza.clases}`}
                                                                     >
