@@ -193,7 +193,9 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         documento.Anomalias
             .OrderByDescending(anomalia => anomalia.FechaDeteccion)
             .Select(anomalia => new AnomaliaResponse(
+                anomalia.Id,
                 anomalia.Tipo.ToString(),
+                anomalia.Campo,
                 anomalia.Descripcion,
                 anomalia.Severidad.ToString(),
                 anomalia.Resuelta,

@@ -38,7 +38,9 @@ public sealed record ExtraccionResponse(
     IReadOnlyList<string> Advertencias);
 
 public sealed record AnomaliaResponse(
+    Guid Id,
     string Tipo,
+    string? Campo,
     string Descripcion,
     string Severidad,
     bool Resuelta,

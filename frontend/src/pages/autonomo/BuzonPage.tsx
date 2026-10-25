@@ -111,7 +111,7 @@ export function BuzonPage() {
 
                                                                 {/* Visualización de anomalías y enlace al documento relacionado para el autónomo */}
                                                                 {documento.anomalias?.filter((a) => !a.resuelta).map((anomalia) => (
-                                                                    <div key={`${anomalia.tipo}-${anomalia.fechaDeteccion}`} className="mt-2 rounded-xl border border-red-200 bg-red-50 p-3 text-red-800">
+                                                                    <div key={anomalia.id} className="mt-2 rounded-xl border border-red-200 bg-red-50 p-3 text-red-800">
                                                                         <p className="font-semibold">{anomalia.descripcion}</p>
                                                                         {anomalia.documentoRelacionadoId && (
                                                                             <button

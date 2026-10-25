@@ -13,6 +13,7 @@ import {
 import type { CategoriaDocumento, Documento, EstadoDocumento } from '../../types/documentos'
 import { obtenerOriginal } from '../../features/documentos/documentosApi'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
+import { etiquetaCampo } from '../../features/documentos/eventosDocumento'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
 import { formatearFecha } from '../../utils/formato'
 
@@ -107,6 +108,25 @@ function obtenerTotal(documento: Documento) {
 
 function tieneAnomalia(documento: Documento) {
     return documento.anomalias.some((anomalia) => !anomalia.resuelta)
+}
+
+// Regla que originó cada aviso (PB-10). La explicación concreta llega en la descripción.
+const REGLAS_ANOMALIA: Record<string, string> = {
+    NIF_AUSENTE: 'NIF del emisor ausente',
+    DESCUADRE_ARITMETICO: 'Importes que no cuadran',
+    POSIBLE_DUPLICADO: 'Posible duplicado',
+    BAJA_CONFIANZA: 'Lectura poco fiable',
+}
+
+function reglaAnomalia(tipo: string) {
+    return REGLAS_ANOMALIA[tipo] ?? tipo
+}
+
+// Campo señalado por un aviso pendiente: se marca para que el gestor sepa qué revisar.
+function campoARevisar(documento: Documento, campo: Campo) {
+    return documento.anomalias.some(
+        (anomalia) => !anomalia.resuelta && anomalia.campo === CAMPOS_API[campo],
+    )
 }
 
 function estadoLegible(estado: Documento['estado']) {
@@ -649,9 +669,15 @@ export function BandejaValidacionPage() {
                                                             )
                                                             .map((anomalia) => (
                                                                 <div
-                                                                    key={`${anomalia.tipo}-${anomalia.fechaDeteccion}`}
-                                                                    className="mt-1"
+                                                                    key={anomalia.id}
+                                                                    className="mt-2"
                                                                 >
+                                                                    <p className="text-sm font-semibold text-red-700">
+                                                                        {reglaAnomalia(anomalia.tipo)}
+                                                                        {anomalia.campo &&
+                                                                            ` · Revisa: ${etiquetaCampo(anomalia.campo)}`}
+                                                                    </p>
+
                                                                     <p className="text-sm leading-5 text-red-700">
                                                                         {anomalia.descripcion}
                                                                     </p>
@@ -690,6 +716,29 @@ export function BandejaValidacionPage() {
                                                         </button>
                                                     </div>
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {documentoSeleccionado.anomalias.some((anomalia) => anomalia.resuelta) && (
+                                            <div className="mt-3 rounded-2xl border border-[#e6e1d8] bg-[#faf9f6] p-4">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-[#766e61]">
+                                                    Avisos resueltos
+                                                </p>
+
+                                                {documentoSeleccionado.anomalias
+                                                    .filter((anomalia) => anomalia.resuelta)
+                                                    .map((anomalia) => (
+                                                        <p
+                                                            key={anomalia.id}
+                                                            className="mt-1.5 flex items-center gap-1.5 text-sm text-[#766e61]"
+                                                        >
+                                                            <Check className="size-3.5 shrink-0 text-[#008b45]" />
+                                                            {reglaAnomalia(anomalia.tipo)}
+                                                            {anomalia.campo && ` (${etiquetaCampo(anomalia.campo)})`}
+                                                            {' · detectado el '}
+                                                            {formatearFecha(anomalia.fechaDeteccion)}
+                                                        </p>
+                                                    ))}
                                             </div>
                                         )}
 
@@ -780,8 +829,13 @@ export function BandejaValidacionPage() {
                                                             key={clave}
                                                             className="block"
                                                         >
-                                                            <span className="mb-1.5 block text-sm font-semibold text-[#766e61]">
+                                                            <span className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-[#766e61]">
                                                                 {etiqueta}
+                                                                {campoARevisar(documentoSeleccionado, clave) && (
+                                                                    <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                                        Revisar
+                                                                    </span>
+                                                                )}
                                                             </span>
 
                                                             <input
@@ -825,8 +879,13 @@ export function BandejaValidacionPage() {
                                                         return (
                                                             <div key={clave}>
                                                                 <div className="flex items-end justify-between gap-3">
-                                                                    <span className="text-sm text-[#766e61]">
+                                                                    <span className="flex items-center gap-1.5 text-sm text-[#766e61]">
                                                                         {etiqueta}
+                                                                        {campoARevisar(documentoSeleccionado, clave) && (
+                                                                            <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                                                Revisar
+                                                                            </span>
+                                                                        )}
                                                                     </span>
 
                                                                     <strong className="text-right text-sm text-[#151515]">

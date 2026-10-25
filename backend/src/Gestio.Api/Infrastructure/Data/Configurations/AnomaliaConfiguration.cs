@@ -17,6 +17,9 @@ public sealed class AnomaliaConfiguration : IEntityTypeConfiguration<Anomalia>
             .HasMaxLength(30)
             .IsRequired();
 
+        builder.Property(anomalia => anomalia.Campo)
+            .HasMaxLength(50);
+
         builder.Property(anomalia => anomalia.Descripcion)
             .HasMaxLength(500)
             .IsRequired();

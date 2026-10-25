@@ -78,7 +78,10 @@ export type HistorialValidacion = {
 }
 
 export type AnomaliaDocumento = {
+    id: string
     tipo: string
+    // Campo de la extracción que señala la regla (EmisorNif, CuotaIva, Total…), si señala uno.
+    campo: string | null
     descripcion: string
     severidad: string
     resuelta: boolean

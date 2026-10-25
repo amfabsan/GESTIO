@@ -196,7 +196,7 @@ public sealed class DocumentosService(
 
     public async Task<Resultado<Documento>> ProcesarAsync(UsuarioActual usuario, Guid id, bool reintento, CancellationToken cancellationToken)
     {
-        var documento = await ConsultablesPor(usuario).Include(d => d.Eventos).Include(d => d.ExtraccionIa)
+        var documento = await ConsultablesPor(usuario).Include(d => d.Eventos).Include(d => d.ExtraccionIa).Include(d => d.Anomalias)
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
         if (documento is null) return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
@@ -274,6 +274,7 @@ public sealed class DocumentosService(
 
             documento.ExtraccionIa = extraccion;
             context.Add(extraccion);
+            RevisarAnomalias(documento);
             documento.Estado = EstadoDocumento.PENDIENTE_VALIDACION;
             intento.Resultado = "CORRECTO";
         }
@@ -382,6 +383,7 @@ public sealed class DocumentosService(
         var documento = await ConsultablesPor(usuario)
             .Include(d => d.ExtraccionIa)
             .Include(d => d.Eventos)
+            .Include(d => d.Anomalias)
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
         if (documento is null)
@@ -450,6 +452,8 @@ public sealed class DocumentosService(
         var errores = ValidarCampos(documento.ExtraccionIa);
         if (errores.Count > 0)
             return ErrorDeValidacion(errores);
+
+        RevisarAnomalias(documento);
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -587,6 +591,46 @@ public sealed class DocumentosService(
         await context.SaveChangesAsync(cancellationToken);
 
         return (await ObtenerAsync(usuario, id, cancellationToken))!;
+    }
+
+    // Aplica las reglas de PB-10 a los valores vigentes. Crea las anomalías nuevas y da por resueltas las
+    // que una corrección ha eliminado, sin borrarlas: queda el registro de que se detectaron.
+    private void RevisarAnomalias(Documento documento)
+    {
+        if (documento.ExtraccionIa is null) return;
+
+        var detectadas = DetectorAnomalias.Detectar(documento.ExtraccionIa);
+        var pendientes = documento.Anomalias
+            .Where(a => !a.Resuelta && a.Campo is not null && DetectorAnomalias.EsDeEstasReglas(a.Tipo))
+            .ToList();
+
+        foreach (var pendiente in pendientes)
+        {
+            var sigue = detectadas.FirstOrDefault(d => d.Tipo == pendiente.Tipo && d.Campo == pendiente.Campo);
+            if (sigue is null)
+                pendiente.Resuelta = true;
+            else
+                pendiente.Descripcion = sigue.Descripcion;
+        }
+
+        var ahora = timeProvider.GetUtcNow();
+        foreach (var nueva in detectadas.Where(d => !pendientes.Any(p => p.Tipo == d.Tipo && p.Campo == d.Campo)))
+        {
+            // ADVERTENCIA: avisa al gestor pero no bloquea la revisión.
+            var anomalia = new Anomalia
+            {
+                Id = Guid.NewGuid(),
+                DocumentoId = documento.Id,
+                Tipo = nueva.Tipo,
+                Campo = nueva.Campo,
+                Descripcion = Truncar(nueva.Descripcion, 500),
+                Severidad = SeveridadAnomalia.ADVERTENCIA,
+                Resuelta = false,
+                FechaDeteccion = ahora
+            };
+            documento.Anomalias.Add(anomalia);
+            context.Add(anomalia);
+        }
     }
 
     private static readonly Dictionary<string, string> Etiquetas = new(StringComparer.OrdinalIgnoreCase)

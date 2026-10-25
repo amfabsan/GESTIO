@@ -12,6 +12,9 @@ public sealed class Anomalia
 
     public TipoAnomalia Tipo { get; set; }
 
+    // Campo de la extracción que debe revisar el gestor (p. ej. "EmisorNif", "Total"), si la regla señala uno.
+    public string? Campo { get; set; }
+
     public required string Descripcion { get; set; }
 
     public SeveridadAnomalia Severidad { get; set; }
