@@ -12,7 +12,7 @@ public sealed record DocumentoResponse(
     bool TieneOriginal,
     string Categoria,
     string? CategoriaPropuesta,
-    decimal? ConfianzaPropuesta,
+    string? NivelConfianzaPropuesta,
     ExtraccionResponse? Extraccion,
     IReadOnlyList<AnomaliaResponse> Anomalias,
     IReadOnlyList<EventoDocumentoResponse> Historial,

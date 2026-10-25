@@ -1,6 +1,5 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
-using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Models.Requests;
 using Gestio.Api.Models.Responses;
@@ -147,7 +146,7 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         documento.StorageKey is not null,
         documento.Categoria.ToString(),
         ParseCategoriaPropuesta(documento.ExtraccionIa?.CategoriaSugerida),
-        MapConfianzaPropuesta(documento.ExtraccionIa?.NivelConfianza),
+        documento.ExtraccionIa?.NivelConfianza?.ToString(),
         documento.ExtraccionIa is null
             ? null
             : new ExtraccionResponse(
@@ -198,18 +197,5 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         if (string.IsNullOrWhiteSpace(categoriaSugerida)) return null;
 
         return categoriaSugerida.Trim();
-    }
-
-    private static decimal? MapConfianzaPropuesta(NivelConfianza? nivel)
-    {
-        if (nivel is null) return null;
-
-        return nivel switch
-        {
-            NivelConfianza.ALTO => 0.95m,
-            NivelConfianza.MEDIO => 0.75m,
-            NivelConfianza.DUDOSO => 0.50m,
-            _ => 0.50m
-        };
     }
 }
