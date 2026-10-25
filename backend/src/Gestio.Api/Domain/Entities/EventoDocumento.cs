@@ -28,6 +28,15 @@ public sealed class EventoDocumento
             ValorNuevo = valorNuevo
         };
 
+    // Mismo formato que una corrección, para que el historial (PB-08) muestre la categoría anterior y la nueva.
+    public static EventoDocumento CambioCategoria(Guid usuarioId, DateTimeOffset fecha, CategoriaDocumento anterior, CategoriaDocumento nueva) =>
+        new(usuarioId, TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA, fecha, $"Categoría actualizada de {anterior} a {nueva}.")
+        {
+            Campo = "Categoria",
+            ValorAnterior = anterior.ToString(),
+            ValorNuevo = nueva.ToString()
+        };
+
     public Guid Id { get; private set; }
 
     public Guid DocumentoId { get; private set; }
