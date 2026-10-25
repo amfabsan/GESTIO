@@ -633,6 +633,164 @@ public sealed class DocumentosTests
         Assert.Equal(DocumentoErrores.NoAutenticado, (await Consultar(null)).Error);
     }
 
+    // PA 99-1 / 101-1 (UT09): el gestor asigna una categoría a un documento sin clasificar y después
+    // la cambia. Cada cambio registra actor, fecha y categorías anterior y nueva, y aparece en el
+    // historial del documento (PB-08).
+    [Fact]
+    public async Task CambiarCategoria_AsignaYCambia_RegistraElCambioEnElHistorial()
+    {
+        await using var context = CrearContexto(nameof(CambiarCategoria_AsignaYCambia_RegistraElCambioEnElHistorial));
+        await DbInitializer.SeedAsync(context);
+        var servicio = CrearServicio(context, new AlmacenamientoEnMemoria());
+        var id = await FacturaConPropuestaIngreso(context);
+        Assert.Equal(CategoriaDocumento.SIN_CLASIFICAR, (await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id)).Categoria);
+
+        var asignacion = await servicio.CambiarCategoriaAsync(Pedro, id, "INGRESO", CancellationToken.None);
+        Assert.True(asignacion.EsCorrecto, asignacion.Error?.Mensaje);
+        Assert.Equal(CategoriaDocumento.INGRESO, asignacion.Valor!.Categoria);
+        context.ChangeTracker.Clear();
+
+        var cambio = await servicio.CambiarCategoriaAsync(Pedro, id, " gasto ", CancellationToken.None);
+        Assert.True(cambio.EsCorrecto, cambio.Error?.Mensaje);
+        Assert.Equal(CategoriaDocumento.GASTO, cambio.Valor!.Categoria);
+        context.ChangeTracker.Clear();
+
+        var registro = await context.HistorialCategorias.AsNoTracking().Where(h => h.DocumentoId == id).ToListAsync();
+        Assert.Equal(2, registro.Count);
+        var ultimo = Assert.Single(registro, h => h.CategoriaAnterior == CategoriaDocumento.INGRESO);
+        Assert.Equal(CategoriaDocumento.GASTO, ultimo.CategoriaNueva);
+        Assert.Equal(DbInitializer.PedroId, ultimo.UsuarioId);
+        Assert.NotEqual(default, ultimo.FechaCambio);
+
+        var historial = new HistorialDocumentoService(context, new AccesoDocumentos(context), new UsuarioActualFijo(Ramon));
+        var eventos = (await historial.ObtenerAsync(id, 1, 20, CancellationToken.None)).Valor!.Elementos;
+        Assert.Equal(2, eventos.Count(evento => evento.Tipo == TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA));
+        var evento = Assert.Single(eventos, evento => evento.Cambio?.ValorAnterior == "INGRESO");
+        Assert.Equal(TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA, evento.Tipo);
+        Assert.Equal("Categoria", evento.Cambio!.Campo);
+        Assert.Equal("GASTO", evento.Cambio.ValorNuevo);
+        Assert.Equal(DbInitializer.PedroId, evento.Actor!.Id);
+    }
+
+    // PA 105-1 (UT09): elegir una categoría distinta de la propuesta no sobrescribe la propuesta
+    // ni su confianza, y la corrección de campos (UT07) tampoco puede cambiarla.
+    [Fact]
+    public async Task CambiarCategoria_DistintaDeLaPropuesta_ConservaPropuestaYConfianza()
+    {
+        await using var context = CrearContexto(nameof(CambiarCategoria_DistintaDeLaPropuesta_ConservaPropuestaYConfianza));
+        await DbInitializer.SeedAsync(context);
+        var id = await FacturaConPropuestaIngreso(context);
+
+        var respuesta = await CrearControlador(context, Pedro)
+            .CambiarCategoria(id, new CambiarCategoriaRequest("GASTO"), CancellationToken.None);
+        var documento = Assert.IsType<DocumentoResponse>(Assert.IsType<OkObjectResult>(respuesta.Result).Value);
+        Assert.Equal("GASTO", documento.Categoria);
+        Assert.Equal("INGRESO", documento.CategoriaPropuesta);
+        Assert.Equal("ALTO", documento.NivelConfianzaPropuesta);
+        context.ChangeTracker.Clear();
+
+        // La corrección solo se admite en PENDIENTE_VALIDACION; se fuerza para comprobar el campo.
+        var pendiente = await context.Documentos.SingleAsync(d => d.Id == id);
+        pendiente.Estado = EstadoDocumento.PENDIENTE_VALIDACION;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var correccion = await CrearServicio(context, new AlmacenamientoEnMemoria())
+            .CorregirAsync(Pedro, id, [new CampoValidacionRequest("CategoriaSugerida", "GASTO")], CancellationToken.None);
+        Assert.Equal(TipoError.VALIDACION, correccion.Error!.Tipo);
+        context.ChangeTracker.Clear();
+
+        var extraccion = await context.ExtraccionesIa.AsNoTracking().SingleAsync(e => e.DocumentoId == id);
+        Assert.Equal("INGRESO", extraccion.CategoriaSugerida);
+        Assert.Equal(NivelConfianza.ALTO, extraccion.NivelConfianza);
+    }
+
+    // PA 109-1 (UT09): solo se admiten INGRESO, GASTO y OTRO. Cualquier otro valor, incluido
+    // SIN_CLASIFICAR o un número, se rechaza y la categoría vigente no cambia.
+    [Theory]
+    [InlineData("SALARIO")]
+    [InlineData("SIN_CLASIFICAR")]
+    [InlineData("99")]
+    [InlineData("0")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task CambiarCategoria_FueraDelCatalogo_SeRechazaYNoCambia(string? categoria)
+    {
+        await using var context = CrearContexto($"{nameof(CambiarCategoria_FueraDelCatalogo_SeRechazaYNoCambia)}-{categoria}");
+        await DbInitializer.SeedAsync(context);
+        var servicio = CrearServicio(context, new AlmacenamientoEnMemoria());
+        var id = await FacturaConPropuestaIngreso(context);
+        Assert.True((await servicio.CambiarCategoriaAsync(Pedro, id, "INGRESO", CancellationToken.None)).EsCorrecto);
+        context.ChangeTracker.Clear();
+
+        var resultado = await servicio.CambiarCategoriaAsync(Pedro, id, categoria, CancellationToken.None);
+        Assert.Equal(TipoError.VALIDACION, resultado.Error!.Tipo);
+        context.ChangeTracker.Clear();
+
+        Assert.Equal(CategoriaDocumento.INGRESO, (await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id)).Categoria);
+        Assert.Single(await context.HistorialCategorias.Where(h => h.DocumentoId == id).ToListAsync());
+    }
+
+    // PA 110-1 (UT09): guardar la categoría vigente responde con el documento y no registra
+    // ningún cambio ficticio.
+    [Fact]
+    public async Task CambiarCategoria_MismaCategoria_NoRegistraCambio()
+    {
+        await using var context = CrearContexto(nameof(CambiarCategoria_MismaCategoria_NoRegistraCambio));
+        await DbInitializer.SeedAsync(context);
+        var id = await FacturaConPropuestaIngreso(context);
+        Assert.True((await CrearServicio(context, new AlmacenamientoEnMemoria())
+            .CambiarCategoriaAsync(Pedro, id, "GASTO", CancellationToken.None)).EsCorrecto);
+        context.ChangeTracker.Clear();
+
+        var respuesta = await CrearControlador(context, Pedro)
+            .CambiarCategoria(id, new CambiarCategoriaRequest("GASTO"), CancellationToken.None);
+        var documento = Assert.IsType<DocumentoResponse>(Assert.IsType<OkObjectResult>(respuesta.Result).Value);
+        Assert.Equal("GASTO", documento.Categoria);
+        context.ChangeTracker.Clear();
+
+        Assert.Single(await context.HistorialCategorias.Where(h => h.DocumentoId == id).ToListAsync());
+        Assert.Single(await context.EventosDocumento
+            .Where(e => e.DocumentoId == id && e.Tipo == TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA)
+            .ToListAsync());
+    }
+
+    // PA 111-2 (UT09): ni el autónomo ni un gestor sin vinculación activa pueden cambiar la
+    // categoría. La categoría vigente no cambia y no se registra ningún evento.
+    [Fact]
+    public async Task CambiarCategoria_SinPermiso_SeDeniegaYNoRegistraNada()
+    {
+        await using var context = CrearContexto(nameof(CambiarCategoria_SinPermiso_SeDeniegaYNoRegistraNada));
+        await DbInitializer.SeedAsync(context);
+        var servicio = CrearServicio(context, new AlmacenamientoEnMemoria());
+        var id = await FacturaConPropuestaIngreso(context);
+        Assert.True((await servicio.CambiarCategoriaAsync(Pedro, id, "INGRESO", CancellationToken.None)).EsCorrecto);
+        context.ChangeTracker.Clear();
+
+        var autonomo = await servicio.CambiarCategoriaAsync(Ramon, id, "GASTO", CancellationToken.None);
+        Assert.Equal(TipoError.PROHIBIDO, autonomo.Error!.Tipo);
+
+        var vinculo = await context.Vinculaciones.FirstAsync(v => v.AutonomoId == Ramon.Id);
+        vinculo.Estado = EstadoVinculacion.FINALIZADA;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        // Sin vinculación activa se responde como si no existiera, igual que en la PA 76-1.
+        var gestor = await servicio.CambiarCategoriaAsync(Pedro, id, "GASTO", CancellationToken.None);
+        Assert.Equal(TipoError.NO_ENCONTRADO, gestor.Error!.Tipo);
+        context.ChangeTracker.Clear();
+
+        Assert.Equal(CategoriaDocumento.INGRESO, (await context.Documentos.AsNoTracking().SingleAsync(d => d.Id == id)).Categoria);
+        Assert.Single(await context.HistorialCategorias.Where(h => h.DocumentoId == id).ToListAsync());
+        Assert.Single(await context.EventosDocumento
+            .Where(e => e.DocumentoId == id && e.Tipo == TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA)
+            .ToListAsync());
+    }
+
+    // Factura de luz del seed: de Ramón, sin clasificar y con propuesta automática INGRESO (ALTO).
+    private static Task<Guid> FacturaConPropuestaIngreso(ApplicationDbContext context) =>
+        context.ExtraccionesIa.Where(e => e.CategoriaSugerida == "INGRESO").Select(e => e.DocumentoId).SingleAsync();
+
     private static ApplicationDbContext CrearContexto(string nombre) =>
         new(new DbContextOptionsBuilder<ApplicationDbContext>().UseInMemoryDatabase(nombre).Options);
 
