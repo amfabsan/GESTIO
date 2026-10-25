@@ -291,11 +291,7 @@ public sealed class DocumentosService(
             FechaCambio = ahora
         });
 
-        var evento = new EventoDocumento(
-            usuario.Id,
-            TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA,
-            ahora,
-            $"Categoría actualizada de {categoriaAnterior} a {categoria}.");
+        var evento = EventoDocumento.CambioCategoria(usuario.Id, ahora, categoriaAnterior, categoria);
         documento.Eventos.Add(evento);
         context.Add(evento);
 
