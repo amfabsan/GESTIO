@@ -23,7 +23,8 @@ public sealed class DocumentosService(
     IOptions<DocumentosOptions> options,
     TimeProvider timeProvider,
     ILogger<DocumentosService> logger,
-    ILectorDocumento lector)
+    ILectorDocumento lector,
+    AccesoDocumentos acceso)
 {
     // Catálogo asignable (PB-09). SIN_CLASIFICAR es solo el estado inicial: no se puede elegir.
     private static readonly CategoriaDocumento[] CatalogoCategorias =
@@ -220,7 +221,7 @@ public sealed class DocumentosService(
 
         var intento = new IntentoProcesamiento { DocumentoId = id, Inicio = timeProvider.GetUtcNow() };
         documento.Estado = EstadoDocumento.PROCESANDO;
-        var inicio = new EventoDocumento(usuario.Id, TipoEventoDocumento.PROCESAMIENTO_INICIADO, intento.Inicio, "PROCESANDO: inicio de extracción del original.");
+        var inicio = new EventoDocumento(reintento ? usuario.Id : null, TipoEventoDocumento.PROCESAMIENTO_INICIADO, intento.Inicio, "PROCESANDO: inicio de extracción del original.");
         documento.Eventos.Add(inicio);
         context.Add(inicio);
         context.Add(intento);
@@ -287,7 +288,7 @@ public sealed class DocumentosService(
 
         intento.Fin = timeProvider.GetUtcNow();
         var fin = new EventoDocumento(
-            usuario.Id,
+            null,
             intento.Error is null ? TipoEventoDocumento.PROCESAMIENTO_CORRECTO : TipoEventoDocumento.PROCESAMIENTO_FALLIDO,
             intento.Fin.Value,
             intento.Error ?? "PENDIENTE_VALIDACION: datos propuestos disponibles para revisión.");
@@ -413,7 +414,7 @@ public sealed class DocumentosService(
             {
                 return new Error(
                     "documento.campo_invalido",
-                    $"El valor '{cambio.Valor}' no es válido para el campo '{cambio.Campo}'.",
+                    $"{Etiqueta(cambio.Campo)}: «{cambio.Valor}» no tiene un formato válido.",
                     TipoError.VALIDACION);
             }
 
@@ -436,24 +437,25 @@ public sealed class DocumentosService(
 
             // context.Add explícito, igual que en ProcesarAsync: sin él, EF Core puede tratar
             // el evento (con Id ya asignado) como existente y lanzar un UPDATE en vez de un INSERT.
-            var evento = new EventoDocumento(
+            var correccion = EventoDocumento.Correccion(
                 usuario.Id,
-                TipoEventoDocumento.VALIDACION_CORREGIDA,
                 timeProvider.GetUtcNow(),
-                Truncar($"Campo '{propiedad.Name}' corregido: '{FormatearValor(valorAnterior) ?? "vacío"}' → '{FormatearValor(valorNuevo) ?? "vacío"}'.", 500));
-            documento.Eventos.Add(evento);
-            context.Add(evento);
+                propiedad.Name,
+                FormatearValor(valorAnterior),
+                FormatearValor(valorNuevo));
+            documento.Eventos.Add(correccion);
+            context.Add(correccion);
         }
 
         var errores = ValidarCampos(documento.ExtraccionIa);
         if (errores.Count > 0)
-            return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
+            return ErrorDeValidacion(errores);
 
         await context.SaveChangesAsync(cancellationToken);
 
         // Se devuelve el documento con todo su detalle (Usuario, Anomalias, Historial…),
         // porque MapearDocumento necesita documento.Usuario.
-        return (await ObtenerAsync(usuario, id, cancellationToken))!;
+        return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
     }
 
     public async Task<Resultado<Documento>> AprobarAsync(
@@ -483,7 +485,7 @@ public sealed class DocumentosService(
 
         var errores = ValidarCampos(documento.ExtraccionIa);
         if (errores.Count > 0)
-            return new Error("documento.validacion.campos_obligatorios", string.Join(" | ", errores), TipoError.VALIDACION);
+            return ErrorDeValidacion(errores);
 
         documento.Estado = EstadoDocumento.VALIDADO;
 
@@ -587,28 +589,86 @@ public sealed class DocumentosService(
         return (await ObtenerAsync(usuario, id, cancellationToken))!;
     }
 
+    private static readonly Dictionary<string, string> Etiquetas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [nameof(ExtraccionIa.EmisorNombre)] = "Proveedor",
+        [nameof(ExtraccionIa.EmisorNif)] = "NIF",
+        [nameof(ExtraccionIa.NumeroFactura)] = "N.º factura",
+        [nameof(ExtraccionIa.FechaEmision)] = "Fecha",
+        [nameof(ExtraccionIa.BaseImponible)] = "Base imponible",
+        [nameof(ExtraccionIa.TipoIva)] = "IVA",
+        [nameof(ExtraccionIa.CuotaIva)] = "Cuota de IVA",
+        [nameof(ExtraccionIa.Total)] = "Total",
+        [nameof(ExtraccionIa.CategoriaSugerida)] = "Categoría",
+    };
+
+    // Margen de redondeo entre importes calculados y leídos.
+    private const decimal ToleranciaImportes = 0.02m;
+
+    // Tipos de retención de IRPF habituales: el total puede ser base + cuota - retención.
+    private static readonly decimal[] RetencionesIrpf = [1m, 2m, 7m, 15m, 19m];
+
+    private static string Etiqueta(string campo) => Etiquetas.GetValueOrDefault(campo.Trim(), campo);
+
+    private static string Euros(decimal importe) =>
+        importe.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-ES")) + " €";
+
+    private static Error ErrorDeValidacion(IEnumerable<string> errores) => new(
+        "documento.validacion.campos_obligatorios",
+        $"Revisa estos campos: {string.Join("; ", errores)}.",
+        TipoError.VALIDACION);
+
     private static List<string> ValidarCampos(ExtraccionIa extraccion)
     {
         var errores = new List<string>();
 
+        void Falta(string campo) => errores.Add($"{Etiqueta(campo)} es obligatorio");
+
         if (string.IsNullOrWhiteSpace(extraccion.EmisorNombre))
-            errores.Add("EmisorNombre");
+            Falta(nameof(ExtraccionIa.EmisorNombre));
         if (string.IsNullOrWhiteSpace(extraccion.EmisorNif))
-            errores.Add("EmisorNif");
+            Falta(nameof(ExtraccionIa.EmisorNif));
         if (string.IsNullOrWhiteSpace(extraccion.NumeroFactura))
-            errores.Add("NumeroFactura");
+            Falta(nameof(ExtraccionIa.NumeroFactura));
         if (extraccion.FechaEmision is null)
-            errores.Add("FechaEmision");
+            Falta(nameof(ExtraccionIa.FechaEmision));
         if (extraccion.Total is null)
-            errores.Add("Total");
+            Falta(nameof(ExtraccionIa.Total));
 
         if (!string.IsNullOrWhiteSpace(extraccion.EmisorNif) && !EsNifValido(extraccion.EmisorNif))
-            errores.Add("EmisorNifFormato");
+            errores.Add($"{Etiqueta(nameof(ExtraccionIa.EmisorNif))} no tiene un formato válido");
 
         if (extraccion.FechaEmision is not null && extraccion.FechaEmision.Value > DateOnly.FromDateTime(DateTime.Today.AddDays(30)))
-            errores.Add("FechaEmisionFutura");
+            errores.Add($"{Etiqueta(nameof(ExtraccionIa.FechaEmision))} es posterior a hoy en más de 30 días");
+
+        errores.AddRange(ValidarImportes(extraccion));
 
         return errores;
+    }
+
+    private static IEnumerable<string> ValidarImportes(ExtraccionIa extraccion)
+    {
+        var baseImponible = extraccion.BaseImponible;
+        var tipo = extraccion.TipoIva;
+        // Con varios tipos de IVA, TipoIva no describe toda la base: solo se comprueba el total.
+        var tipoUnico = extraccion.DesglosesIva.Count <= 1;
+
+        if (baseImponible is { } b && tipo is { } t && extraccion.CuotaIva is { } cuota && tipoUnico &&
+            Math.Abs(Math.Round(b * t / 100m, 2) - cuota) > ToleranciaImportes)
+            yield return $"{Etiqueta(nameof(ExtraccionIa.CuotaIva))} ({Euros(cuota)}) no es el {t:0.##} % de la base imponible ({Euros(Math.Round(b * t / 100m, 2))})";
+
+        var cuotaEfectiva = extraccion.CuotaIva ??
+            (baseImponible is { } bc && tipo is { } tc && tipoUnico ? Math.Round(bc * tc / 100m, 2) : null);
+
+        if (baseImponible is { } bt && cuotaEfectiva is { } ct && extraccion.Total is { } total)
+        {
+            var diferencia = bt + ct - total;
+            var cuadra = Math.Abs(diferencia) <= ToleranciaImportes ||
+                RetencionesIrpf.Any(r => Math.Abs(diferencia - Math.Round(bt * r / 100m, 2)) <= ToleranciaImportes);
+
+            if (!cuadra)
+                yield return $"{Etiqueta(nameof(ExtraccionIa.Total))} ({Euros(total)}) no coincide con base imponible + cuota de IVA ({Euros(bt + ct)})";
+        }
     }
 
     private static bool EsNifValido(string nif)
@@ -760,18 +820,7 @@ public sealed class DocumentosService(
             _ => valor.ToString()
         };
 
-    private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) =>
-    usuario.Rol == Rol.GESTOR
-        ? context.Documentos.Where(documento =>
-            documento.UsuarioId == usuario.Id ||
-            context.Vinculaciones.Any(vinculacion =>
-                vinculacion.AutonomoId == documento.UsuarioId &&
-                vinculacion.CodigoAsesoria == context.Usuarios
-                    .Where(administrador => administrador.Id == usuario.Id)
-                    .Select(administrador => administrador.CodigoAsesoria)
-                    .FirstOrDefault() &&
-                vinculacion.Estado == EstadoVinculacion.ACTIVA))
-        : context.Documentos.Where(documento => documento.UsuarioId == usuario.Id);
+    private IQueryable<Documento> ConsultablesPor(UsuarioActual usuario) => acceso.ConsultablesPor(usuario);
 
     private static IQueryable<Documento> ConDetalle(IQueryable<Documento> consulta) => consulta
         .AsNoTracking()
