@@ -606,16 +606,19 @@ public sealed class DocumentosService(
             .Where(a => !a.Resuelta && a.Campo is not null && DetectorAnomalias.EsDeEstasReglas(a.Tipo))
             .ToList();
 
+        var ahora = timeProvider.GetUtcNow();
         foreach (var pendiente in pendientes)
         {
             var sigue = detectadas.FirstOrDefault(d => d.Tipo == pendiente.Tipo && d.Campo == pendiente.Campo);
             if (sigue is null)
+            {
                 pendiente.Resuelta = true;
+                pendiente.FechaResolucion = ahora;
+            }
             else
                 pendiente.Descripcion = sigue.Descripcion;
         }
 
-        var ahora = timeProvider.GetUtcNow();
         foreach (var nueva in detectadas.Where(d => !pendientes.Any(p => p.Tipo == d.Tipo && p.Campo == d.Campo)))
         {
             // ADVERTENCIA: avisa al gestor pero no bloquea la revisión.

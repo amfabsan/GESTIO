@@ -23,5 +23,8 @@ public sealed class Anomalia
 
     public DateTimeOffset FechaDeteccion { get; set; }
 
+    // Cuándo dejó de estar pendiente; la anomalía se conserva con las dos fechas.
+    public DateTimeOffset? FechaResolucion { get; set; }
+
     public Documento Documento { get; set; } = null!;
 }

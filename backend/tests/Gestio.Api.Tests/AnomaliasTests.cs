@@ -114,6 +114,40 @@ public sealed class AnomaliasTests
         Assert.Empty(DetectorAnomalias.Detectar(Extraccion("FACTURA", baseImponible: 100m, cuotaIva: 21m)));
     }
 
+    // PA 131: sin base imponible no se da el IVA por correcto: se indica que faltan datos y cuáles.
+    [Fact]
+    public void Pa131_SinBaseImponible_SeIndicaQueNoHayDatosSuficientes()
+    {
+        var extraccion = Extraccion("FACTURA", tipoIva: 21m, cuotaIva: 21m, total: 121m);
+
+        Assert.Empty(DetectorAnomalias.Detectar(extraccion));
+        var sinHacer = DetectorAnomalias.ComprobacionesSinHacer(extraccion);
+        Assert.Equal(2, sinHacer.Count);
+        Assert.All(sinHacer, motivo =>
+        {
+            Assert.Contains("no hay datos suficientes", motivo);
+            Assert.Contains("base imponible", motivo);
+        });
+
+        Assert.Empty(DetectorAnomalias.ComprobacionesSinHacer(Extraccion("FACTURA", baseImponible: 100m, tipoIva: 21m, cuotaIva: 21m, total: 121m)));
+        Assert.Contains(DetectorAnomalias.ComprobacionesSinHacer(Extraccion("FACTURA\nRetención IRPF 15%", baseImponible: 100m, tipoIva: 21m, cuotaIva: 21m, total: 106m)),
+            motivo => motivo.StartsWith("Total: no se comprueba porque el documento incluye retenciones"));
+    }
+
+    // PA 1534: la explicación señala la cuota consignada, el cálculo y la diferencia.
+    [Fact]
+    public void Pa1534_LaExplicacionIncluyeCuotaCalculoYDiferencia()
+    {
+        var anomalia = Assert.Single(DetectorAnomalias.Detectar(
+            Extraccion("FACTURA FAC-001", nif: "12345678Z", baseImponible: 100m, tipoIva: 21m, cuotaIva: 25m, total: 125m)));
+
+        Assert.Equal(nameof(ExtraccionIa.CuotaIva), anomalia.Campo);
+        Assert.Contains("25,00 €", anomalia.Descripcion);
+        Assert.Contains("100,00 €", anomalia.Descripcion);
+        Assert.Contains("da 21,00 €", anomalia.Descripcion);
+        Assert.Contains("diferencia de 4,00 €", anomalia.Descripcion);
+    }
+
     // ---- PA 1534: consulta junto al documento y continuidad de la revisión ----
 
     [Fact]
@@ -144,7 +178,11 @@ public sealed class AnomaliasTests
         var registro = Assert.Single(corregido.Anomalias);
         Assert.Equal(aviso.Id, registro.Id);
         Assert.True(registro.Resuelta);
+        Assert.Null(aviso.FechaResolucion);
+        // PA 132: se conserva cuándo se detectó y cuándo se resolvió.
         Assert.Equal(aviso.FechaDeteccion, registro.FechaDeteccion);
+        Assert.NotNull(registro.FechaResolucion);
+        Assert.True(registro.FechaResolucion >= registro.FechaDeteccion);
     }
 
     [Fact]

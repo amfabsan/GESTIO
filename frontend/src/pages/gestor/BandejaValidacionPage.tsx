@@ -727,6 +727,10 @@ export function BandejaValidacionPage() {
                                                         >
                                                             Ver documento original →
                                                         </button>
+
+                                                        <p className="mt-2 text-xs text-red-700/80">
+                                                            Es un aviso para revisar: no indica por sí solo que la factura sea fiscalmente inválida.
+                                                        </p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -750,8 +754,24 @@ export function BandejaValidacionPage() {
                                                             {anomalia.campo && ` (${etiquetaCampo(anomalia.campo)})`}
                                                             {' · detectado el '}
                                                             {formatearFecha(anomalia.fechaDeteccion)}
+                                                            {anomalia.fechaResolucion &&
+                                                                ` · resuelto el ${formatearFecha(anomalia.fechaResolucion)}`}
                                                         </p>
                                                     ))}
+                                            </div>
+                                        )}
+
+                                        {(documentoSeleccionado.comprobacionesSinHacer?.length ?? 0) > 0 && (
+                                            <div className="mt-3 rounded-2xl border border-[#e6e1d8] bg-[#faf9f6] p-4">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-[#766e61]">
+                                                    Comprobaciones no realizadas
+                                                </p>
+
+                                                {documentoSeleccionado.comprobacionesSinHacer!.map((motivo) => (
+                                                    <p key={motivo} className="mt-1.5 text-sm text-[#766e61]">
+                                                        {motivo}
+                                                    </p>
+                                                ))}
                                             </div>
                                         )}
 

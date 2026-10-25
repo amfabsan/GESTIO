@@ -201,7 +201,8 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 anomalia.Severidad.ToString(),
                 anomalia.Resuelta,
                 anomalia.FechaDeteccion,
-                anomalia.DocumentoRelacionadoId))
+                anomalia.DocumentoRelacionadoId,
+                anomalia.FechaResolucion))
             .ToList(),
         documento.Eventos
             .OrderBy(evento => evento.Fecha)
@@ -222,7 +223,8 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 h.UsuarioId,
                 h.FechaCambio))
             .ToList(),
-        TipoDocumento(documento));
+        TipoDocumento(documento),
+        documento.ExtraccionIa is null ? [] : DetectorAnomalias.ComprobacionesSinHacer(documento.ExtraccionIa));
 
     private static string? ParseCategoriaPropuesta(string? categoriaSugerida)
     {

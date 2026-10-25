@@ -53,7 +53,7 @@ public static class DetectorAnomalias
                 detectadas.Add(new(
                     TipoAnomalia.DESCUADRE_ARITMETICO,
                     nameof(ExtraccionIa.CuotaIva),
-                    $"La cuota de IVA ({Euros(cuota)}) no coincide con el {t:0.##} % de la base imponible ({Euros(b)}), que da {Euros(calculada)}."));
+                    $"Revisa la cuota de IVA consignada ({Euros(cuota)}): el {t:0.##} % de la base imponible ({Euros(b)}) da {Euros(calculada)}, una diferencia de {Euros(Math.Abs(cuota - calculada))}."));
         }
 
         // Retenciones, recargos o varias bases cambian el total: la suma simple no sirve para comprobarlo.
@@ -62,10 +62,36 @@ public static class DetectorAnomalias
             detectadas.Add(new(
                 TipoAnomalia.DESCUADRE_ARITMETICO,
                 nameof(ExtraccionIa.Total),
-                $"El total ({Euros(total)}) no coincide con la base imponible más la cuota de IVA ({Euros(bt)} + {Euros(ct)} = {Euros(bt + ct)})."));
+                $"Revisa el total consignado ({Euros(total)}): la base imponible más la cuota de IVA ({Euros(bt)} + {Euros(ct)}) da {Euros(bt + ct)}, una diferencia de {Euros(Math.Abs(total - (bt + ct)))}."));
 
         return detectadas;
     }
+
+    // Comprobaciones aritméticas que no se han podido hacer y por qué. Se muestran para que nunca
+    // se lea como «correcto» un importe que no se ha comprobado.
+    public static IReadOnlyList<string> ComprobacionesSinHacer(ExtraccionIa extraccion)
+    {
+        if (extraccion.DesglosesIva.Count > 1)
+            return ["Cuota de IVA y total: no se comprueban porque el documento tiene varias bases de IVA."];
+
+        var sinHacer = new List<string>();
+
+        var faltanCuota = Faltan(
+            (extraccion.BaseImponible, "base imponible"), (extraccion.TipoIva, "tipo de IVA"), (extraccion.CuotaIva, "cuota de IVA"));
+        if (faltanCuota.Count > 0)
+            sinHacer.Add($"Cuota de IVA: no hay datos suficientes para comprobarla (falta {string.Join(", ", faltanCuota)}).");
+
+        if (TieneOtrosConceptos(TextoReconocido(extraccion)))
+            sinHacer.Add("Total: no se comprueba porque el documento incluye retenciones o recargos que alteran el total.");
+        else if (Faltan((extraccion.BaseImponible, "base imponible"), (extraccion.CuotaIva, "cuota de IVA"), (extraccion.Total, "total"))
+            is { Count: > 0 } faltanTotal)
+            sinHacer.Add($"Total: no hay datos suficientes para comprobarlo (falta {string.Join(", ", faltanTotal)}).");
+
+        return sinHacer;
+    }
+
+    private static List<string> Faltan(params (decimal? Valor, string Nombre)[] datos) =>
+        datos.Where(dato => dato.Valor is null).Select(dato => dato.Nombre).ToList();
 
     // Un ticket o factura simplificada puede llevar también la palabra «factura», por eso se mira antes.
     private static TipoComprobante Clasificar(string texto) =>

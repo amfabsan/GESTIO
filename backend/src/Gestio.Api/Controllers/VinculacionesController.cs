@@ -19,7 +19,9 @@ public sealed class VinculacionesController(
         if (usuario is null) return Unauthorized();
 
         var vinculaciones = await vinculacionesService.ListarAsync(usuario, cancellationToken);
-        return Ok(vinculaciones.Select(Mapear).ToList());
+        var nombres = await vinculacionesService.ObtenerNombresAsesoriaAsync(
+            vinculaciones.Select(vinculacion => vinculacion.CodigoAsesoria), cancellationToken);
+        return Ok(vinculaciones.Select(vinculacion => Mapear(vinculacion, nombres)).ToList());
     }
 
     [HttpPost]
@@ -31,7 +33,7 @@ public sealed class VinculacionesController(
         var resultado = await vinculacionesService.SolicitarAsync(usuario, request.CodigoAsesoria, cancellationToken);
         if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
 
-        return CreatedAtAction(nameof(GetVinculaciones), null, Mapear(resultado.Valor!));
+        return CreatedAtAction(nameof(GetVinculaciones), null, await MapearAsync(resultado.Valor!, cancellationToken));
     }
 
     [HttpPost("{id:guid}/aceptar")]
@@ -43,7 +45,7 @@ public sealed class VinculacionesController(
         var resultado = await vinculacionesService.AceptarAsync(usuario, id, cancellationToken);
         if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
 
-        return Ok(Mapear(resultado.Valor!));
+        return Ok(await MapearAsync(resultado.Valor!, cancellationToken));
     }
 
     [HttpPost("{id:guid}/rechazar")]
@@ -55,7 +57,7 @@ public sealed class VinculacionesController(
         var resultado = await vinculacionesService.RechazarAsync(usuario, id, cancellationToken);
         if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
 
-        return Ok(Mapear(resultado.Valor!));
+        return Ok(await MapearAsync(resultado.Valor!, cancellationToken));
     }
 
     [HttpPost("{id:guid}/finalizar")]
@@ -67,10 +69,13 @@ public sealed class VinculacionesController(
         var resultado = await vinculacionesService.FinalizarAsync(usuario, id, cancellationToken);
         if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
 
-        return Ok(Mapear(resultado.Valor!));
+        return Ok(await MapearAsync(resultado.Valor!, cancellationToken));
     }
 
-    private static VinculacionResponse Mapear(Vinculacion vinculacion) => new(
+    private async Task<VinculacionResponse> MapearAsync(Vinculacion vinculacion, CancellationToken cancellationToken) =>
+        Mapear(vinculacion, await vinculacionesService.ObtenerNombresAsesoriaAsync([vinculacion.CodigoAsesoria], cancellationToken));
+
+    private static VinculacionResponse Mapear(Vinculacion vinculacion, IReadOnlyDictionary<string, string> nombresAsesoria) => new(
         vinculacion.Id,
         vinculacion.AutonomoId,
         vinculacion.Autonomo is null ? null : new AutonomoVinculadoResponse(
@@ -80,6 +85,7 @@ public sealed class VinculacionesController(
             vinculacion.Autonomo.SegundoApellido,
             vinculacion.Autonomo.Nif),
         vinculacion.CodigoAsesoria,
+        nombresAsesoria.GetValueOrDefault(vinculacion.CodigoAsesoria),
         vinculacion.Estado.ToString(),
         vinculacion.FechaSolicitud,
         vinculacion.FechaAceptacion,
@@ -97,6 +103,7 @@ public sealed record VinculacionResponse(
     Guid AutonomoId,
     AutonomoVinculadoResponse? Autonomo,
     string CodigoAsesoria,
+    string? NombreAsesoria,
     string Estado,
     DateTimeOffset FechaSolicitud,
     DateTimeOffset? FechaAceptacion,

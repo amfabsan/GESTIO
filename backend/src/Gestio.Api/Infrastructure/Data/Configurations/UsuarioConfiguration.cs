@@ -16,6 +16,9 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             table.HasCheckConstraint(
                 "CK_usuarios_dos_apellidos_obligatorios",
                 "length(trim(\"PrimerApellido\")) > 0 AND length(trim(\"SegundoApellido\")) > 0");
+            table.HasCheckConstraint(
+                "CK_usuarios_administrador_es_gestor",
+                "\"Rol\" = 2 OR (\"EsAdministradorAsesoria\" = FALSE AND \"NombreAsesoria\" IS NULL)");
         });
 
         builder.HasKey(usuario => usuario.Id);
@@ -45,6 +48,13 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 
         builder.Property(usuario => usuario.CodigoAsesoria)
             .HasColumnType("varchar(10)");
+
+        builder.Property(usuario => usuario.EsAdministradorAsesoria)
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(usuario => usuario.NombreAsesoria)
+            .HasMaxLength(200);
 
         builder.HasIndex(usuario => usuario.Email)
             .IsUnique();

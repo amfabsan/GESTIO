@@ -46,6 +46,9 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Property<DateTimeOffset>("FechaDeteccion")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("FechaResolucion")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("Resuelta")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -350,6 +353,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
+                    b.Property<bool>("EsAdministradorAsesoria")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<Guid?>("GestorId")
                         .HasColumnType("uuid");
 
@@ -359,6 +367,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.Property<string>("Nombre")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NombreAsesoria")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -387,6 +399,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.ToTable("usuarios", null, t =>
                         {
+                            t.HasCheckConstraint("CK_usuarios_administrador_es_gestor", "\"Rol\" = 2 OR (\"EsAdministradorAsesoria\" = FALSE AND \"NombreAsesoria\" IS NULL)");
+
                             t.HasCheckConstraint("CK_usuarios_codigo_asesoria_por_rol", "(\"Rol\" = 2 AND \"CodigoAsesoria\" ~ '^ASE-[0-9]{6}$') OR (\"Rol\" <> 2 AND \"CodigoAsesoria\" IS NULL)");
 
                             t.HasCheckConstraint("CK_usuarios_dos_apellidos_obligatorios", "length(trim(\"PrimerApellido\")) > 0 AND length(trim(\"SegundoApellido\")) > 0");

@@ -37,6 +37,9 @@ public sealed class AnomaliaConfiguration : IEntityTypeConfiguration<Anomalia>
             .HasColumnType("timestamp with time zone")
             .IsRequired();
 
+        builder.Property(anomalia => anomalia.FechaResolucion)
+            .HasColumnType("timestamp with time zone");
+
         builder.HasOne(anomalia => anomalia.Documento)
             .WithMany(documento => documento.Anomalias)
             .HasForeignKey(anomalia => anomalia.DocumentoId)

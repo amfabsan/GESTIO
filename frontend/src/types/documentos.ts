@@ -89,6 +89,7 @@ export type AnomaliaDocumento = {
     resuelta: boolean
     fechaDeteccion: string
     documentoRelacionadoId?: string | null
+    fechaResolucion?: string | null
 }
 
 export type CategoriaDocumento = 'SIN_CLASIFICAR' | 'INGRESO' | 'GASTO' | 'OTRO'
@@ -113,6 +114,8 @@ export type Documento = {
     historial: EventoDocumento[]
     intentos: { id: string; inicio: string; fin: string | null; procesador: string; version: string | null; resultado: string; error: string | null; valoresJson: string | null }[]
     validacion?: HistorialValidacion[]
+    // Comprobaciones de importes que no se han podido hacer y por qué (PB-11).
+    comprobacionesSinHacer?: string[]
 }
 
 export type TipoArchivoPermitido = {
