@@ -10,6 +10,9 @@ public sealed record DocumentoResponse(
     long TamanoBytes,
     string Origen,
     bool TieneOriginal,
+    string Categoria,
+    string? CategoriaPropuesta,
+    decimal? ConfianzaPropuesta,
     ExtraccionResponse? Extraccion,
     IReadOnlyList<AnomaliaResponse> Anomalias,
     IReadOnlyList<EventoDocumentoResponse> Historial,
@@ -51,6 +54,15 @@ public sealed record HistorialValidacionResponse(
     string TipoCambio,
     Guid UsuarioId,
     DateTimeOffset FechaCambio);
+
+public sealed record HistorialCategoriaResponse(
+    Guid Id,
+    Guid DocumentoId,
+    Guid ActorId,
+    string ActorNombre,
+    string CategoriaAnterior,
+    string CategoriaNueva,
+    DateTimeOffset Fecha);
 
 public sealed record ConfiguracionSubidaResponse(
     long TamanoMaximoBytes,

@@ -228,6 +228,76 @@ public sealed class DocumentosService(
         return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
     }
 
+    public async Task<IReadOnlyList<HistorialCategoria>> ObtenerHistorialCategoriasAsync(
+        UsuarioActual usuario,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var documento = await ConsultablesPor(usuario)
+            .AsNoTracking()
+            .Include(d => d.HistorialCategorias)
+            .ThenInclude(h => h.Usuario)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (documento is null)
+            return [];
+
+        return documento.HistorialCategorias
+            .OrderByDescending(h => h.FechaCambio)
+            .ToList();
+    }
+
+    public async Task<Resultado<Documento>> CambiarCategoriaAsync(
+        UsuarioActual usuario,
+        Guid id,
+        string? nuevaCategoria,
+        CancellationToken cancellationToken)
+    {
+        if (usuario.Rol != Rol.GESTOR)
+            return DocumentoErrores.SinPermisoValidacion;
+
+        var documento = await ConsultablesPor(usuario)
+            .Include(d => d.ExtraccionIa)
+            .Include(d => d.Eventos)
+            .Include(d => d.HistorialCategorias)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (documento is null)
+            return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
+
+        if (!Enum.TryParse<CategoriaDocumento>(nuevaCategoria, true, out var categoria))
+            return new Error("documento.categoria_invalida", "La categoría indicada no es válida.", TipoError.VALIDACION);
+
+        if (documento.Categoria == categoria)
+            return documento;
+
+        var categoriaAnterior = documento.Categoria;
+        documento.Categoria = categoria;
+
+        var cambio = new HistorialCategoria
+        {
+            Id = Guid.NewGuid(),
+            DocumentoId = documento.Id,
+            UsuarioId = usuario.Id,
+            CategoriaAnterior = categoriaAnterior,
+            CategoriaNueva = categoria,
+            FechaCambio = timeProvider.GetUtcNow()
+        };
+
+        context.HistorialCategorias.Add(cambio);
+
+        var evento = new EventoDocumento(
+            usuario.Id,
+            TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA,
+            timeProvider.GetUtcNow(),
+            $"Categoría actualizada de {categoriaAnterior} a {categoria}.");
+        documento.Eventos.Add(evento);
+        context.Add(evento);
+
+        await context.SaveChangesAsync(cancellationToken);
+        return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
+    }
+
     public async Task<Resultado<Documento>> CorregirAsync(
         UsuarioActual usuario,
         Guid id,

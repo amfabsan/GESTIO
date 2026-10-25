@@ -1,5 +1,6 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
+using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Models.Requests;
 using Gestio.Api.Models.Responses;
@@ -52,6 +53,38 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
 
         var original = await documentosService.AbrirOriginalAsync(usuario, id, cancellationToken);
         return original is null ? NotFound() : File(original.Contenido, original.TipoMime, original.NombreArchivo);
+    }
+
+    [HttpGet("{id:guid}/historial-categorias")]
+    public async Task<ActionResult<IReadOnlyList<HistorialCategoriaResponse>>> GetHistorialCategorias(Guid id, CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var historial = await documentosService.ObtenerHistorialCategoriasAsync(usuario, id, cancellationToken);
+        return Ok(historial
+            .Select(entrada => new HistorialCategoriaResponse(
+                entrada.Id,
+                entrada.DocumentoId,
+                entrada.UsuarioId,
+                entrada.Usuario.Nombre,
+                entrada.CategoriaAnterior.ToString(),
+                entrada.CategoriaNueva.ToString(),
+                entrada.FechaCambio))
+            .ToList());
+    }
+
+    [HttpPatch("{id:guid}/categoria")]
+    public async Task<ActionResult<DocumentoResponse>> CambiarCategoria(
+        Guid id,
+        [FromBody] CambiarCategoriaRequest request,
+        CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var resultado = await documentosService.CambiarCategoriaAsync(usuario, id, request.NuevaCategoria, cancellationToken);
+        return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
     }
 
     [HttpPost]
@@ -112,6 +145,9 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         documento.TamanoBytes,
         documento.Origen.ToString(),
         documento.StorageKey is not null,
+        documento.Categoria.ToString(),
+        ParseCategoriaPropuesta(documento.ExtraccionIa?.CategoriaSugerida),
+        MapConfianzaPropuesta(documento.ExtraccionIa?.NivelConfianza),
         documento.ExtraccionIa is null
             ? null
             : new ExtraccionResponse(
@@ -156,4 +192,24 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 h.UsuarioId,
                 h.FechaCambio))
             .ToList());
+
+    private static string? ParseCategoriaPropuesta(string? categoriaSugerida)
+    {
+        if (string.IsNullOrWhiteSpace(categoriaSugerida)) return null;
+
+        return categoriaSugerida.Trim();
+    }
+
+    private static decimal? MapConfianzaPropuesta(NivelConfianza? nivel)
+    {
+        if (nivel is null) return null;
+
+        return nivel switch
+        {
+            NivelConfianza.ALTO => 0.95m,
+            NivelConfianza.MEDIO => 0.75m,
+            NivelConfianza.DUDOSO => 0.50m,
+            _ => 0.50m
+        };
+    }
 }
