@@ -81,6 +81,8 @@ export type AnomaliaDocumento = {
   fechaDeteccion: string
 }
 
+export type CategoriaDocumento = 'SIN_CLASIFICAR' | 'INGRESO' | 'GASTO' | 'OTRO'
+
 export type Documento = {
   id: string
   nombreArchivo: string
@@ -91,6 +93,9 @@ export type Documento = {
   tamanoBytes: number
   origen: string
   tieneOriginal: boolean
+  categoria: CategoriaDocumento
+  categoriaPropuesta: string | null
+  confianzaPropuesta: number | null
   extraccion: ExtraccionDocumento | null
   anomalias: AnomaliaDocumento[]
   historial: EventoDocumento[]

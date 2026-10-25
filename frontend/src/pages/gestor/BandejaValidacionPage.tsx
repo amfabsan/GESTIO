@@ -10,7 +10,7 @@ import {
     Save,
     Send,
 } from 'lucide-react'
-import type { Documento, EstadoDocumento } from '../../types/documentos'
+import type { CategoriaDocumento, Documento, EstadoDocumento } from '../../types/documentos'
 import { obtenerOriginal } from '../../features/documentos/documentosApi'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
@@ -53,6 +53,8 @@ function documentosDePestana(documentos: Documento[], pestana: Pestana) {
 
     return estado ? documentos.filter((d) => d.estado === estado) : documentos
 }
+
+const CATEGORIAS: CategoriaDocumento[] = ['INGRESO', 'GASTO', 'OTRO']
 
 const CAMPOS_API: Record<Campo, string> = {
     emisorNombre: 'EmisorNombre',
@@ -196,6 +198,7 @@ export function BandejaValidacionPage() {
         cargar,
         corregir,
         aprobar,
+        clasificar,
     } = useValidacionDocumentos()
 
     const [pestana, setPestana] = useState<Pestana>('PENDIENTES')
@@ -352,6 +355,18 @@ export function BandejaValidacionPage() {
             setSeleccionadoId(null)
             setCambios({})
             setModoCorreccion(false)
+            setErrorAccionDe(null)
+        } else {
+            setErrorAccionDe(documentoSeleccionado.id)
+        }
+    }
+
+    async function guardarCategoria(categoria: CategoriaDocumento) {
+        if (!documentoSeleccionado) return
+
+        const actualizado = await clasificar(documentoSeleccionado.id, categoria)
+
+        if (actualizado) {
             setErrorAccionDe(null)
         } else {
             setErrorAccionDe(documentoSeleccionado.id)
@@ -647,7 +662,58 @@ export function BandejaValidacionPage() {
                                     </section>
 
                                     <aside className="flex min-h-0 flex-col p-6">
-                                        <div className="flex items-center gap-2">
+                                        <div className="mt-3 rounded-2xl border border-[#d9d4ca] bg-[#f8f6f3] p-4">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="flex size-7 items-center justify-center rounded-md bg-[#1d2b55] text-[10px] font-bold text-white">
+                                                        IA
+                                                    </span>
+                                                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#766e61]">
+                                                        Tipo de documento
+                                                    </span>
+                                                </div>
+
+                                                {documentoSeleccionado.categoriaPropuesta && (
+                                                    <span className="text-xs font-bold text-[#008b45]">
+                                                        {Math.round((documentoSeleccionado.confianzaPropuesta ?? 0.94) * 100)}% confianza
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {documentoSeleccionado.categoriaPropuesta && (
+                                                <p className="mt-3 text-sm font-medium text-[#1d2b55]">
+                                                    La IA propone <span className="font-bold">{documentoSeleccionado.categoriaPropuesta}</span>
+                                                </p>
+                                            )}
+
+                                            <div className="mt-3 grid grid-cols-3 gap-2">
+                                                {CATEGORIAS.map((categoria) => {
+                                                    const activa = documentoSeleccionado.categoria === categoria
+                                                    const propuesta = documentoSeleccionado.categoriaPropuesta === categoria
+
+                                                    return (
+                                                        <button
+                                                            key={categoria}
+                                                            type="button"
+                                                            onClick={() => void guardarCategoria(categoria)}
+                                                            disabled={procesando || !admiteValidacion}
+                                                            className={[
+                                                                'rounded-xl border px-3 py-2.5 text-sm font-bold transition',
+                                                                activa
+                                                                    ? 'border-[#1d2b55] bg-[#1d2b55] text-white shadow-sm'
+                                                                    : propuesta
+                                                                        ? 'border-[#d66b13] bg-[#fff4ea] text-[#d66b13]'
+                                                                        : 'border-[#d9d4ca] bg-white text-[#1d2b55] hover:bg-[#f5f3ee]',
+                                                            ].join(' ')}
+                                                        >
+                                                            {categoria}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-5 flex items-center gap-2">
                                             <span className="flex size-9 items-center justify-center rounded-lg bg-[#1d2b55] text-xs font-bold text-white">
                                                 IA
                                             </span>

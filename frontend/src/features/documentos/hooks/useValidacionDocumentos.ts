@@ -3,11 +3,13 @@ import type { Documento } from '../../../types/documentos'
 import { obtenerDetalleError } from '../../../services/apiClient'
 import {
     aprobarDocumento,
+    cambiarCategoriaDocumento,
     corregirDocumento,
     enviarNotaDocumento,
     obtenerDocumentos,
     solicitarAclaracion,
 } from '../documentosApi'
+import type { CategoriaDocumento } from '../../../types/documentos'
 
 type CambioDocumento = {
     campo: string
@@ -138,6 +140,26 @@ export function useValidacionDocumentos() {
         }
     }, [reemplazar, refrescar])
 
+    const clasificar = useCallback(async (id: string, categoria: CategoriaDocumento) => {
+        setProcesando(true)
+        setError(null)
+
+        try {
+            const actualizado = await cambiarCategoriaDocumento(id, categoria)
+            reemplazar(id, actualizado)
+            return actualizado
+        } catch (excepcion) {
+            setError(
+                obtenerDetalleError(excepcion) ??
+                'No se pudo clasificar el documento.',
+            )
+            return null
+        } finally {
+            setProcesando(false)
+            void refrescar()
+        }
+    }, [reemplazar, refrescar])
+
     const pedirAclaracion = useCallback(
         async (id: string, pregunta: string) => {
             setProcesando(true)
@@ -197,6 +219,7 @@ export function useValidacionDocumentos() {
         refrescar,
         corregir,
         aprobar,
+        clasificar,
         pedirAclaracion,
         enviarNota,
     }

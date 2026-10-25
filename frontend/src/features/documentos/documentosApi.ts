@@ -1,5 +1,5 @@
 import { apiClient } from '../../services/apiClient'
-import type { ConfiguracionSubida, Documento, EventoHistorial } from '../../types/documentos'
+import type { CategoriaDocumento, ConfiguracionSubida, Documento, EventoHistorial } from '../../types/documentos'
 import type { Pagina } from '../../types/paginacion'
 
 export async function obtenerDocumentos(signal?: AbortSignal) {
@@ -44,6 +44,11 @@ export async function obtenerHistorialDocumento(id: string, pagina: number, sign
 
 export async function aprobarDocumento(id: string) {
     const { data } = await apiClient.post<Documento>(`/documentos/${id}/aprobar`)
+    return data
+}
+
+export async function cambiarCategoriaDocumento(id: string, categoria: CategoriaDocumento) {
+    const { data } = await apiClient.patch<Documento>(`/documentos/${id}/categoria`, { nuevaCategoria: categoria })
     return data
 }
 
