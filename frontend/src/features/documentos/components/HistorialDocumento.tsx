@@ -7,20 +7,21 @@ import { esEventoDelSistema, etiquetaCampo, nombreActor, textoEvento, valorCorre
 import { useHistorialDocumento } from '../hooks/useHistorialDocumento'
 
 // Solo lectura: muestra la línea temporal y no ofrece ninguna acción sobre los eventos.
-export function HistorialDocumento({ documentoId }: { documentoId: string }) {
+// version (p. ej. el número de eventos del documento) recarga la línea temporal sin cerrarla.
+export function HistorialDocumento({ documentoId, version }: { documentoId: string; version?: number }) {
   const [abierto, setAbierto] = useState(false)
 
   return (
     <details className="mt-2 text-sm" onToggle={(evento) => setAbierto(evento.currentTarget.open)}>
       <summary className="cursor-pointer">Ver historial</summary>
       {/* Se monta al abrir para no pedir el historial de cada fila del listado. */}
-      {abierto && <LineaTemporal key={documentoId} documentoId={documentoId} />}
+      {abierto && <LineaTemporal key={documentoId} documentoId={documentoId} version={version} />}
     </details>
   )
 }
 
-function LineaTemporal({ documentoId }: { documentoId: string }) {
-  const { historial, error, hayAnteriores, haySiguientes, anteriores, siguientes } = useHistorialDocumento(documentoId)
+function LineaTemporal({ documentoId, version }: { documentoId: string; version?: number }) {
+  const { historial, error, hayAnteriores, haySiguientes, anteriores, siguientes } = useHistorialDocumento(documentoId, version)
 
   if (error) return <p role="alert" className="mt-2 text-red-700">{error}</p>
   if (!historial) return <Vacio texto="Cargando historial…" />

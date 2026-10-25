@@ -4,7 +4,8 @@ import type { Pagina } from '../../../types/paginacion'
 import { obtenerDetalleError } from '../../../services/apiClient'
 import { obtenerHistorialDocumento } from '../documentosApi'
 
-export function useHistorialDocumento(documentoId: string) {
+// version cambia cuando el documento registra eventos nuevos: se vuelve a pedir la misma página.
+export function useHistorialDocumento(documentoId: string, version = 0) {
   const [pagina, setPagina] = useState(1)
   const [historial, setHistorial] = useState<Pagina<EventoHistorial> | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -26,7 +27,7 @@ export function useHistorialDocumento(documentoId: string) {
       })
 
     return () => controller.abort()
-  }, [documentoId, pagina])
+  }, [documentoId, pagina, version])
 
   const irAPagina = useCallback((destino: number) => {
     setCargando(true)

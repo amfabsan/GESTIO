@@ -659,10 +659,10 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         <div className="mt-6">
-                                            {/* La key cambia con cada evento nuevo (categoría, corrección…) para recargar el historial. */}
+                                            {/* Con cada evento nuevo (categoría, corrección…) el historial se recarga sin cerrarse. */}
                                             <HistorialDocumento
-                                                key={`${documentoSeleccionado.id}-${documentoSeleccionado.historial.length}`}
                                                 documentoId={documentoSeleccionado.id}
+                                                version={documentoSeleccionado.historial.length}
                                             />
                                         </div>
                                     </section>
