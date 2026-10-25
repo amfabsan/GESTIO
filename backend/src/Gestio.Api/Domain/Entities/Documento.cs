@@ -8,6 +8,8 @@ public sealed class Documento
 
     public Guid UsuarioId { get; set; }
 
+    public CategoriaDocumento Categoria { get; set; } = CategoriaDocumento.SIN_CLASIFICAR;
+
     public required string NombreArchivo { get; set; }
 
     public required string TipoMime { get; set; }
@@ -35,4 +37,6 @@ public sealed class Documento
     public ICollection<IntentoProcesamiento> Intentos { get; } = [];
 
     public ICollection<HistorialValidacion> HistorialValidacion { get; } = [];
+
+    public ICollection<HistorialCategoria> HistorialCategorias { get; } = [];
 }
