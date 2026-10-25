@@ -254,42 +254,47 @@ public sealed class DocumentosService(
         CancellationToken cancellationToken)
     {
         if (usuario.Rol != Rol.GESTOR)
-            return DocumentoErrores.SinPermisoValidacion;
+            return new Error(
+                "documento.categoria.sin_permiso",
+                "Solo el gestor de la asesoría puede cambiar la categoría del documento.",
+                TipoError.PROHIBIDO);
 
         var documento = await ConsultablesPor(usuario)
-            .Include(d => d.ExtraccionIa)
             .Include(d => d.Eventos)
-            .Include(d => d.HistorialCategorias)
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
         if (documento is null)
             return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
 
-        if (!Enum.TryParse<CategoriaDocumento>(nuevaCategoria, true, out var categoria))
-            return new Error("documento.categoria_invalida", "La categoría indicada no es válida.", TipoError.VALIDACION);
+        if (!TryLeerCategoria(nuevaCategoria, out var categoria))
+            return new Error(
+                "documento.categoria.invalida",
+                "La categoría indicada no es válida. Usa INGRESO, GASTO u OTRO.",
+                TipoError.VALIDACION);
 
+        // Guardar la categoría vigente no es un cambio: no se registra nada (PA 110).
+        // Se devuelve con todo su detalle, porque MapearDocumento necesita documento.Usuario.
         if (documento.Categoria == categoria)
-            return documento;
+            return (await ObtenerAsync(usuario, id, cancellationToken))!;
 
         var categoriaAnterior = documento.Categoria;
         documento.Categoria = categoria;
+        var ahora = timeProvider.GetUtcNow();
 
-        var cambio = new HistorialCategoria
+        context.HistorialCategorias.Add(new HistorialCategoria
         {
             Id = Guid.NewGuid(),
             DocumentoId = documento.Id,
             UsuarioId = usuario.Id,
             CategoriaAnterior = categoriaAnterior,
             CategoriaNueva = categoria,
-            FechaCambio = timeProvider.GetUtcNow()
-        };
-
-        context.HistorialCategorias.Add(cambio);
+            FechaCambio = ahora
+        });
 
         var evento = new EventoDocumento(
             usuario.Id,
             TipoEventoDocumento.CATEGORIZACION_ACTUALIZADA,
-            timeProvider.GetUtcNow(),
+            ahora,
             $"Categoría actualizada de {categoriaAnterior} a {categoria}.");
         documento.Eventos.Add(evento);
         context.Add(evento);
@@ -461,7 +466,19 @@ public sealed class DocumentosService(
     // Tipos de retención de IRPF habituales: el total puede ser base + cuota - retención.
     private static readonly decimal[] RetencionesIrpf = [1m, 2m, 7m, 15m, 19m];
 
-    private static string Etiqueta(string campo) => Etiquetas.GetValueOrDefault(campo.Trim(), campo);
+    // Catálogo asignable (PB-09). SIN_CLASIFICAR es solo el estado inicial: no se puede elegir.
+    private static readonly CategoriaDocumento[] CatalogoCategorias =
+        [CategoriaDocumento.INGRESO, CategoriaDocumento.GASTO, CategoriaDocumento.OTRO];
+
+    // Se compara por nombre: Enum.TryParse aceptaría también "SIN_CLASIFICAR" o números como "99".
+    private static bool TryLeerCategoria(string? valor, out CategoriaDocumento categoria)
+    {
+        categoria = CatalogoCategorias.FirstOrDefault(c =>
+            string.Equals(c.ToString(), valor?.Trim(), StringComparison.OrdinalIgnoreCase));
+        return categoria != CategoriaDocumento.SIN_CLASIFICAR;
+    }
+
+    private static string Etiqueta(string campo) =>Etiquetas.GetValueOrDefault(campo.Trim(), campo);
 
     private static string Euros(decimal importe) =>
         importe.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-ES")) + " €";
@@ -593,10 +610,6 @@ public sealed class DocumentosService(
                 return true;
 
             case "emisornif":
-                resultado = valorLimpio;
-                return true;
-
-            case "categoriasugerida":
                 resultado = valorLimpio;
                 return true;
 
