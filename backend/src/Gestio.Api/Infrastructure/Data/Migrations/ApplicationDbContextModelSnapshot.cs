@@ -67,6 +67,9 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Categoria")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Estado")
                         .IsConcurrencyToken()
                         .HasColumnType("integer");
@@ -209,6 +212,40 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("extracciones_ia", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialCategoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CategoriaAnterior")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("CategoriaNueva")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("FechaCambio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("DocumentoId", "FechaCambio");
+
+                    b.ToTable("historial_categorias", (string)null);
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialValidacion", b =>
@@ -452,6 +489,25 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialCategoria", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
+                        .WithMany("HistorialCategorias")
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Documento");
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialValidacion", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
@@ -500,6 +556,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Eventos");
 
                     b.Navigation("ExtraccionIa");
+
+                    b.Navigation("HistorialCategorias");
 
                     b.Navigation("HistorialValidacion");
 
