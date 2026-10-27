@@ -21,6 +21,9 @@ public static class DbInitializer
     private static readonly Guid DeclaracionIvaId = new("33333333-3333-3333-3333-333333333334");
     private static readonly Guid FacturaProveedorId = new("33333333-3333-3333-3333-333333333335");
 
+    // Facturas ficticias de Ramón: los tests las usan, pero la app arranca sin ellas para la demo con facturas reales.
+    private static readonly Guid[] FacturasRamonIds = [FacturaLuzId, FacturaInternetId, TicketCombustibleId];
+
     private static readonly Guid ExtraccionFacturaLuzId = new("44444444-4444-4444-4444-444444444441");
     private static readonly Guid ExtraccionProveedorId = new("44444444-4444-4444-4444-444444444442");
 
@@ -28,7 +31,7 @@ public static class DbInitializer
     private static readonly Guid AnomaliaProveedorId = new("55555555-5555-5555-5555-555555555552");
     private static readonly Guid AnomaliaDeclaracionId = new("55555555-5555-5555-5555-555555555553");
 
-    public static async Task SeedAsync(ApplicationDbContext context, CancellationToken cancellationToken = default)
+    public static async Task SeedAsync(ApplicationDbContext context, bool incluirFacturasRamon = true, CancellationToken cancellationToken = default)
     {
         var usuarios = new List<Usuario>();
 
@@ -170,6 +173,7 @@ public static class DbInitializer
 
         var documentosNuevos = documentos
             .Where(documento => !documentosExistentes.Contains(documento.Id))
+            .Where(documento => incluirFacturasRamon || !FacturasRamonIds.Contains(documento.Id))
             .ToArray();
 
         if (documentosNuevos.Length > 0)
@@ -220,6 +224,7 @@ public static class DbInitializer
 
         var extraccionesNuevas = extracciones
             .Where(extraccion => !extraccionesExistentes.Contains(extraccion.Id))
+            .Where(extraccion => incluirFacturasRamon || !FacturasRamonIds.Contains(extraccion.DocumentoId))
             .ToArray();
 
         if (extraccionesNuevas.Length > 0)
@@ -269,6 +274,7 @@ public static class DbInitializer
 
         var anomaliasNuevas = anomalias
             .Where(anomalia => !anomaliasExistentes.Contains(anomalia.Id))
+            .Where(anomalia => incluirFacturasRamon || !FacturasRamonIds.Contains(anomalia.DocumentoId))
             .ToArray();
 
         if (anomaliasNuevas.Length > 0)

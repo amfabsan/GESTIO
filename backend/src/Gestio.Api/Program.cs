@@ -51,7 +51,7 @@ if (app.Environment.IsDevelopment())
 
     if (builder.Configuration.GetValue<bool>("DatabaseConfig:SeedSampleData"))
     {
-        await DbInitializer.SeedAsync(dbContext);
+        await DbInitializer.SeedAsync(dbContext, incluirFacturasRamon: false);
         await DbInitializer.SeedSolicitudesDemoAsync(dbContext);
     }
 }
