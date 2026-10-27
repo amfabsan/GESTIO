@@ -23,6 +23,13 @@ public sealed class VinculacionesService(ApplicationDbContext context, TimeProvi
             return VinculacionErrores.CodigoAsesoriaNoEncontrado;
         }
 
+        var yaVinculado = await context.Vinculaciones.AnyAsync(vinculacion =>
+            vinculacion.AutonomoId == usuario.Id &&
+            vinculacion.CodigoAsesoria == codigo &&
+            vinculacion.Estado == EstadoVinculacion.ACTIVA,
+            cancellationToken);
+        if (yaVinculado) return VinculacionErrores.YaVinculadoAEstaAsesoria;
+
         var duplicada = await context.Vinculaciones.AnyAsync(vinculacion =>
             vinculacion.AutonomoId == usuario.Id &&
             vinculacion.CodigoAsesoria == codigo &&

@@ -17,6 +17,11 @@ public static class VinculacionErrores
         "Ya existe una solicitud pendiente para este autónomo y asesoría.",
         TipoError.CONFLICTO);
 
+    public static readonly Error YaVinculadoAEstaAsesoria = new(
+        "vinculacion.ya_vinculado_asesoria",
+        "Ya estás vinculado a esta asesoría.",
+        TipoError.CONFLICTO);
+
     public static readonly Error SoloAdministradorPuedeGestionar = new(
         "vinculacion.solo_administrador",
         "Solo un administrador de la asesoría puede gestionar la vinculación.",

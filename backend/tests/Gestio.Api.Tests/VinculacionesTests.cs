@@ -102,6 +102,22 @@ public sealed class VinculacionesTests
     }
 
     [Fact]
+    public async Task SolicitarAsync_AsesoriaYaVinculada_DevuelveConflicto()
+    {
+        await using var context = CrearContexto();
+        await AñadirUsuariosAsync(context);
+        var servicio = CrearServicio(context);
+        var usuario = new UsuarioActual(AutonomoId, Rol.AUTONOMO);
+        var solicitud = (await servicio.SolicitarAsync(usuario, "ASE-000123", CancellationToken.None)).Valor!;
+        await servicio.AceptarAsync(new(AdministradorId, Rol.GESTOR), solicitud.Id, CancellationToken.None);
+
+        var repetida = await servicio.SolicitarAsync(usuario, "ASE-000123", CancellationToken.None);
+
+        Assert.Equal(VinculacionErrores.YaVinculadoAEstaAsesoria, repetida.Error);
+        Assert.Equal(EstadoVinculacion.ACTIVA, (await context.Vinculaciones.SingleAsync()).Estado);
+    }
+
+    [Fact]
     public async Task RechazarAsync_AdministradorDeLaAsesoria_ConservaLaSolicitudRechazada()
     {
         await using var context = CrearContexto();
