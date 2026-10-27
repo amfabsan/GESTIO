@@ -10,6 +10,9 @@ import { HistorialDocumento } from '../../features/documentos/components/Histori
 import { FILTROS_BUZON, cumpleFiltro, tieneAnomaliaAbierta, type FiltroBuzon } from '../../features/documentos/filtrosBuzon'
 import { useDocumentos } from '../../features/documentos/hooks/useDocumentos'
 import { formatearEuros, formatearFecha } from '../../utils/formato'
+import type { NivelConfianza } from '../../types/documentos'
+
+const TEXTO_CONFIANZA: Record<NivelConfianza, string> = { ALTO: 'alta', MEDIO: 'media', DUDOSO: 'dudosa' }
 
 export function BuzonPage() {
     const { perfilActivo } = useAuth()
@@ -86,17 +89,20 @@ export function BuzonPage() {
                                                                 <summary className="cursor-pointer">Ver datos propuestos</summary>
                                                                 <EstadoBadge estado={documento.estado} />
                                                                 <dl className="mt-2 space-y-1">
+                                                                    {/* Cada valor lleva la confianza de su lectura cuando el motor la da (PB-06). */}
                                                                     {([
-                                                                        ['Emisor', documento.extraccion?.emisorNombre],
-                                                                        ['NIF emisor', documento.extraccion?.emisorNif],
-                                                                        ['Número', documento.extraccion?.numeroFactura],
-                                                                        ['Fecha emisión', documento.extraccion?.fechaEmision],
-                                                                        ['Base imponible', documento.extraccion?.baseImponible != null ? formatearEuros(documento.extraccion.baseImponible) : null],
-                                                                        ['Tipo IVA', (documento.extraccion?.desglosesIva?.length ?? 0) > 1 ? 'Varios tipos (ver desglose)' : documento.extraccion?.tipoIva != null ? `${documento.extraccion.tipoIva}%` : null],
-                                                                        ['Cuota IVA', (documento.extraccion?.desglosesIva?.length ?? 0) > 1 ? 'Ver desglose de IVA' : documento.extraccion?.cuotaIva != null ? formatearEuros(documento.extraccion.cuotaIva) : null],
-                                                                        ['Total', documento.extraccion?.total != null ? formatearEuros(documento.extraccion.total) : null],
-                                                                    ] as const).map(([campo, valor]) => <div key={campo}><dt className="inline font-medium">{campo}: </dt><dd className="inline">{valor ?? 'No extraído'}</dd></div>)}
-                                                                    <div>Confianza por campo: No disponible</div>
+                                                                        ['Emisor', 'EmisorNombre', documento.extraccion?.emisorNombre],
+                                                                        ['NIF emisor', 'EmisorNif', documento.extraccion?.emisorNif],
+                                                                        ['Número', 'NumeroFactura', documento.extraccion?.numeroFactura],
+                                                                        ['Fecha emisión', 'FechaEmision', documento.extraccion?.fechaEmision],
+                                                                        ['Base imponible', 'BaseImponible', documento.extraccion?.baseImponible != null ? formatearEuros(documento.extraccion.baseImponible) : null],
+                                                                        ['Tipo IVA', 'TipoIva', (documento.extraccion?.desglosesIva?.length ?? 0) > 1 ? 'Varios tipos (ver desglose)' : documento.extraccion?.tipoIva != null ? `${documento.extraccion.tipoIva}%` : null],
+                                                                        ['Cuota IVA', 'CuotaIva', (documento.extraccion?.desglosesIva?.length ?? 0) > 1 ? 'Ver desglose de IVA' : documento.extraccion?.cuotaIva != null ? formatearEuros(documento.extraccion.cuotaIva) : null],
+                                                                        ['Total', 'Total', documento.extraccion?.total != null ? formatearEuros(documento.extraccion.total) : null],
+                                                                    ] as const).map(([campo, clave, valor]) => {
+                                                                        const confianza = valor != null ? documento.extraccion?.confianzaCampos?.[clave] : undefined
+                                                                        return <div key={campo}><dt className="inline font-medium">{campo}: </dt><dd className="inline">{valor ?? 'No extraído'}{confianza && <span className="text-[#6b6656]"> · confianza {TEXTO_CONFIANZA[confianza]}</span>}</dd></div>
+                                                                    })}
                                                                 </dl>
                                                                 {!!documento.extraccion?.desglosesIva?.length && <table className="mt-2 text-sm">
                                                                     <caption className="text-left font-medium">Desglose de IVA leído</caption>
