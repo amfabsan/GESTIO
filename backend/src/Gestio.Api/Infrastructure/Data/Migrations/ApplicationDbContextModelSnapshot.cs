@@ -28,6 +28,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Campo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<string>("Descripcion")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -36,7 +40,13 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Property<Guid>("DocumentoId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("DocumentoRelacionadoId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset>("FechaDeteccion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("FechaResolucion")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("Resuelta")
@@ -57,6 +67,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DocumentoId");
+
+                    b.HasIndex("DocumentoRelacionadoId");
 
                     b.ToTable("anomalias", (string)null);
                 });
@@ -341,6 +353,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
+                    b.Property<bool>("EsAdministradorAsesoria")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<Guid?>("GestorId")
                         .HasColumnType("uuid");
 
@@ -350,6 +367,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.Property<string>("Nombre")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NombreAsesoria")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -378,6 +399,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.ToTable("usuarios", null, t =>
                         {
+                            t.HasCheckConstraint("CK_usuarios_administrador_es_gestor", "\"Rol\" = 2 OR (\"EsAdministradorAsesoria\" = FALSE AND \"NombreAsesoria\" IS NULL)");
+
                             t.HasCheckConstraint("CK_usuarios_codigo_asesoria_por_rol", "(\"Rol\" = 2 AND \"CodigoAsesoria\" ~ '^ASE-[0-9]{6}$') OR (\"Rol\" <> 2 AND \"CodigoAsesoria\" IS NULL)");
 
                             t.HasCheckConstraint("CK_usuarios_dos_apellidos_obligatorios", "length(trim(\"PrimerApellido\")) > 0 AND length(trim(\"SegundoApellido\")) > 0");
@@ -445,6 +468,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasForeignKey("DocumentoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentoRelacionadoId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Documento");
                 });

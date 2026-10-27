@@ -15,6 +15,45 @@ public sealed class VinculacionesTests
     private static readonly Guid AutonomoId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static readonly Guid AdministradorId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
     private static readonly Guid OtraAdministradoraId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+    private static readonly Guid MiembroId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+
+    // PA 81/112 (UT04): al solicitar con un código válido se muestra a qué asesoría corresponde.
+    [Fact]
+    public async Task Solicitar_CodigoValido_DevuelveElNombreDeLaAsesoria()
+    {
+        await using var context = CrearContexto();
+        await AñadirUsuariosAsync(context);
+        var controller = new VinculacionesController(CrearServicio(context), new UsuarioActualFijo(new(AutonomoId, Rol.AUTONOMO)));
+
+        var resultado = await controller.Solicitar(new SolicitarVinculacionRequest("ASE-000123"), CancellationToken.None);
+
+        var creada = Assert.IsType<VinculacionResponse>(Assert.IsType<CreatedAtActionResult>(resultado.Result).Value);
+        Assert.Equal("Asesoría Principal", creada.NombreAsesoria);
+        Assert.Equal("PENDIENTE", creada.Estado);
+    }
+
+    // PA 86/117 (UT04): pertenecer a la asesoría no basta; un gestor sin permisos de administración
+    // no acepta, rechaza ni finaliza, y la vinculación no cambia.
+    [Fact]
+    public async Task GestorSinPermisosDeAdministracion_NoGestionaVinculaciones()
+    {
+        await using var context = CrearContexto();
+        await AñadirUsuariosAsync(context);
+        var servicio = CrearServicio(context);
+        var miembro = new UsuarioActual(MiembroId, Rol.GESTOR);
+        var solicitud = (await servicio.SolicitarAsync(new(AutonomoId, Rol.AUTONOMO), "ASE-000123", CancellationToken.None)).Valor!;
+
+        Assert.Equal(VinculacionErrores.SoloAdministradorPuedeGestionar, (await servicio.AceptarAsync(miembro, solicitud.Id, CancellationToken.None)).Error);
+        Assert.Equal(VinculacionErrores.SoloAdministradorPuedeGestionar, (await servicio.RechazarAsync(miembro, solicitud.Id, CancellationToken.None)).Error);
+        Assert.Equal(EstadoVinculacion.PENDIENTE, (await context.Vinculaciones.SingleAsync()).Estado);
+
+        Assert.True((await servicio.AceptarAsync(new(AdministradorId, Rol.GESTOR), solicitud.Id, CancellationToken.None)).EsCorrecto);
+        Assert.Equal(VinculacionErrores.SoloAdministradorPuedeGestionar, (await servicio.FinalizarAsync(miembro, solicitud.Id, CancellationToken.None)).Error);
+        Assert.Equal(EstadoVinculacion.ACTIVA, (await context.Vinculaciones.SingleAsync()).Estado);
+
+        // Sí puede consultar las solicitudes de su asesoría.
+        Assert.Single(await servicio.ListarAsync(miembro, CancellationToken.None));
+    }
 
     [Fact]
     public async Task SolicitarAsync_CodigoValido_CreaSolicitudPendiente()
@@ -265,6 +304,19 @@ public sealed class VinculacionesTests
                 Email = "admin@gestio.local",
                 Nif = "22222222B",
                 CodigoAsesoria = "ASE-000123",
+                EsAdministradorAsesoria = true,
+                NombreAsesoria = "Asesoría Principal",
+                Rol = Rol.GESTOR
+            },
+            new Usuario
+            {
+                Id = MiembroId,
+                Nombre = "Miembro",
+                PrimerApellido = "Equipo",
+                SegundoApellido = "Demo",
+                Email = "miembro@gestio.local",
+                Nif = "44444444D",
+                CodigoAsesoria = "ASE-000123",
                 Rol = Rol.GESTOR
             },
             new Usuario
@@ -276,6 +328,7 @@ public sealed class VinculacionesTests
                 Email = "otra@gestio.local",
                 Nif = "33333333C",
                 CodigoAsesoria = "ASE-000456",
+                EsAdministradorAsesoria = true,
                 Rol = Rol.GESTOR
             });
         await context.SaveChangesAsync();

@@ -18,6 +18,12 @@ public sealed class Usuario
 
     public string? CodigoAsesoria { get; set; }
 
+    // Solo gestores. El administrador es quien acepta, rechaza o finaliza las vinculaciones de su
+    // asesoría (PB-04); el nombre es el que ve el autónomo al solicitarla.
+    public bool EsAdministradorAsesoria { get; set; }
+
+    public string? NombreAsesoria { get; set; }
+
     public Guid? GestorId { get; set; }
 
     public Rol Rol { get; set; }

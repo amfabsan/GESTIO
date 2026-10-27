@@ -13,6 +13,7 @@ public static class DbInitializer
     private static readonly Guid SolicitudLuciaId = new("88888888-8888-8888-8888-888888888881");
     private static readonly Guid SolicitudJavierId = new("88888888-8888-8888-8888-888888888882");
     private static readonly Guid VinculacionRamonPedroId = new("66666666-6666-6666-6666-666666666661");
+    private const string NombreAsesoriaDemo = "Asesoría Sánchez Martín";
 
     private static readonly Guid FacturaLuzId = new("33333333-3333-3333-3333-333333333331");
     private static readonly Guid FacturaInternetId = new("33333333-3333-3333-3333-333333333332");
@@ -57,6 +58,8 @@ public static class DbInitializer
                 Email = "pedro@gestio.local",
                 Nif = "87654321X",
                 CodigoAsesoria = "ASE-000123",
+                EsAdministradorAsesoria = true,
+                NombreAsesoria = NombreAsesoriaDemo,
                 Rol = Rol.GESTOR
             });
         }
@@ -64,6 +67,15 @@ public static class DbInitializer
         if (usuarios.Count > 0)
         {
             await context.Usuarios.AddRangeAsync(usuarios, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        // Bases creadas antes de PB-04: Pedro ya existía sin el nombre de su asesoría.
+        var pedro = await context.Usuarios.FirstAsync(usuario => usuario.Id == PedroId, cancellationToken);
+        if (pedro.NombreAsesoria is null)
+        {
+            pedro.EsAdministradorAsesoria = true;
+            pedro.NombreAsesoria = NombreAsesoriaDemo;
             await context.SaveChangesAsync(cancellationToken);
         }
 

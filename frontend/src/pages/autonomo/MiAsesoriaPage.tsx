@@ -16,8 +16,9 @@ function formatearFecha(fecha: string) {
   }).format(new Date(fecha))
 }
 
-function nombreAsesoria(codigo: string) {
-  return `Asesoría ${codigo}`
+// El nombre lo da la API; sin él, la asesoría se identifica por su código.
+function nombreAsesoria(vinculacion: Vinculacion) {
+  return vinculacion.nombreAsesoria ?? `Asesoría ${vinculacion.codigoAsesoria}`
 }
 
 export function MiAsesoriaPage() {
@@ -76,9 +77,9 @@ export function MiAsesoriaPage() {
     setMensaje(null)
 
     try {
-      await apiClient.post('/vinculaciones', { codigoAsesoria: codigoNormalizado })
+      const { data: solicitud } = await apiClient.post<Vinculacion>('/vinculaciones', { codigoAsesoria: codigoNormalizado })
       setCodigo('')
-      setMensaje('Solicitud enviada. La asesoría debe aceptarla para activar el acceso.')
+      setMensaje(`Solicitud enviada a ${nombreAsesoria(solicitud)}. La asesoría debe aceptarla para activar el acceso.`)
       await cargarVinculaciones()
     } catch (excepcion) {
       setError(obtenerDetalleError(excepcion) ?? 'No se ha podido enviar la solicitud.')
@@ -125,7 +126,7 @@ export function MiAsesoriaPage() {
                       </span>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-lg font-bold">{nombreAsesoria(activa.codigoAsesoria)}</h2>
+                          <h2 className="text-lg font-bold">{nombreAsesoria(activa)}</h2>
                           <span className="inline-flex items-center gap-1 rounded-full bg-[#e3f5e9] px-2.5 py-1 text-xs font-bold text-[#247344]">
                             <CheckCircle2 className="size-3.5" aria-hidden="true" />
                             {estadoTexto.ACTIVA}
@@ -186,7 +187,7 @@ export function MiAsesoriaPage() {
                 {pendientes.map((vinculacion) => (
                   <article className="flex flex-col justify-between gap-4 rounded-2xl border border-[#eadcae] bg-[#fffdf2] p-5 sm:flex-row sm:items-center" key={vinculacion.id}>
                     <div>
-                      <h3 className="font-bold">{nombreAsesoria(vinculacion.codigoAsesoria)}</h3>
+                      <h3 className="font-bold">{nombreAsesoria(vinculacion)}</h3>
                       <p className="mt-1 text-sm text-[#647083]">Solicitud enviada el {formatearFecha(vinculacion.fechaSolicitud)}</p>
                     </div>
                     <span className="inline-flex items-center gap-2 self-start rounded-full bg-[#fff0c2] px-3 py-2 text-xs font-bold text-[#986515] sm:self-auto">
@@ -204,7 +205,7 @@ export function MiAsesoriaPage() {
                 <div className="mt-3 space-y-3">
                   {finalizadas.map((vinculacion) => (
                     <article className="flex flex-col justify-between gap-2 rounded-xl border border-[#dfdbd3] bg-white p-4 text-sm sm:flex-row" key={vinculacion.id}>
-                      <span className="font-semibold">{nombreAsesoria(vinculacion.codigoAsesoria)}</span>
+                      <span className="font-semibold">{nombreAsesoria(vinculacion)}</span>
                       <span className="text-[#647083]">Finalizada{vinculacion.fechaFinalizacion ? ` el ${formatearFecha(vinculacion.fechaFinalizacion)}` : ''}</span>
                     </article>
                   ))}

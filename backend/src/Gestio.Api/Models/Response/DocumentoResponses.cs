@@ -17,7 +17,8 @@ public sealed record DocumentoResponse(
     IReadOnlyList<AnomaliaResponse> Anomalias,
     IReadOnlyList<EventoDocumentoResponse> Historial,
     IReadOnlyList<IntentoResponse> Intentos,
-    IReadOnlyList<HistorialValidacionResponse>? Validacion);
+    IReadOnlyList<HistorialValidacionResponse>? Validacion, string Tipo,
+    IReadOnlyList<string> ComprobacionesSinHacer);
 
 public sealed record IntentoResponse(Guid Id, DateTimeOffset Inicio, DateTimeOffset? Fin,
     string Procesador, string? Version, string Resultado, string? Error, string? ValoresJson);
@@ -35,16 +36,20 @@ public sealed record ExtraccionResponse(
     string? NivelConfianza,
     string? DatosCrudosJson,
     IReadOnlyList<Gestio.Api.Domain.Entities.DesgloseIva> DesglosesIva,
-    IReadOnlyList<string> Advertencias);
+    IReadOnlyList<string> Advertencias,
+    IReadOnlyDictionary<string, string> ConfianzaCampos);
 
 public sealed record AnomaliaResponse(
+    Guid Id,
     string Tipo,
+    string? Campo,
     string Descripcion,
     string Severidad,
     bool Resuelta,
-    DateTimeOffset FechaDeteccion);
+    DateTimeOffset FechaDeteccion,Guid? DocumentoRelacionadoId,
+    DateTimeOffset? FechaResolucion);
 
-public sealed record EventoDocumentoResponse(string Tipo, DateTimeOffset Fecha, string? Detalle);
+public sealed record EventoDocumentoResponse(string Tipo, DateTimeOffset Fecha, string? Detalle, string? Actor);
 
 public sealed record HistorialValidacionResponse(
     Guid Id,

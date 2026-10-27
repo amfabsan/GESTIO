@@ -17,6 +17,9 @@ public sealed class AnomaliaConfiguration : IEntityTypeConfiguration<Anomalia>
             .HasMaxLength(30)
             .IsRequired();
 
+        builder.Property(anomalia => anomalia.Campo)
+            .HasMaxLength(50);
+
         builder.Property(anomalia => anomalia.Descripcion)
             .HasMaxLength(500)
             .IsRequired();
@@ -33,6 +36,9 @@ public sealed class AnomaliaConfiguration : IEntityTypeConfiguration<Anomalia>
         builder.Property(anomalia => anomalia.FechaDeteccion)
             .HasColumnType("timestamp with time zone")
             .IsRequired();
+
+        builder.Property(anomalia => anomalia.FechaResolucion)
+            .HasColumnType("timestamp with time zone");
 
         builder.HasOne(anomalia => anomalia.Documento)
             .WithMany(documento => documento.Anomalias)

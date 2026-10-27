@@ -174,11 +174,32 @@ public sealed class VinculacionesService(ApplicationDbContext context, TimeProvi
             .ToListAsync(cancellationToken);
     }
 
+    // Nombre de cada asesoría según su administrador; sin nombre registrado, el autónomo ve solo el código.
+    public async Task<IReadOnlyDictionary<string, string>> ObtenerNombresAsesoriaAsync(
+        IEnumerable<string> codigos,
+        CancellationToken cancellationToken)
+    {
+        var buscados = codigos.Distinct().ToList();
+        var administradores = await context.Usuarios
+            .AsNoTracking()
+            .Where(usuario => usuario.Rol == Rol.GESTOR &&
+                usuario.EsAdministradorAsesoria &&
+                usuario.NombreAsesoria != null &&
+                buscados.Contains(usuario.CodigoAsesoria!))
+            .Select(usuario => new { usuario.CodigoAsesoria, usuario.NombreAsesoria })
+            .ToListAsync(cancellationToken);
+
+        return administradores
+            .GroupBy(administrador => administrador.CodigoAsesoria!)
+            .ToDictionary(grupo => grupo.Key, grupo => grupo.First().NombreAsesoria!);
+    }
+
     private Task<bool> ExisteAsesoriaAsync(string codigo, CancellationToken cancellationToken) =>
         context.Usuarios.AnyAsync(usuario =>
             usuario.Rol == Rol.GESTOR && usuario.CodigoAsesoria == codigo,
             cancellationToken);
 
+    // Pertenecer a la asesoría no basta: solo su administrador gestiona las vinculaciones.
     private Task<bool> EsAdministradorDeAsync(
         UsuarioActual usuario,
         string codigo,
@@ -186,7 +207,8 @@ public sealed class VinculacionesService(ApplicationDbContext context, TimeProvi
         usuario.Rol == Rol.GESTOR
             ? context.Usuarios.AnyAsync(administrador =>
                 administrador.Id == usuario.Id &&
-                administrador.CodigoAsesoria == codigo,
+                administrador.CodigoAsesoria == codigo &&
+                administrador.EsAdministradorAsesoria,
                 cancellationToken)
             : Task.FromResult(false);
 

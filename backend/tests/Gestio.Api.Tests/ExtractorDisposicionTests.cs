@@ -1,3 +1,4 @@
+using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Services;
 
@@ -39,7 +40,26 @@ public sealed class ExtractorDisposicionTests
         Assert.Equal(84.50m, e.BaseImponible);
         Assert.Equal(92.95m, e.Total);
         Assert.Null(e.NivelConfianza);
+        Assert.Empty(e.ConfianzaCampos);
         Assert.All(lectura.Palabras, p => Assert.Null(p.Confianza));
+    }
+
+    // PA 102 (UT06) / PA 67 (UT07): cada campo guarda la confianza de la lectura que lo respalda.
+    [Fact]
+    public void ConfianzaPorCampo_SaleDeLaPuntuacionDelMotor()
+    {
+        PalabraDocumento[] Palabras(double cuota) => [P("BASE", .05, .70), P("IVA", .25, .70), P("CUOTA", .45, .70),
+            P("TOTAL", .7, .70), P("92,95", .82, .70), P("84,50", .05, .74), P("10%", .25, .74), P("8,45", .45, .74, confianza: cuota)];
+
+        var e = ExtractorCampos.Extraer(Documento(
+            new LecturaDocumento(1, "pagina", "psm-3", false, Palabras(60)),
+            new LecturaDocumento(1, "pagina", "psm-6", false, Palabras(70))), Guid.NewGuid());
+
+        Assert.Equal(8.45m, e.CuotaIva);
+        Assert.Equal(NivelConfianza.MEDIO, e.ConfianzaCampos[nameof(e.CuotaIva)]);
+        Assert.Equal(NivelConfianza.ALTO, e.ConfianzaCampos[nameof(e.Total)]);
+        Assert.Equal(NivelConfianza.ALTO, e.ConfianzaCampos[nameof(e.BaseImponible)]);
+        Assert.False(e.ConfianzaCampos.ContainsKey(nameof(e.EmisorNif)));
     }
 
     [Fact]

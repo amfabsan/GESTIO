@@ -13,6 +13,7 @@ import {
 import type { CategoriaDocumento, Documento, EstadoDocumento } from '../../types/documentos'
 import { obtenerOriginal } from '../../features/documentos/documentosApi'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
+import { etiquetaCampo } from '../../features/documentos/eventosDocumento'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
 import { formatearFecha } from '../../utils/formato'
 
@@ -109,6 +110,25 @@ function tieneAnomalia(documento: Documento) {
     return documento.anomalias.some((anomalia) => !anomalia.resuelta)
 }
 
+// Regla que originó cada aviso (PB-11). La explicación concreta llega en la descripción.
+const REGLAS_ANOMALIA: Record<string, string> = {
+    NIF_AUSENTE: 'NIF del emisor ausente',
+    DESCUADRE_ARITMETICO: 'Importes que no cuadran',
+    POSIBLE_DUPLICADO: 'Posible duplicado',
+    BAJA_CONFIANZA: 'Lectura poco fiable',
+}
+
+function reglaAnomalia(tipo: string) {
+    return REGLAS_ANOMALIA[tipo] ?? tipo
+}
+
+// Campo señalado por un aviso pendiente: se marca para que el gestor sepa qué revisar.
+function campoARevisar(documento: Documento, campo: Campo) {
+    return documento.anomalias.some(
+        (anomalia) => !anomalia.resuelta && anomalia.campo === CAMPOS_API[campo],
+    )
+}
+
 function estadoLegible(estado: Documento['estado']) {
     switch (estado) {
         case 'PENDIENTE_VALIDACION':
@@ -133,12 +153,25 @@ const NIVELES_CONFIANZA: Record<string, { etiqueta: string; clases: string }> = 
 }
 
 // Solo se muestra la confianza que calcula el backend; nunca se inventa en el cliente.
+// Cada campo lleva la suya; los documentos sin confianza por campo usan la del documento.
 function confianzaCampo(documento: Documento, campo: Campo) {
-    const nivel = documento.extraccion?.nivelConfianza
+    const extraccion = documento.extraccion
 
-    if (!nivel || obtenerValor(documento, campo).trim() === '') return null
+    if (!extraccion || obtenerValor(documento, campo).trim() === '') return null
 
-    return NIVELES_CONFIANZA[nivel] ?? null
+    const porCampo = extraccion.confianzaCampos ?? {}
+    const nivel = Object.keys(porCampo).length > 0
+        ? porCampo[CAMPOS_API[campo]]
+        : extraccion.nivelConfianza
+
+    return nivel ? NIVELES_CONFIANZA[nivel] ?? null : null
+}
+
+// Un valor corregido por el gestor ya no es la propuesta: su confianza de lectura no aplica.
+function campoCorregido(documento: Documento, campo: Campo) {
+    return (documento.validacion ?? []).some(
+        (cambio) => cambio.tipoCambio === 'CORRECCION' && cambio.campo === CAMPOS_API[campo],
+    )
 }
 
 function normalizarValorCampo(campo: Campo, valor: string) {
@@ -176,8 +209,6 @@ function normalizarValorCampo(campo: Campo, valor: string) {
             .replace(/€/g, '')
             .replace(/\s/g, '')
 
-        // Convierte 1.800,50 a 1800.50.
-        // Mantiene correctamente valores como 1800.50.
         if (sinMoneda.includes(',')) {
             return sinMoneda.replace(/\./g, '').replace(',', '.')
         }
@@ -198,6 +229,7 @@ export function BandejaValidacionPage() {
         corregir,
         aprobar,
         clasificar,
+        pedirAclaracion,
     } = useValidacionDocumentos()
 
     const [pestana, setPestana] = useState<Pestana>('PENDIENTES')
@@ -310,6 +342,11 @@ export function BandejaValidacionPage() {
         setPregunta('')
     }
 
+    function abrirDocumentoRelacionado(id: string) {
+        cambiarPestana('TODOS')
+        setSeleccionadoId(id)
+    }
+
     function cambiarCampo(campo: Campo, valor: string) {
         setCambios((actuales) => ({
             ...actuales,
@@ -369,6 +406,21 @@ export function BandejaValidacionPage() {
         const actualizado = await clasificar(documentoSeleccionado.id, categoria)
 
         if (actualizado) {
+            setErrorAccionDe(null)
+        } else {
+            setErrorAccionDe(documentoSeleccionado.id)
+        }
+    }
+
+    async function enviarAclaracion() {
+        if (!documentoSeleccionado || !pregunta.trim()) return
+
+        const enviada = await pedirAclaracion(documentoSeleccionado.id, pregunta.trim())
+
+        if (enviada) {
+            setPregunta('')
+            setModoAclaracion(false)
+            setSeleccionadoId(null)
             setErrorAccionDe(null)
         } else {
             setErrorAccionDe(documentoSeleccionado.id)
@@ -478,8 +530,8 @@ export function BandejaValidacionPage() {
                                             seleccionarDocumento(documento.id)
                                         }
                                         className={`relative w-full border-b border-[#e6e1d8] px-5 py-4 text-left transition ${seleccionado
-                                                ? 'bg-[#efede8]'
-                                                : 'bg-white hover:bg-[#faf9f6]'
+                                            ? 'bg-[#efede8]'
+                                            : 'bg-white hover:bg-[#faf9f6]'
                                             }`}
                                     >
                                         {seleccionado && (
@@ -629,12 +681,34 @@ export function BandejaValidacionPage() {
                                                                     !anomalia.resuelta,
                                                             )
                                                             .map((anomalia) => (
-                                                                <p
-                                                                    key={`${anomalia.tipo}-${anomalia.fechaDeteccion}`}
-                                                                    className="mt-1 text-sm leading-5 text-red-700"
+                                                                <div
+                                                                    key={anomalia.id}
+                                                                    className="mt-2"
                                                                 >
-                                                                    {anomalia.descripcion}
-                                                                </p>
+                                                                    <p className="text-sm font-semibold text-red-700">
+                                                                        {reglaAnomalia(anomalia.tipo)}
+                                                                        {anomalia.campo &&
+                                                                            ` · Revisa: ${etiquetaCampo(anomalia.campo)}`}
+                                                                    </p>
+
+                                                                    <p className="text-sm leading-5 text-red-700">
+                                                                        {anomalia.descripcion}
+                                                                    </p>
+
+                                                                    {anomalia.documentoRelacionadoId && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() =>
+                                                                                abrirDocumentoRelacionado(
+                                                                                    anomalia.documentoRelacionadoId!,
+                                                                                )
+                                                                            }
+                                                                            className="mt-2 mr-4 text-sm font-bold text-red-700 underline"
+                                                                        >
+                                                                            Ver documento anterior →
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             ))}
 
                                                         <button
@@ -653,8 +727,51 @@ export function BandejaValidacionPage() {
                                                         >
                                                             Ver documento original →
                                                         </button>
+
+                                                        <p className="mt-2 text-xs text-red-700/80">
+                                                            Es un aviso para revisar: no indica por sí solo que la factura sea fiscalmente inválida.
+                                                        </p>
                                                     </div>
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {documentoSeleccionado.anomalias.some((anomalia) => anomalia.resuelta) && (
+                                            <div className="mt-3 rounded-2xl border border-[#e6e1d8] bg-[#faf9f6] p-4">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-[#766e61]">
+                                                    Avisos resueltos
+                                                </p>
+
+                                                {documentoSeleccionado.anomalias
+                                                    .filter((anomalia) => anomalia.resuelta)
+                                                    .map((anomalia) => (
+                                                        <p
+                                                            key={anomalia.id}
+                                                            className="mt-1.5 flex items-center gap-1.5 text-sm text-[#766e61]"
+                                                        >
+                                                            <Check className="size-3.5 shrink-0 text-[#008b45]" />
+                                                            {reglaAnomalia(anomalia.tipo)}
+                                                            {anomalia.campo && ` (${etiquetaCampo(anomalia.campo)})`}
+                                                            {' · detectado el '}
+                                                            {formatearFecha(anomalia.fechaDeteccion)}
+                                                            {anomalia.fechaResolucion &&
+                                                                ` · resuelto el ${formatearFecha(anomalia.fechaResolucion)}`}
+                                                        </p>
+                                                    ))}
+                                            </div>
+                                        )}
+
+                                        {(documentoSeleccionado.comprobacionesSinHacer?.length ?? 0) > 0 && (
+                                            <div className="mt-3 rounded-2xl border border-[#e6e1d8] bg-[#faf9f6] p-4">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-[#766e61]">
+                                                    Comprobaciones no realizadas
+                                                </p>
+
+                                                {documentoSeleccionado.comprobacionesSinHacer!.map((motivo) => (
+                                                    <p key={motivo} className="mt-1.5 text-sm text-[#766e61]">
+                                                        {motivo}
+                                                    </p>
+                                                ))}
                                             </div>
                                         )}
 
@@ -700,7 +817,6 @@ export function BandejaValidacionPage() {
 
                                             <div className="mt-3 grid grid-cols-3 gap-2">
                                                 {CATEGORIAS.map((categoria) => {
-                                                    // La categoría se puede cambiar en cualquier estado, igual que en la API.
                                                     const activa = documentoSeleccionado.categoria === categoria
                                                     const propuesta = documentoSeleccionado.categoriaPropuesta === categoria
 
@@ -747,8 +863,13 @@ export function BandejaValidacionPage() {
                                                             key={clave}
                                                             className="block"
                                                         >
-                                                            <span className="mb-1.5 block text-sm font-semibold text-[#766e61]">
+                                                            <span className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-[#766e61]">
                                                                 {etiqueta}
+                                                                {campoARevisar(documentoSeleccionado, clave) && (
+                                                                    <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                                        Revisar
+                                                                    </span>
+                                                                )}
                                                             </span>
 
                                                             <input
@@ -792,8 +913,13 @@ export function BandejaValidacionPage() {
                                                         return (
                                                             <div key={clave}>
                                                                 <div className="flex items-end justify-between gap-3">
-                                                                    <span className="text-sm text-[#766e61]">
+                                                                    <span className="flex items-center gap-1.5 text-sm text-[#766e61]">
                                                                         {etiqueta}
+                                                                        {campoARevisar(documentoSeleccionado, clave) && (
+                                                                            <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                                                Revisar
+                                                                            </span>
+                                                                        )}
                                                                     </span>
 
                                                                     <strong className="text-right text-sm text-[#151515]">
@@ -808,7 +934,11 @@ export function BandejaValidacionPage() {
                                                                     </strong>
                                                                 </div>
 
-                                                                {confianza && (
+                                                                {campoCorregido(documentoSeleccionado, clave) ? (
+                                                                    <span className="mt-1.5 inline-block rounded-full bg-[#e7f1fb] px-2 py-0.5 text-xs font-bold text-[#1d2b55]">
+                                                                        Corregido por el gestor
+                                                                    </span>
+                                                                ) : confianza && (
                                                                     <span
                                                                         className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-xs font-bold ${confianza.clases}`}
                                                                     >
@@ -836,6 +966,7 @@ export function BandejaValidacionPage() {
                                                             event.target.value,
                                                         )
                                                     }
+                                                    maxLength={500}
                                                     rows={3}
                                                     placeholder="Escribe tu pregunta..."
                                                     className="w-full resize-none rounded-lg border border-[#1d2b55] bg-white p-3 text-sm outline-none"
@@ -855,12 +986,17 @@ export function BandejaValidacionPage() {
 
                                                     <button
                                                         type="button"
+                                                        onClick={() => void enviarAclaracion()}
                                                         disabled={
-                                                            !pregunta.trim()
+                                                            !pregunta.trim() || procesando
                                                         }
-                                                        className="rounded-lg bg-[#d66b13] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                                        className="rounded-lg bg-[#d66b13] px-3 py-2 text-sm font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1"
                                                     >
-                                                        <Send className="mr-1 inline size-3.5" />
+                                                        {procesando ? (
+                                                            <Loader2 className="size-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Send className="size-3.5" />
+                                                        )}
                                                         Enviar
                                                     </button>
                                                 </div>

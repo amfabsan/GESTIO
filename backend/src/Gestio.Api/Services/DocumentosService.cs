@@ -26,6 +26,18 @@ public sealed class DocumentosService(
     ILectorDocumento lector,
     AccesoDocumentos acceso)
 {
+    // Catálogo asignable (PB-09). SIN_CLASIFICAR es solo el estado inicial: no se puede elegir.
+    private static readonly CategoriaDocumento[] CatalogoCategorias =
+        [CategoriaDocumento.INGRESO, CategoriaDocumento.GASTO, CategoriaDocumento.OTRO];
+
+    // Se compara por nombre: Enum.TryParse aceptaría también "SIN_CLASIFICAR" o números como "99".
+    private static bool TryLeerCategoria(string? valor, out CategoriaDocumento categoria)
+    {
+        categoria = CatalogoCategorias.FirstOrDefault(c =>
+            string.Equals(c.ToString(), valor?.Trim(), StringComparison.OrdinalIgnoreCase));
+        return categoria != CategoriaDocumento.SIN_CLASIFICAR;
+    }
+
     public ReglasSubida ObtenerReglasSubida() => new(options.Value.TamanoMaximoBytes, ValidadorArchivo.TiposPermitidos);
 
     public async Task<IReadOnlyList<Documento>> ListarAsync(UsuarioActual usuario, CancellationToken cancellationToken) =>
@@ -110,6 +122,17 @@ public sealed class DocumentosService(
             throw;
         }
 
+        // La carga ya está guardada: un fallo al comprobar duplicados no debe romperla.
+        try
+        {
+            await RegistrarPosibleDuplicadoAsync(documento, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "No se pudo comprobar si {DocumentoId} es un duplicado; la carga se conserva", documento.Id);
+            context.ChangeTracker.Clear();
+        }
+
         try
         {
             await ProcesarAsync(usuario, documento.Id, false, CancellationToken.None);
@@ -123,9 +146,58 @@ public sealed class DocumentosService(
         return (await ObtenerAsync(usuario, documento.Id, CancellationToken.None))!;
     }
 
+    // Compara el hash SHA-256 del documento recién subido con los ya guardados del MISMO propietario.
+    // No borra, fusiona ni valida nada: solo crea la alerta y la anota en el historial.
+    private async Task RegistrarPosibleDuplicadoAsync(Documento nuevo, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(nuevo.HashSha256)) return;
+
+        // El filtro por propietario garantiza que nunca se comparen ni se revelen archivos de otros autónomos.
+        // Se toma el más antiguo: es el documento "original" del que este sería copia.
+        var anterior = await context.Documentos
+            .AsNoTracking()
+            .Where(d => d.UsuarioId == nuevo.UsuarioId
+                        && d.Id != nuevo.Id
+                        && d.HashSha256 == nuevo.HashSha256)
+            .OrderBy(d => d.FechaSubida)
+            .Select(d => new { d.Id, d.NombreArchivo, d.FechaSubida })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (anterior is null) return;
+
+        var ahora = timeProvider.GetUtcNow();
+        var descripcion =
+            $"Posible archivo duplicado: es idéntico a «{anterior.NombreArchivo}», subido el {anterior.FechaSubida:dd/MM/yyyy}.";
+
+        // ADVERTENCIA y no BLOQUEANTE: el gestor decide, la detección no impide nada.
+        var anomalia = new Anomalia
+        {
+            Id = Guid.NewGuid(),
+            DocumentoId = nuevo.Id,
+            DocumentoRelacionadoId = anterior.Id,
+            Tipo = TipoAnomalia.POSIBLE_DUPLICADO,
+            Descripcion = Truncar(descripcion, 500),
+            Severidad = SeveridadAnomalia.ADVERTENCIA,
+            Resuelta = false,
+            FechaDeteccion = ahora
+        };
+        context.Add(anomalia);
+
+        // Sin usuario: es una detección automática y el historial la muestra como «Sistema» (PB-08).
+        var evento = new EventoDocumento(
+            null,
+            TipoEventoDocumento.POSIBLE_DUPLICADO,
+            ahora,
+            Truncar($"Anomalía: posible duplicado de {anterior.NombreArchivo}", 500));
+        nuevo.Eventos.Add(evento);
+        context.Add(evento);
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<Resultado<Documento>> ProcesarAsync(UsuarioActual usuario, Guid id, bool reintento, CancellationToken cancellationToken)
     {
-        var documento = await ConsultablesPor(usuario).Include(d => d.Eventos).Include(d => d.ExtraccionIa)
+        var documento = await ConsultablesPor(usuario).Include(d => d.Eventos).Include(d => d.ExtraccionIa).Include(d => d.Anomalias)
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
         if (documento is null) return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
@@ -188,7 +260,7 @@ public sealed class DocumentosService(
                 extraccion.Total,
                 extraccion.DesglosesIva,
                 extraccion.Advertencias,
-                Confianza = (decimal?)null
+                extraccion.ConfianzaCampos
             });
 
             extraccion.DatosCrudosJson = System.Text.Json.JsonSerializer.Serialize(new
@@ -196,13 +268,15 @@ public sealed class DocumentosService(
                 texto = reconocido.Texto,
                 lecturas = reconocido.Lecturas,
                 desglosesIva = extraccion.DesglosesIva,
-                advertencias = extraccion.Advertencias
+                advertencias = extraccion.Advertencias,
+                confianzaCampos = extraccion.ConfianzaCampos
             });
 
             if (documento.ExtraccionIa is not null) context.Remove(documento.ExtraccionIa);
 
             documento.ExtraccionIa = extraccion;
             context.Add(extraccion);
+            RevisarAnomalias(documento);
             documento.Estado = EstadoDocumento.PENDIENTE_VALIDACION;
             intento.Resultado = "CORRECTO";
         }
@@ -311,6 +385,7 @@ public sealed class DocumentosService(
         var documento = await ConsultablesPor(usuario)
             .Include(d => d.ExtraccionIa)
             .Include(d => d.Eventos)
+            .Include(d => d.Anomalias)
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
         if (documento is null)
@@ -380,6 +455,8 @@ public sealed class DocumentosService(
         if (errores.Count > 0)
             return ErrorDeValidacion(errores);
 
+        RevisarAnomalias(documento);
+
         await context.SaveChangesAsync(cancellationToken);
 
         // Se devuelve el documento con todo su detalle (Usuario, Anomalias, Historial…),
@@ -440,7 +517,125 @@ public sealed class DocumentosService(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
+        return (await ObtenerAsync(usuario, id, cancellationToken))!;
+    }
+
+    public async Task<Resultado<Documento>> SolicitarAclaracionAsync(
+        UsuarioActual usuario,
+        Guid id,
+        string? pregunta,
+        CancellationToken cancellationToken)
+    {
+        if (usuario.Rol != Rol.GESTOR)
+            return DocumentoErrores.SinPermisoValidacion;
+
+        if (string.IsNullOrWhiteSpace(pregunta))
+            return new Error("documento.aclaracion_vacia", "Escribe la pregunta para el cliente.", TipoError.VALIDACION);
+
+        if (pregunta.Trim().Length > 500)
+            return new Error("documento.aclaracion_larga", "La pregunta no puede superar los 500 caracteres.", TipoError.VALIDACION);
+
+        var documento = await ConsultablesPor(usuario)
+            .Include(d => d.Eventos)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (documento is null)
+            return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
+
+        if (documento.Estado != EstadoDocumento.PENDIENTE_VALIDACION)
+            return DocumentoErrores.EstadoNoPermitidoParaValidacion;
+
+        documento.Estado = EstadoDocumento.ACLARACION_SOLICITADA;
+
+        var evento = new EventoDocumento(
+            usuario.Id,
+            TipoEventoDocumento.ACLARACION_SOLICITADA,
+            timeProvider.GetUtcNow(),
+            pregunta.Trim());
+        documento.Eventos.Add(evento);
+        context.Add(evento);
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return (await ObtenerAsync(usuario, id, cancellationToken))!;
+    }
+
+    public async Task<Resultado<Documento>> EnviarNotaAsync(
+        UsuarioActual usuario,
+        Guid id,
+        string? nota,
+        CancellationToken cancellationToken)
+    {
+        if (usuario.Rol != Rol.GESTOR)
+            return DocumentoErrores.SinPermisoValidacion;
+
+        if (string.IsNullOrWhiteSpace(nota))
+            return new Error("documento.nota_vacia", "Escribe la nota para el cliente.", TipoError.VALIDACION);
+
+        if (nota.Trim().Length > 500)
+            return new Error("documento.nota_larga", "La nota no puede superar los 500 caracteres.", TipoError.VALIDACION);
+
+        var documento = await ConsultablesPor(usuario)
+            .Include(d => d.Eventos)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
+
+        if (documento is null)
+            return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
+
+        var evento = new EventoDocumento(
+            usuario.Id,
+            TipoEventoDocumento.NOTA_GESTOR,
+            timeProvider.GetUtcNow(),
+            nota.Trim());
+        documento.Eventos.Add(evento);
+        context.Add(evento);
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        return (await ObtenerAsync(usuario, id, cancellationToken))!;
+    }
+
+    // Aplica las reglas de PB-11 a los valores vigentes. Crea las anomalías nuevas y da por resueltas las
+    // que una corrección ha eliminado, sin borrarlas: queda el registro de que se detectaron.
+    private void RevisarAnomalias(Documento documento)
+    {
+        if (documento.ExtraccionIa is null) return;
+
+        var detectadas = DetectorAnomalias.Detectar(documento.ExtraccionIa);
+        var pendientes = documento.Anomalias
+            .Where(a => !a.Resuelta && a.Campo is not null && DetectorAnomalias.EsDeEstasReglas(a.Tipo))
+            .ToList();
+
+        var ahora = timeProvider.GetUtcNow();
+        foreach (var pendiente in pendientes)
+        {
+            var sigue = detectadas.FirstOrDefault(d => d.Tipo == pendiente.Tipo && d.Campo == pendiente.Campo);
+            if (sigue is null)
+            {
+                pendiente.Resuelta = true;
+                pendiente.FechaResolucion = ahora;
+            }
+            else
+                pendiente.Descripcion = sigue.Descripcion;
+        }
+
+        foreach (var nueva in detectadas.Where(d => !pendientes.Any(p => p.Tipo == d.Tipo && p.Campo == d.Campo)))
+        {
+            // ADVERTENCIA: avisa al gestor pero no bloquea la revisión.
+            var anomalia = new Anomalia
+            {
+                Id = Guid.NewGuid(),
+                DocumentoId = documento.Id,
+                Tipo = nueva.Tipo,
+                Campo = nueva.Campo,
+                Descripcion = Truncar(nueva.Descripcion, 500),
+                Severidad = SeveridadAnomalia.ADVERTENCIA,
+                Resuelta = false,
+                FechaDeteccion = ahora
+            };
+            documento.Anomalias.Add(anomalia);
+            context.Add(anomalia);
+        }
     }
 
     private static readonly Dictionary<string, string> Etiquetas = new(StringComparer.OrdinalIgnoreCase)
@@ -462,19 +657,7 @@ public sealed class DocumentosService(
     // Tipos de retención de IRPF habituales: el total puede ser base + cuota - retención.
     private static readonly decimal[] RetencionesIrpf = [1m, 2m, 7m, 15m, 19m];
 
-    // Catálogo asignable (PB-09). SIN_CLASIFICAR es solo el estado inicial: no se puede elegir.
-    private static readonly CategoriaDocumento[] CatalogoCategorias =
-        [CategoriaDocumento.INGRESO, CategoriaDocumento.GASTO, CategoriaDocumento.OTRO];
-
-    // Se compara por nombre: Enum.TryParse aceptaría también "SIN_CLASIFICAR" o números como "99".
-    private static bool TryLeerCategoria(string? valor, out CategoriaDocumento categoria)
-    {
-        categoria = CatalogoCategorias.FirstOrDefault(c =>
-            string.Equals(c.ToString(), valor?.Trim(), StringComparison.OrdinalIgnoreCase));
-        return categoria != CategoriaDocumento.SIN_CLASIFICAR;
-    }
-
-    private static string Etiqueta(string campo) =>Etiquetas.GetValueOrDefault(campo.Trim(), campo);
+    private static string Etiqueta(string campo) => Etiquetas.GetValueOrDefault(campo.Trim(), campo);
 
     private static string Euros(decimal importe) =>
         importe.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("es-ES")) + " €";
@@ -665,6 +848,9 @@ public sealed class DocumentosService(
         }
     }
 
+    private static string Truncar(string texto, int maximo) =>
+        texto.Length <= maximo ? texto : texto[..(maximo - 1)] + "…";
+
     private static bool Igual(object? a, object? b)
     {
         if (a is null && b is null) return true;
@@ -692,6 +878,7 @@ public sealed class DocumentosService(
         .Include(documento => documento.ExtraccionIa)
         .Include(documento => documento.Anomalias)
         .Include(documento => documento.Eventos)
+            .ThenInclude(evento => evento.Usuario)
         .Include(documento => documento.Intentos)
         .Include(documento => documento.HistorialValidacion);
 }

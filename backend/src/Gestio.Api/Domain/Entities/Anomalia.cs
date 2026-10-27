@@ -8,7 +8,12 @@ public sealed class Anomalia
 
     public Guid DocumentoId { get; set; }
 
+    public Guid? DocumentoRelacionadoId { get; set; }
+
     public TipoAnomalia Tipo { get; set; }
+
+    // Campo de la extracción que debe revisar el gestor (p. ej. "EmisorNif", "Total"), si la regla señala uno.
+    public string? Campo { get; set; }
 
     public required string Descripcion { get; set; }
 
@@ -17,6 +22,9 @@ public sealed class Anomalia
     public bool Resuelta { get; set; }
 
     public DateTimeOffset FechaDeteccion { get; set; }
+
+    // Cuándo dejó de estar pendiente; la anomalía se conserva con las dos fechas.
+    public DateTimeOffset? FechaResolucion { get; set; }
 
     public Documento Documento { get; set; } = null!;
 }
