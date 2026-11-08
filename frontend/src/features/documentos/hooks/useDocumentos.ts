@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Documento } from '../../../types/documentos'
 import { abrirEnPestanaNueva } from '../../../utils/archivos'
 import { obtenerDocumentos, obtenerOriginal, reintentarDocumento } from '../documentosApi'
+import { useSincronizarDocumentos } from './useSincronizarDocumentos'
 
 export function useDocumentos(perfilId: string | undefined) {
   const [documentos, setDocumentos] = useState<Documento[]>([])
@@ -9,20 +10,7 @@ export function useDocumentos(perfilId: string | undefined) {
   const [error, setError] = useState<string | null>(null)
   const [errorOriginal, setErrorOriginal] = useState<string | null>(null)
   const [reintentando, setReintentando] = useState<string | null>(null)
-  const procesando = documentos.some(d => d.estado === 'PROCESANDO')
-
-  useEffect(() => {
-    if (!perfilId || !procesando) return
-    const controller = new AbortController()
-    let temporizador: ReturnType<typeof setTimeout>
-    const actualizar = async () => {
-      try { setDocumentos(await obtenerDocumentos(controller.signal)) }
-      catch { /* El siguiente ciclo vuelve a consultar; la vista conserva los datos. */ }
-      if (!controller.signal.aborted) temporizador = setTimeout(actualizar, 2000)
-    }
-    temporizador = setTimeout(actualizar, 2000)
-    return () => { controller.abort(); clearTimeout(temporizador) }
-  }, [perfilId, procesando])
+  useSincronizarDocumentos(perfilId, setDocumentos)
 
   const reintentar = useCallback(async (id: string) => {
     setReintentando(id)
@@ -31,7 +19,11 @@ export function useDocumentos(perfilId: string | undefined) {
       const actualizado = await reintentarDocumento(id)
       setDocumentos(actuales => actuales.map(d => d.id === id ? actualizado : d))
     } catch { setErrorOriginal('No se pudo solicitar el reintento. Actualiza y comprueba tus permisos.') }
-    finally { setReintentando(null) }
+    finally {
+      setReintentando(null)
+      // También restaura el estado real cuando la petición de reintento es rechazada.
+      try { setDocumentos(await obtenerDocumentos()) } catch { /* La sincronización vuelve a intentarlo. */ }
+    }
   }, [])
 
   useEffect(() => {
@@ -56,7 +48,7 @@ export function useDocumentos(perfilId: string | undefined) {
 
   const agregarDocumento = useCallback((documento: Documento) => {
     setError(null)
-    setDocumentos((actuales) => [documento, ...actuales])
+    setDocumentos((actuales) => [documento, ...actuales.filter(d => d.id !== documento.id)])
   }, [])
 
   const abrirOriginal = useCallback(async (id: string) => {

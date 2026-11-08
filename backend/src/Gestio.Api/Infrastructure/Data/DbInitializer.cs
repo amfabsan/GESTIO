@@ -147,7 +147,7 @@ public static class DbInitializer
                 TipoMime = "application/pdf",
                 Origen = OrigenDocumento.SUBIDA_WEB,
                 FechaSubida = new DateTimeOffset(2026, 1, 18, 8, 0, 0, TimeSpan.Zero),
-                Estado = EstadoDocumento.PROCESANDO
+                Estado = EstadoDocumento.EXTRAYENDO_DATOS
 
             },
 

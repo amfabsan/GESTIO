@@ -161,7 +161,11 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
     }
 
-    private static DocumentoResponse MapearDocumento(Documento documento) => new(
+    private static DocumentoResponse MapearDocumento(Documento documento)
+    {
+        // Conserva la extracción previa, pero no la publica como propuesta de la ejecución activa.
+        var extraccion = documento.Estado == EstadoDocumento.EXTRAYENDO_DATOS ? null : documento.ExtraccionIa;
+        return new(
         documento.Id,
         documento.NombreArchivo,
         documento.Usuario.Nombre,
@@ -172,25 +176,25 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         documento.Origen.ToString(),
         documento.StorageKey is not null,
         documento.Categoria.ToString(),
-        ParseCategoriaPropuesta(documento.ExtraccionIa?.CategoriaSugerida),
-        documento.ExtraccionIa?.NivelConfianza?.ToString(),
-        documento.ExtraccionIa is null
+        ParseCategoriaPropuesta(extraccion?.CategoriaSugerida),
+        extraccion?.NivelConfianza?.ToString(),
+        extraccion is null
             ? null
             : new ExtraccionResponse(
-                documento.ExtraccionIa.NumeroFactura,
-                documento.ExtraccionIa.EmisorNombre,
-                documento.ExtraccionIa.EmisorNif,
-                documento.ExtraccionIa.FechaEmision,
-                documento.ExtraccionIa.BaseImponible,
-                documento.ExtraccionIa.TipoIva,
-                documento.ExtraccionIa.CuotaIva,
-                documento.ExtraccionIa.Total,
-                documento.ExtraccionIa.CategoriaSugerida,
-                documento.ExtraccionIa.NivelConfianza?.ToString(),
-                documento.ExtraccionIa.DatosCrudosJson,
-                documento.ExtraccionIa.DesglosesIva,
-                documento.ExtraccionIa.Advertencias,
-                documento.ExtraccionIa.ConfianzaCampos.ToDictionary(c => c.Key, c => c.Value.ToString())),
+                extraccion.NumeroFactura,
+                extraccion.EmisorNombre,
+                extraccion.EmisorNif,
+                extraccion.FechaEmision,
+                extraccion.BaseImponible,
+                extraccion.TipoIva,
+                extraccion.CuotaIva,
+                extraccion.Total,
+                extraccion.CategoriaSugerida,
+                extraccion.NivelConfianza?.ToString(),
+                extraccion.DatosCrudosJson,
+                extraccion.DesglosesIva,
+                extraccion.Advertencias,
+                extraccion.ConfianzaCampos.ToDictionary(c => c.Key, c => c.Value.ToString())),
         documento.Anomalias
             .OrderByDescending(anomalia => anomalia.FechaDeteccion)
             .Select(anomalia => new AnomaliaResponse(
@@ -224,7 +228,8 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
                 h.FechaCambio))
             .ToList(),
         TipoDocumento(documento),
-        documento.ExtraccionIa is null ? [] : DetectorAnomalias.ComprobacionesSinHacer(documento.ExtraccionIa));
+        extraccion is null ? [] : DetectorAnomalias.ComprobacionesSinHacer(extraccion));
+    }
 
     private static string? ParseCategoriaPropuesta(string? categoriaSugerida)
     {

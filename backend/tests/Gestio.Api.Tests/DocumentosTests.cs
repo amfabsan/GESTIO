@@ -565,7 +565,7 @@ public sealed class DocumentosTests
     // PA 77-1 (UT07): intentar aprobar un documento en estados que no son PENDIENTE_VALIDACION
     // se rechaza con EstadoNoPermitidoParaValidacion y el estado del documento no cambia.
     [Theory]
-    [InlineData(EstadoDocumento.PROCESANDO)]
+    [InlineData(EstadoDocumento.EXTRAYENDO_DATOS)]
     [InlineData(EstadoDocumento.ERROR)]
     [InlineData(EstadoDocumento.SUBIDO)]
     public async Task Aprobar_EstadoNoValido_SeRechazaYNoCambiaEstado(EstadoDocumento estado)
@@ -833,6 +833,88 @@ public sealed class DocumentosTests
             .ToListAsync());
     }
 
+    [Fact]
+    public async Task PA1970_PA1972_PA1973_EstadoIntermedioRegistrado_SinPropuestasNiEdicion_YFinSinAprobar()
+    {
+        await using var context = CrearContexto(nameof(PA1970_PA1972_PA1973_EstadoIntermedioRegistrado_SinPropuestasNiEdicion_YFinSinAprobar));
+        await DbInitializer.SeedAsync(context);
+        var lector = new LectorControlado();
+        var servicio = new DocumentosService(context, new AlmacenamientoEnMemoria(),
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, lector, new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var tarea = servicio.SubirAsync(Ramon, "pa1970.pdf", contenido, PdfValido.Length, CancellationToken.None);
+        await lector.Iniciado.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var activo = await context.Documentos.Include(d => d.Intentos).SingleAsync(d => d.NombreArchivo == "pa1970.pdf");
+        Assert.Equal(2, (int)EstadoDocumento.EXTRAYENDO_DATOS); // Mantiene la representación persistida de PB-06.
+        Assert.Equal(EstadoDocumento.EXTRAYENDO_DATOS, activo.Estado);
+        Assert.Equal("EXTRAYENDO_DATOS", Assert.Single(activo.Intentos).Resultado);
+        Assert.Contains(activo.Eventos, e => e.Tipo == TipoEventoDocumento.PROCESAMIENTO_INICIADO && e.Detalle!.Contains("Extrayendo datos…"));
+        var controller = new DocumentosController(servicio, new UsuarioActualFijo(Ramon));
+        var durante = Assert.IsType<DocumentoResponse>(Assert.IsType<OkObjectResult>((await controller.GetDocumento(activo.Id, default)).Result).Value);
+        Assert.Equal("EXTRAYENDO_DATOS", durante.Estado);
+        Assert.Null(durante.Extraccion);
+        Assert.Null(durante.CategoriaPropuesta);
+        Assert.Null(durante.NivelConfianzaPropuesta);
+        Assert.False((await servicio.CorregirAsync(Pedro, activo.Id, [new CampoValidacionRequest("Total", "1")], default)).EsCorrecto);
+        Assert.False((await servicio.AprobarAsync(Pedro, activo.Id, default)).EsCorrecto);
+        Assert.False((await servicio.CambiarCategoriaAsync(Pedro, activo.Id, "GASTO", default)).EsCorrecto);
+        Assert.Null(await servicio.ObtenerAsync(new UsuarioActual(Guid.NewGuid(), Rol.AUTONOMO), activo.Id, default));
+        lector.Terminar();
+        var final = (await tarea.WaitAsync(TimeSpan.FromSeconds(10))).Valor!;
+        Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, final.Estado);
+        Assert.NotNull(final.ExtraccionIa);
+        Assert.Equal("CORRECTO", Assert.Single(final.Intentos).Resultado);
+    }
+
+    [Fact]
+    public async Task PA1974_PA1975_ErrorYReintentoConservanEjecuciones_YOcultanLaExtraccionAnterior()
+    {
+        await using var context = CrearContexto(nameof(PA1974_PA1975_ErrorYReintentoConservanEjecuciones_YOcultanLaExtraccionAnterior));
+        await DbInitializer.SeedAsync(context);
+        var storage = new AlmacenamientoEnMemoria();
+        var lector = new LectorControlado();
+        DocumentosService Servicio(ILectorDocumento motor) => new(context, storage,
+            Options.Create(new DocumentosOptions { TamanoMaximoBytes = 1024 }), TimeProvider.System,
+            NullLogger<DocumentosService>.Instance, motor, new AccesoDocumentos(context));
+        using var contenido = new MemoryStream(PdfValido);
+        var tarea = Servicio(lector).SubirAsync(Ramon, "pa1974.pdf", contenido, PdfValido.Length, default);
+        await lector.Iniciado.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        lector.Fallar();
+        var fallido = (await tarea).Valor!;
+        Assert.Equal(EstadoDocumento.ERROR, fallido.Estado);
+        var previo = Assert.Single(fallido.Intentos);
+        Assert.Equal("ERROR", previo.Resultado);
+        Assert.NotNull(previo.Error);
+        Assert.NotNull(previo.Fin);
+        var relector = new LectorControlado();
+        var servicio = Servicio(relector);
+        var reintento = servicio.ProcesarAsync(Ramon, fallido.Id, true, default);
+        await relector.Iniciado.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        var activo = await servicio.ObtenerAsync(Ramon, fallido.Id, default);
+        Assert.Equal(EstadoDocumento.EXTRAYENDO_DATOS, activo!.Estado);
+        Assert.Equal(2, activo.Intentos.Count);
+        relector.Terminar();
+        var correcto = (await reintento).Valor!;
+        Assert.Equal(EstadoDocumento.PENDIENTE_VALIDACION, correcto.Estado);
+        Assert.Contains(correcto.Intentos, i => i.Id == previo.Id && i.Resultado == "ERROR" && i.Error == previo.Error);
+        Assert.Contains(correcto.Intentos, i => i.Resultado == "CORRECTO");
+
+        // Reextraer un documento con propuesta existente tampoco publica la lectura anterior como activa.
+        var tercero = new LectorControlado();
+        var servicioTercero = Servicio(tercero);
+        var tareaTercera = servicioTercero.ProcesarAsync(Ramon, correcto.Id, true, default);
+        await tercero.Iniciado.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.NotNull(await context.ExtraccionesIa.SingleOrDefaultAsync(e => e.DocumentoId == correcto.Id));
+        var respuesta = await new DocumentosController(servicioTercero, new UsuarioActualFijo(Ramon)).GetDocumento(correcto.Id, default);
+        var dto = Assert.IsType<DocumentoResponse>(Assert.IsType<OkObjectResult>(respuesta.Result).Value);
+        Assert.Null(dto.Extraccion);
+        Assert.Null(dto.NivelConfianzaPropuesta);
+        Assert.Null(dto.CategoriaPropuesta);
+        tercero.Terminar();
+        Assert.Equal(3, (await tareaTercera).Valor!.Intentos.Count);
+    }
+
     // Factura de luz del seed: de Ramón, sin clasificar y con propuesta automática INGRESO (ALTO).
     private static Task<Guid> FacturaConPropuestaIngreso(ApplicationDbContext context) =>
         context.ExtraccionesIa.Where(e => e.CategoriaSugerida == "INGRESO").Select(e => e.DocumentoId).SingleAsync();
@@ -865,6 +947,19 @@ public sealed class DocumentosTests
 }
 
 // Sustituye al perfil seleccionado en los tests: siempre devuelve el usuario indicado.
+file sealed class LectorControlado : ILectorDocumento
+{
+    public TaskCompletionSource<bool> Iniciado { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<TextoDocumento> resultado = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Task<TextoDocumento> LeerAsync(Stream original, string tipoMime, CancellationToken ct)
+    {
+        Iniciado.TrySetResult(true);
+        return resultado.Task.WaitAsync(ct);
+    }
+    public void Terminar() => resultado.SetResult(new TextoDocumento("Factura PA1970. Total: 12,34 EUR", "prueba-controlada"));
+    public void Fallar() => resultado.SetException(new InvalidOperationException("No se pudo extraer el documento de prueba. Puedes reintentar."));
+}
+
 file sealed class LectorParaPruebaDeFlujo(string? texto = null) : ILectorDocumento
 {
     public Task<TextoDocumento> LeerAsync(Stream original, string tipoMime, CancellationToken cancellationToken) =>

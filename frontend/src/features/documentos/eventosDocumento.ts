@@ -4,7 +4,7 @@ import { obtenerNombreCompleto } from '../../utils/usuarios'
 
 const TEXTO_EVENTO: Record<TipoEventoDocumento, string> = {
     SUBIDA: 'Documento subido',
-    PROCESAMIENTO_INICIADO: 'Extracción iniciada',
+    PROCESAMIENTO_INICIADO: 'Extrayendo datos…',
     PROCESAMIENTO_CORRECTO: 'Datos extraídos',
     PROCESAMIENTO_FALLIDO: 'Extracción fallida',
     PROCESAMIENTO_COMPLETADO: 'Procesamiento completado',

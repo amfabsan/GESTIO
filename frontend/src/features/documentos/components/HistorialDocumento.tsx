@@ -5,6 +5,7 @@ import { btnSecundario, etiqueta } from '../../../components/ui/estilos'
 import { formatearFechaHora } from '../../../utils/formato'
 import { esEventoDelSistema, etiquetaCampo, nombreActor, textoEvento, valorCorregido } from '../eventosDocumento'
 import { useHistorialDocumento } from '../hooks/useHistorialDocumento'
+import { textoEstadoExtraccion } from '../estadosDocumento'
 
 // Solo lectura: muestra la línea temporal y no ofrece ninguna acción sobre los eventos.
 // version (p. ej. el número de eventos del documento) recarga la línea temporal sin cerrarla.
@@ -46,7 +47,7 @@ function LineaTemporal({ documentoId, version }: { documentoId: string; version?
                 {etiquetaCampo(evento.cambio.campo)}: <del>{valorCorregido(evento.cambio.campo, evento.cambio.valorAnterior)}</del> → <span className="font-medium">{valorCorregido(evento.cambio.campo, evento.cambio.valorNuevo)}</span>
               </p>
             ) : (
-              evento.detalle && <p className="mt-1 text-[#3d3a30]">{evento.detalle}</p>
+              evento.detalle && <p className="mt-1 text-[#3d3a30]">{textoEstadoExtraccion(evento.detalle)}</p>
             )}
           </li>
         ))}

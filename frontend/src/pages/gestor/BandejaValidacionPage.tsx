@@ -13,6 +13,7 @@ import {
 import type { CategoriaDocumento, Documento, EstadoDocumento } from '../../types/documentos'
 import { obtenerOriginal } from '../../features/documentos/documentosApi'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
+import { EstadoBadge } from '../../features/documentos/components/EstadoBadge'
 import { etiquetaCampo } from '../../features/documentos/eventosDocumento'
 import { useValidacionDocumentos } from '../../features/documentos/hooks/useValidacionDocumentos'
 import { formatearFecha } from '../../utils/formato'
@@ -52,7 +53,9 @@ const PESTANAS: { clave: Pestana; etiqueta: string; estado: EstadoDocumento | nu
 function documentosDePestana(documentos: Documento[], pestana: Pestana) {
     const estado = PESTANAS.find((p) => p.clave === pestana)?.estado ?? null
 
-    return estado ? documentos.filter((d) => d.estado === estado) : documentos
+    return pestana === 'PENDIENTES'
+        ? documentos.filter(d => ['SUBIDO', 'EXTRAYENDO_DATOS', 'PENDIENTE_VALIDACION'].includes(d.estado))
+        : estado ? documentos.filter((d) => d.estado === estado) : documentos
 }
 
 const CATEGORIAS: CategoriaDocumento[] = ['INGRESO', 'GASTO', 'OTRO']
@@ -137,8 +140,8 @@ function estadoLegible(estado: Documento['estado']) {
             return 'En aclaración'
         case 'VALIDADO':
             return 'Aprobado'
-        case 'PROCESANDO':
-            return 'Procesando'
+        case 'EXTRAYENDO_DATOS':
+            return 'Extrayendo datos…'
         case 'ERROR':
             return 'Error'
         default:
@@ -550,6 +553,7 @@ export function BandejaValidacionPage() {
                                         </p>
 
                                         <div className="mt-2 flex items-center gap-2">
+                                            <EstadoBadge estado={documento.estado} />
                                             <span className="text-base font-bold text-[#008b45]">
                                                 {obtenerTotal(documento)}
                                             </span>
@@ -585,11 +589,7 @@ export function BandejaValidacionPage() {
                                     </div>
 
                                     <div className="flex shrink-0 items-center gap-3">
-                                        <span className="rounded-full bg-[#fff0bf] px-3 py-1.5 text-sm font-bold text-[#a95500]">
-                                            {estadoLegible(
-                                                documentoSeleccionado.estado,
-                                            )}
-                                        </span>
+                                        <EstadoBadge estado={documentoSeleccionado.estado} />
 
                                         <strong className="text-xl text-[#1d2b55]">
                                             {obtenerTotal(documentoSeleccionado)}
@@ -785,6 +785,7 @@ export function BandejaValidacionPage() {
                                     </section>
 
                                     <aside className="flex min-h-0 flex-col p-6">
+                                        {documentoSeleccionado.estado === 'EXTRAYENDO_DATOS' ? <div className="rounded-xl bg-blue-50 p-4"><EstadoBadge estado={documentoSeleccionado.estado} /><p className="mt-3 text-sm">Los datos propuestos y sus confianzas estarán disponibles al terminar la extracción. No se puede editar ni validar mientras tanto.</p></div> : <>
                                         <div className="mt-3 rounded-2xl border border-[#d9d4ca] bg-[#f8f6f3] p-4">
                                             <div className="flex items-center justify-between gap-3">
                                                 <div className="flex items-center gap-2">
@@ -1098,6 +1099,7 @@ export function BandejaValidacionPage() {
                                             <Check className="size-3.5 text-[#008b45]" />
                                             Revisión manual requerida.
                                         </div>
+                                        </>}
                                     </aside>
                                 </div>
                             </section>

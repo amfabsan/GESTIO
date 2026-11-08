@@ -1,6 +1,6 @@
 export type EstadoDocumento =
     | 'SUBIDO'
-    | 'PROCESANDO'
+    | 'EXTRAYENDO_DATOS'
     | 'PENDIENTE_VALIDACION'
     | 'VALIDADO'
     | 'ERROR'

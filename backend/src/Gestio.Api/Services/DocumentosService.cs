@@ -221,8 +221,8 @@ public sealed class DocumentosService(
         await using var original = contenidoOriginal;
 
         var intento = new IntentoProcesamiento { DocumentoId = id, Inicio = timeProvider.GetUtcNow() };
-        documento.Estado = EstadoDocumento.PROCESANDO;
-        var inicio = new EventoDocumento(reintento ? usuario.Id : null, TipoEventoDocumento.PROCESAMIENTO_INICIADO, intento.Inicio, "PROCESANDO: inicio de extracción del original.");
+        documento.Estado = EstadoDocumento.EXTRAYENDO_DATOS;
+        var inicio = new EventoDocumento(reintento ? usuario.Id : null, TipoEventoDocumento.PROCESAMIENTO_INICIADO, intento.Inicio, "Extrayendo datos… Inicio de extracción del original.");
         documento.Eventos.Add(inicio);
         context.Add(inicio);
         context.Add(intento);
@@ -339,6 +339,9 @@ public sealed class DocumentosService(
 
         if (documento is null)
             return new Error("documento.no_encontrado", "Documento no encontrado.", TipoError.NO_ENCONTRADO);
+
+        if (documento.Estado == EstadoDocumento.EXTRAYENDO_DATOS)
+            return new Error("documento.estado", "No se puede editar el documento mientras se están extrayendo sus datos.", TipoError.CONFLICTO);
 
         if (!TryLeerCategoria(nuevaCategoria, out var categoria))
             return new Error(

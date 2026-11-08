@@ -53,7 +53,7 @@ export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
             : <Upload aria-hidden="true" className="size-6 text-[#1d2b4f]" />}
         </div>
         <p className="font-semibold text-[#1d2b4f]">
-          {subiendo ? 'Subiendo…' : 'Arrastra tu archivo aquí o haz clic para seleccionarlo'}
+          {subiendo ? 'Cargando documento… Consulta el estado de la extracción en el listado.' : 'Arrastra tu archivo aquí o haz clic para seleccionarlo'}
         </p>
         {configuracion && (
           <p className="mt-1 text-sm text-[#6b6656]">

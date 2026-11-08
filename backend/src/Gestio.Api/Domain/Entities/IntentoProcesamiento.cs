@@ -8,7 +8,7 @@ public sealed class IntentoProcesamiento
     public DateTimeOffset? Fin { get; set; }
     public string Procesador { get; set; } = "tesseract-ppocrv5-poppler/disposicion-6";
     public string? Version { get; set; }
-    public string Resultado { get; set; } = "PROCESANDO";
+    public string Resultado { get; set; } = "EXTRAYENDO_DATOS";
     public string? Error { get; set; }
     public string? ValoresJson { get; set; }
 }

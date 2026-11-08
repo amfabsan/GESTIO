@@ -7,6 +7,7 @@ import { useAuth } from '../../context/useAuth'
 import { DropzoneSubida } from '../../features/documentos/components/DropzoneSubida'
 import { EstadoBadge } from '../../features/documentos/components/EstadoBadge'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
+import { textoEstadoExtraccion } from '../../features/documentos/estadosDocumento'
 import { FILTROS_BUZON, cumpleFiltro, tieneAnomaliaAbierta, type FiltroBuzon } from '../../features/documentos/filtrosBuzon'
 import { useDocumentos } from '../../features/documentos/hooks/useDocumentos'
 import { formatearEuros, formatearFecha } from '../../utils/formato'
@@ -85,9 +86,11 @@ export function BuzonPage() {
                                                                 )}
                                                             </div>
                                                             <p className="text-xs text-[#6b6656]">{formatearFecha(documento.fechaSubida)}</p>
+                                                            <div className="mt-1 sm:hidden"><EstadoBadge estado={documento.estado} /></div>
                                                             <details className="mt-2 text-sm">
                                                                 <summary className="cursor-pointer">Ver datos propuestos</summary>
                                                                 <EstadoBadge estado={documento.estado} />
+                                                                {documento.estado === 'EXTRAYENDO_DATOS' ? <p className="mt-2 text-sm text-[#6b6656]">Los datos propuestos estarán disponibles cuando termine la extracción.</p> : <>
                                                                 <dl className="mt-2 space-y-1">
                                                                     {/* Cada valor lleva la confianza de su lectura cuando el motor la da (PB-06). */}
                                                                     {([
@@ -130,10 +133,10 @@ export function BuzonPage() {
                                                                         )}
                                                                     </div>
                                                                 ))}
-
-                                                                {documento.intentos.map(intento => <p key={intento.id} className="mt-2">{formatearFecha(intento.inicio)} · {intento.resultado}{intento.error && `: ${intento.error}`}</p>)}
-                                                                {documento.tieneOriginal && (documento.estado === 'ERROR' || documento.estado === 'PENDIENTE_VALIDACION') && <button type="button" disabled={reintentando !== null} onClick={() => void reintentar(documento.id)} className="mt-2 text-[#c8651a] hover:underline">{reintentando === documento.id ? 'Procesando…' : documento.estado === 'ERROR' ? 'Reintentar extracción' : 'Volver a extraer'}</button>}
-                                                                <HistorialDocumento documentoId={documento.id} />
+                                                                </>}
+                                                                {documento.intentos.map(intento => <p key={intento.id} className="mt-2">{formatearFecha(intento.inicio)} · {textoEstadoExtraccion(intento.resultado)}{intento.error && `: ${intento.error}`}</p>)}
+                                                                {documento.tieneOriginal && (documento.estado === 'ERROR' || documento.estado === 'PENDIENTE_VALIDACION') && <button type="button" disabled={reintentando !== null} onClick={() => void reintentar(documento.id)} className="mt-2 text-[#c8651a] hover:underline">{reintentando === documento.id ? 'Solicitando extracción…' : documento.estado === 'ERROR' ? 'Reintentar extracción' : 'Volver a extraer'}</button>}
+                                                                <HistorialDocumento documentoId={documento.id} version={documento.historial.length} />
                                                             </details>
                                                         </div>
                                                     </div>

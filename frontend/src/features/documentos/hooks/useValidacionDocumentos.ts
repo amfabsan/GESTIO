@@ -10,6 +10,8 @@ import {
     solicitarAclaracion,
 } from '../documentosApi'
 import type { CategoriaDocumento } from '../../../types/documentos'
+import { useAuth } from '../../../context/useAuth'
+import { useSincronizarDocumentos } from './useSincronizarDocumentos'
 
 type CambioDocumento = {
     campo: string
@@ -17,10 +19,12 @@ type CambioDocumento = {
 }
 
 export function useValidacionDocumentos() {
+    const { perfilActivo } = useAuth()
     const [documentos, setDocumentos] = useState<Documento[]>([])
     const [cargando, setCargando] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [procesando, setProcesando] = useState(false)
+    useSincronizarDocumentos(perfilActivo?.id, setDocumentos)
 
     const cargar = useCallback(async (signal?: AbortSignal) => {
         setCargando(true)

@@ -5,7 +5,7 @@ export type FiltroBuzon = 'TODOS' | 'PENDIENTES' | 'ACLARACION_SOLICITADA' | 'VA
 // Igual que en el prototipo, "Pendientes de validar" agrupa todo lo que aún no ha revisado el gestor.
 const ESTADOS_POR_FILTRO: Record<FiltroBuzon, EstadoDocumento[] | null> = {
   TODOS: null,
-  PENDIENTES: ['SUBIDO', 'PROCESANDO', 'PENDIENTE_VALIDACION'],
+  PENDIENTES: ['SUBIDO', 'EXTRAYENDO_DATOS', 'PENDIENTE_VALIDACION'],
   ACLARACION_SOLICITADA: ['ACLARACION_SOLICITADA'],
   VALIDADO: ['VALIDADO'],
 }
