@@ -200,6 +200,10 @@ PublishScripts/
 **/[Pp]ackages/*
 
 # Node / Vite
+# Playwright local browser artifacts
+.playwright/
+.playwright-mcp/
+
 frontend/node_modules/
 frontend/dist/
 frontend/.env
