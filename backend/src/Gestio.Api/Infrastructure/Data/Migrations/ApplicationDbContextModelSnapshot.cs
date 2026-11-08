@@ -260,6 +260,35 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("historial_categorias", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialObligacionFiscal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ObligacionFiscalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("ObligacionFiscalId", "Fecha");
+
+                    b.ToTable("historial_obligaciones_fiscales", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialPerfilFiscal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -375,6 +404,47 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasFilter("\"Fin\" IS NULL");
 
                     b.ToTable("intentos_procesamiento", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AutonomoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Ejercicio")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("FechaPrevista")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Modelo")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Periodo")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutonomoId", "Modelo", "Ejercicio", "Periodo")
+                        .IsUnique();
+
+                    b.ToTable("obligaciones_fiscales", (string)null);
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.PerfilFiscal", b =>
@@ -610,6 +680,23 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialObligacionFiscal", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.ObligacionFiscal", null)
+                        .WithMany("Historial")
+                        .HasForeignKey("ObligacionFiscalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialPerfilFiscal", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.PerfilFiscal", null)
@@ -644,6 +731,15 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .WithMany("Intentos")
                         .HasForeignKey("DocumentoId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("AutonomoId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -690,6 +786,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("HistorialValidacion");
 
                     b.Navigation("Intentos");
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
+                {
+                    b.Navigation("Historial");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.PerfilFiscal", b =>

@@ -1,4 +1,5 @@
 import { PerfilFiscalPage } from '../pages/PerfilFiscalPage'
+import { CalendarioFiscalPage } from '../pages/CalendarioFiscalPage'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { BuzonPage } from '../pages/autonomo/BuzonPage'
 import { InicioPage } from '../pages/autonomo/InicioPage'
@@ -24,6 +25,7 @@ export function AppRoutes() {
                 <Route path="users" element={<UsersPage />} />
 
                 <Route element={<RoleGuard rolPermitido="AUTONOMO" />}>
+                    <Route path="autonomo/calendario" element={<CalendarioFiscalPage />} />
                     <Route path="autonomo/perfil-fiscal" element={<PerfilFiscalPage />} />
                     <Route path="autonomo/inicio" element={<InicioPage />} />
                     <Route path="autonomo/buzon" element={<BuzonPage />} />
@@ -31,6 +33,7 @@ export function AppRoutes() {
                 </Route>
 
                 <Route element={<RoleGuard rolPermitido="GESTOR" />}>
+                    <Route path="gestor/clientes/:autonomoId/calendario" element={<CalendarioFiscalPage />} />
                     <Route path="gestor/clientes/:autonomoId/perfil-fiscal" element={<PerfilFiscalPage />} />
                     <Route path="gestor/clientes" element={<ClientesPage />} />
                     <Route path="gestor/solicitudes" element={<SolicitudesPage />} />

@@ -32,6 +32,8 @@ builder.Services.AddScoped<ILectorDocumento, LectorDocumentoLocal>();
 builder.Services.AddSingleton<MotorOcrLatin>();
 builder.Services.AddScoped<VinculacionesService>();
 builder.Services.AddScoped<PerfilesFiscalesService>();
+builder.Services.AddScoped<GeneradorObligaciones>();
+builder.Services.AddScoped<ObligacionesFiscalesService>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();

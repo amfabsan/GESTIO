@@ -24,7 +24,7 @@ public sealed class PerfilesFiscalesTests
         await db.SaveChangesAsync();
         return db;
     }
-    private PerfilesFiscalesService Servicio(ApplicationDbContext db) => new(db, TimeProvider.System);
+    private PerfilesFiscalesService Servicio(ApplicationDbContext db) => new(db, TimeProvider.System, new GeneradorObligaciones(db, TimeProvider.System));
 
     private sealed class UsuarioFijo(UsuarioActual? usuario) : ICurrentUserService
     {

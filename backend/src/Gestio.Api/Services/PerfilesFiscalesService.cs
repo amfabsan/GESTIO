@@ -11,7 +11,7 @@ namespace Gestio.Api.Services;
 public sealed record GuardarPerfilFiscalRequest(string? RegimenIva, string? RegimenIrpf,
     bool? TrabajadoresConRetencion, bool? LocalAlquiladoConRetencion);
 
-public sealed class PerfilesFiscalesService(ApplicationDbContext context, TimeProvider timeProvider)
+public sealed class PerfilesFiscalesService(ApplicationDbContext context, TimeProvider timeProvider, GeneradorObligaciones generador)
 {
     public static readonly IReadOnlyDictionary<string, string> CatalogoIva = new Dictionary<string, string>
     {
@@ -55,6 +55,9 @@ public sealed class PerfilesFiscalesService(ApplicationDbContext context, TimePr
         if (!CatalogoIva.ContainsKey(request.RegimenIva!) || !CatalogoIrpf.ContainsKey(request.RegimenIrpf!))
             return new Error("PerfilFiscal.RegimenNoAdmitido", "Los regímenes de IVA e IRPF deben pertenecer al catálogo admitido.", TipoError.VALIDACION);
 
+        if (ejercicio is < 1 or > 9998) return new Error("PerfilFiscal.EjercicioNoValido", "El ejercicio debe estar entre 1 y 9998.", TipoError.VALIDACION);
+        await using var transaccion = await generador.IniciarAsync(autonomoId, ct);
+
         var perfil = await context.Set<PerfilFiscal>().Include(p => p.Historial).ThenInclude(h => h.Usuario)
             .SingleOrDefaultAsync(p => p.AutonomoId == autonomoId && p.Ejercicio == ejercicio, ct);
         var nuevo = perfil is null;
@@ -82,7 +85,12 @@ public sealed class PerfilesFiscalesService(ApplicationDbContext context, TimePr
         perfil.TrabajadoresConRetencion = request.TrabajadoresConRetencion.Value;
         perfil.LocalAlquiladoConRetencion = request.LocalAlquiladoConRetencion.Value;
         if (nuevo) context.Add(perfil);
-        try { await context.SaveChangesAsync(ct); }
+        await generador.SincronizarAsync(perfil, usuario.Id, soloSiGenerado: true, ct);
+        try
+        {
+            await context.SaveChangesAsync(ct);
+            if (transaccion is not null) await transaccion.CommitAsync(ct);
+        }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             return new Error("PerfilFiscal.Conflicto", "El perfil ha sido creado por otra petición. Recarga e inténtalo de nuevo.", TipoError.CONFLICTO);

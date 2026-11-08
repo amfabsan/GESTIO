@@ -24,7 +24,7 @@ export function Navbar() {
                         <Link className={claseEnlace('/gestor/clientes')} to="/gestor/clientes">♧ Clientes</Link>
                         <Link className={claseEnlace('/gestor/solicitudes')} to="/gestor/solicitudes">♧ Solicitudes</Link>
                         <Link className={claseEnlace('/gestor/bandeja-validacion')} to="/gestor/bandeja-validacion">▣ Bandeja</Link>
-                        <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▦ Calendario</button>
+                        <Link className={claseEnlace('/gestor/clientes')} to="/gestor/clientes">▦ Calendario</Link>
                         <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">◯ Mensajes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-[10px] font-bold">3</span></button>
                         <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">♧ Equipo</button>
                     </>
@@ -32,7 +32,7 @@ export function Navbar() {
                     <>
                         <Link className={claseEnlace('/autonomo/inicio')} to="/autonomo/inicio">⌂ Inicio</Link>
                         <Link className={claseEnlace('/autonomo/buzon')} to="/autonomo/buzon">▱ Buzón</Link>
-                        <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▦ Calendario</button>
+                        <Link className={claseEnlace('/autonomo/calendario')} to="/autonomo/calendario">▦ Calendario</Link>
                         <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▣ Facturas</button>
                         <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">◯ Mensajes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-[10px] font-bold">2</span></button>
                         <Link className={claseEnlace('/autonomo/mi-asesoria')} to="/autonomo/mi-asesoria">↔ Mi asesoría</Link>
