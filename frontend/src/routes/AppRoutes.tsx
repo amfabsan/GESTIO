@@ -1,3 +1,4 @@
+import { PerfilFiscalPage } from '../pages/PerfilFiscalPage'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { BuzonPage } from '../pages/autonomo/BuzonPage'
 import { InicioPage } from '../pages/autonomo/InicioPage'
@@ -23,12 +24,14 @@ export function AppRoutes() {
                 <Route path="users" element={<UsersPage />} />
 
                 <Route element={<RoleGuard rolPermitido="AUTONOMO" />}>
+                    <Route path="autonomo/perfil-fiscal" element={<PerfilFiscalPage />} />
                     <Route path="autonomo/inicio" element={<InicioPage />} />
                     <Route path="autonomo/buzon" element={<BuzonPage />} />
                     <Route path="autonomo/mi-asesoria" element={<MiAsesoriaPage />} />
                 </Route>
 
                 <Route element={<RoleGuard rolPermitido="GESTOR" />}>
+                    <Route path="gestor/clientes/:autonomoId/perfil-fiscal" element={<PerfilFiscalPage />} />
                     <Route path="gestor/clientes" element={<ClientesPage />} />
                     <Route path="gestor/solicitudes" element={<SolicitudesPage />} />
                     <Route path="gestor/bandeja-validacion" element={<BandejaValidacionPage />} />

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 export function InicioPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#f5f3ef] px-6 py-12 text-[#1b2a4a] sm:px-10 lg:px-24">
@@ -27,6 +29,7 @@ export function InicioPage() {
           <button className="rounded-lg bg-[#1b2a4a] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2b3e66]" type="button">Enviar mensaje o duda</button>
         </div>
       </section>
+      <Link to="/autonomo/perfil-fiscal" className="mt-6 inline-block font-semibold underline">Consultar perfil fiscal</Link>
     </div>
   )
 }

@@ -1,3 +1,5 @@
+import { ClientesPerfilFiscal } from '../PerfilFiscalPage'
+
 export function ClientesPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#f5f3ef] px-4 py-7 text-[#1b2a4a] sm:px-8 lg:px-14">
@@ -49,6 +51,7 @@ export function ClientesPage() {
           <button className="rounded-lg bg-[#eeebe4] px-3 py-2 text-sm font-semibold text-[#526078] transition hover:bg-[#e2ded5]" type="button">♧&nbsp; Recordar</button>
         </div>
       </section>
+      <ClientesPerfilFiscal />
     </div>
   )
 }
