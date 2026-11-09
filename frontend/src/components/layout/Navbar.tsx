@@ -34,6 +34,7 @@ export function Navbar() {
                         <Link className={claseEnlace('/autonomo/buzon')} to="/autonomo/buzon">▱ Buzón</Link>
                         <Link className={claseEnlace('/autonomo/calendario')} to="/autonomo/calendario">▦ Calendario</Link>
                         <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">▣ Facturas</button>
+                        <Link className={claseEnlace('/autonomo/contactos')} to="/autonomo/contactos">♙ Contactos</Link>
                         <button className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]" type="button">◯ Mensajes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-[10px] font-bold">2</span></button>
                         <Link className={claseEnlace('/autonomo/mi-asesoria')} to="/autonomo/mi-asesoria">↔ Mi asesoría</Link>
                     </>

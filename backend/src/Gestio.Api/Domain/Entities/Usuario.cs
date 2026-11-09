@@ -35,4 +35,6 @@ public sealed class Usuario
     public ICollection<Documento> Documentos { get; } = [];
 
     public ICollection<Vinculacion> VinculacionesComoAutonomo { get; } = [];
+
+    public ICollection<Contacto> Contactos { get; } = [];
 }

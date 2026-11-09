@@ -7,6 +7,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 {
     public DbSet<Usuario> Usuarios => Set<Usuario>();
 
+    public DbSet<Contacto> Contactos => Set<Contacto>();
+
     public DbSet<Documento> Documentos => Set<Documento>();
 
     public DbSet<ExtraccionIa> ExtraccionesIa => Set<ExtraccionIa>();

@@ -73,6 +73,57 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("anomalias", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Contacto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid>("AutonomoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Clasificacion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Direccion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<string>("Nif")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Telefono")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutonomoId", "Nif")
+                        .IsUnique();
+
+                    b.HasIndex("AutonomoId", "Nombre");
+
+                    b.ToTable("contactos", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -621,6 +672,17 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Contacto", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Autonomo")
+                        .WithMany("Contactos")
+                        .HasForeignKey("AutonomoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Autonomo");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
@@ -801,6 +863,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
                 {
                     b.Navigation("Clientes");
+
+                    b.Navigation("Contactos");
 
                     b.Navigation("Documentos");
 

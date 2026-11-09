@@ -31,6 +31,7 @@ builder.Services.AddScoped<HistorialDocumentoService>();
 builder.Services.AddScoped<ILectorDocumento, LectorDocumentoLocal>();
 builder.Services.AddSingleton<MotorOcrLatin>();
 builder.Services.AddScoped<VinculacionesService>();
+builder.Services.AddScoped<ContactosService>();
 builder.Services.AddScoped<PerfilesFiscalesService>();
 builder.Services.AddScoped<GeneradorObligaciones>();
 builder.Services.AddScoped<ObligacionesFiscalesService>();

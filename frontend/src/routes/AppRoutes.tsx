@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { BuzonPage } from '../pages/autonomo/BuzonPage'
 import { InicioPage } from '../pages/autonomo/InicioPage'
 import { MiAsesoriaPage } from '../pages/autonomo/MiAsesoriaPage'
+import { ContactosPage } from '../pages/autonomo/ContactosPage'
 import { ClientesPage } from '../pages/gestor/ClientesPage'
 import { SolicitudesPage } from '../pages/gestor/SolicitudesPage'
 import { BandejaValidacionPage } from '../pages/gestor/BandejaValidacionPage'
@@ -30,6 +31,7 @@ export function AppRoutes() {
                     <Route path="autonomo/inicio" element={<InicioPage />} />
                     <Route path="autonomo/buzon" element={<BuzonPage />} />
                     <Route path="autonomo/mi-asesoria" element={<MiAsesoriaPage />} />
+                    <Route path="autonomo/contactos" element={<ContactosPage />} />
                 </Route>
 
                 <Route element={<RoleGuard rolPermitido="GESTOR" />}>
