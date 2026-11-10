@@ -26,6 +26,7 @@ public sealed class PerfilesFiscalesService(ApplicationDbContext context, TimePr
     }.AsReadOnly();
 
     private static readonly Error Prohibido = new("PerfilFiscal.Prohibido", "No tienes permiso para acceder a este perfil fiscal.", TipoError.PROHIBIDO);
+    private static readonly Error NoEncontrado = new("PerfilFiscal.AutonomoNoEncontrado", "No se ha encontrado el autónomo.", TipoError.NO_ENCONTRADO);
 
     public async Task<bool> PuedeAccederAsync(UsuarioActual usuario, Guid autonomoId, bool escritura, CancellationToken ct)
     {
@@ -33,6 +34,29 @@ public sealed class PerfilesFiscalesService(ApplicationDbContext context, TimePr
         return usuario.Rol == Rol.GESTOR && await context.Vinculaciones.AnyAsync(v =>
             v.AutonomoId == autonomoId && v.Estado == EstadoVinculacion.ACTIVA &&
             context.Usuarios.Any(u => u.Id == usuario.Id && u.Rol == Rol.GESTOR && u.CodigoAsesoria != null && u.CodigoAsesoria == v.CodigoAsesoria), ct);
+    }
+
+    public async Task<Resultado<string?>> ConsultarDireccionFiscalAsync(UsuarioActual usuario, Guid autonomoId, CancellationToken ct)
+    {
+        if (usuario.Rol != Rol.AUTONOMO || usuario.Id != autonomoId) return Prohibido;
+        var autonomo = await context.Usuarios.AsNoTracking().SingleOrDefaultAsync(u => u.Id == autonomoId, ct);
+        return autonomo is null
+            ? NoEncontrado
+            : Resultado<string?>.Correcto(autonomo.DireccionFiscal);
+    }
+
+    public async Task<Resultado<string>> GuardarDireccionFiscalAsync(UsuarioActual usuario, Guid autonomoId, string? direccionFiscal, CancellationToken ct)
+    {
+        if (usuario.Rol != Rol.AUTONOMO || usuario.Id != autonomoId) return Prohibido;
+        var direccion = direccionFiscal?.Trim();
+        if (string.IsNullOrWhiteSpace(direccion) || direccion.Length > 500)
+            return new Error("PerfilFiscal.DireccionFiscalNoValida", "La dirección fiscal es obligatoria y no puede superar los 500 caracteres.", TipoError.VALIDACION);
+
+        var autonomo = await context.Usuarios.SingleOrDefaultAsync(u => u.Id == autonomoId, ct);
+        if (autonomo is null) return NoEncontrado;
+        autonomo.DireccionFiscal = direccion;
+        await context.SaveChangesAsync(ct);
+        return direccion;
     }
 
     public async Task<Resultado<PerfilFiscal?>> ConsultarAsync(UsuarioActual usuario, Guid autonomoId, int ejercicio, CancellationToken ct)

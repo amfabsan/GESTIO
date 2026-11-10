@@ -5,6 +5,8 @@ import { BuzonPage } from '../pages/autonomo/BuzonPage'
 import { InicioPage } from '../pages/autonomo/InicioPage'
 import { MiAsesoriaPage } from '../pages/autonomo/MiAsesoriaPage'
 import { ContactosPage } from '../pages/autonomo/ContactosPage'
+import { FacturacionPage } from '../pages/autonomo/FacturacionPage'
+import { FacturasClientePage } from '../pages/gestor/FacturasClientePage'
 import { ClientesPage } from '../pages/gestor/ClientesPage'
 import { SolicitudesPage } from '../pages/gestor/SolicitudesPage'
 import { BandejaValidacionPage } from '../pages/gestor/BandejaValidacionPage'
@@ -32,11 +34,13 @@ export function AppRoutes() {
                     <Route path="autonomo/buzon" element={<BuzonPage />} />
                     <Route path="autonomo/mi-asesoria" element={<MiAsesoriaPage />} />
                     <Route path="autonomo/contactos" element={<ContactosPage />} />
+                    <Route path="autonomo/facturas" element={<FacturacionPage />} />
                 </Route>
 
                 <Route element={<RoleGuard rolPermitido="GESTOR" />}>
                     <Route path="gestor/clientes/:autonomoId/calendario" element={<CalendarioFiscalPage />} />
                     <Route path="gestor/clientes/:autonomoId/perfil-fiscal" element={<PerfilFiscalPage />} />
+                    <Route path="gestor/clientes/:autonomoId/facturas" element={<FacturasClientePage />} />
                     <Route path="gestor/clientes" element={<ClientesPage />} />
                     <Route path="gestor/solicitudes" element={<SolicitudesPage />} />
                     <Route path="gestor/bandeja-validacion" element={<BandejaValidacionPage />} />

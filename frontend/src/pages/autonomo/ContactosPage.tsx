@@ -51,7 +51,16 @@ export function ContactosPage() {
     }
   }, [autonomoId])
 
-  useEffect(() => { void cargar() }, [cargar])
+  useEffect(() => {
+    let vigente = true
+    if (autonomoId) {
+      listarContactos(autonomoId)
+        .then(datos => { if (vigente) setContactos(datos) })
+        .catch(error => { if (vigente) setErrorCarga(obtenerDetalleError(error) ?? 'No se ha podido cargar la agenda. Inténtalo de nuevo.') })
+        .finally(() => { if (vigente) setCargando(false) })
+    }
+    return () => { vigente = false }
+  }, [autonomoId])
 
   const visibles = useMemo(() => {
     const busqueda = normalizarBusqueda(termino.trim())

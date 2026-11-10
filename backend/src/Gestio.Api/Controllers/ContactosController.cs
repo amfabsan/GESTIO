@@ -1,6 +1,7 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
 using Gestio.Api.Domain.Interfaces;
+using Gestio.Api.Models.Request;
 using Gestio.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,7 +9,7 @@ namespace Gestio.Api.Controllers;
 
 [ApiController]
 [Route("api/autonomos/{autonomoId:guid}/contactos")]
-public sealed class ContactosController(ContactosService service, ICurrentUserService currentUser) : ControllerBase
+public sealed class ContactosController(ContactosService service, FacturacionService facturacion, ICurrentUserService currentUser) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Listar(Guid autonomoId, [FromQuery] string? busqueda, [FromQuery] string? tipo,
@@ -29,6 +30,16 @@ public sealed class ContactosController(ContactosService service, ICurrentUserSe
         var resultado = await service.ConsultarAsync(usuario, autonomoId, id, ct);
         if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
         return Ok(Mapear(resultado.Valor!));
+    }
+
+    [HttpPut("{id:guid}/direccion-fiscal")]
+    public async Task<IActionResult> GuardarDireccionFiscal(Guid autonomoId, Guid id, GuardarDireccionFiscalFacturaRequest request, CancellationToken ct)
+    {
+        var usuario = await currentUser.ObtenerAsync(ct);
+        if (usuario is null) return Unauthorized();
+        var resultado = await facturacion.GuardarDireccionFiscalAsync(usuario, autonomoId, id, request.Direccion, ct);
+        if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
+        return Ok(resultado.Valor);
     }
 
     [HttpPost]

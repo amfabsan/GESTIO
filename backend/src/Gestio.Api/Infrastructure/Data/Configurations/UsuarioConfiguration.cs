@@ -43,6 +43,9 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
             .HasColumnType("varchar(9)")
             .IsRequired();
 
+        builder.Property(usuario => usuario.DireccionFiscal)
+            .HasMaxLength(500);
+
         builder.HasIndex(usuario => usuario.Nif)
             .IsUnique();
 
