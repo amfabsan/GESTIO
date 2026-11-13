@@ -662,6 +662,100 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("perfiles_fiscales", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.RegistroFacturacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AnteriorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AutonomoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CuotaTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("FacturaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("FechaExpedicionFactura")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FechaHoraHusoGenRegistro")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)");
+
+                    b.Property<DateTimeOffset>("Generado")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Huella")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("HuellaAnterior")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("IdEmisorFactura")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<decimal>("ImporteTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("NumSerieFactura")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("Secuencia")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("TipoFactura")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("AutonomoId", "Id")
+                        .HasName("AK_registros_facturacion_autonomo_id");
+
+                    b.HasIndex("AnteriorId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_registros_facturacion_anterior")
+                        .HasFilter("\"AnteriorId\" IS NOT NULL");
+
+                    b.HasIndex("FacturaId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_registros_facturacion_factura");
+
+                    b.HasIndex("AutonomoId", "AnteriorId");
+
+                    b.HasIndex("AutonomoId", "Secuencia")
+                        .IsUnique()
+                        .HasDatabaseName("UX_registros_facturacion_autonomo_secuencia");
+
+                    b.ToTable("registros_facturacion", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_registros_facturacion_huella_anterior", "(\"HuellaAnterior\" IS NULL) = (\"AnteriorId\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_registros_facturacion_inicio_cadena", "(\"Secuencia\" = 1) = (\"AnteriorId\" IS NULL) AND \"Secuencia\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -973,6 +1067,30 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasForeignKey("AutonomoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.RegistroFacturacion", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("AutonomoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_registros_facturacion_usuarios_AutonomoId");
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Factura", null)
+                        .WithMany()
+                        .HasForeignKey("FacturaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_registros_facturacion_facturas_FacturaId");
+
+                    b.HasOne("Gestio.Api.Domain.Entities.RegistroFacturacion", null)
+                        .WithMany()
+                        .HasForeignKey("AutonomoId", "AnteriorId")
+                        .HasPrincipalKey("AutonomoId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_registros_facturacion_anterior_mismo_autonomo");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
