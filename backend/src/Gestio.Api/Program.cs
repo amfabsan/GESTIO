@@ -33,6 +33,7 @@ builder.Services.AddSingleton<MotorOcrLatin>();
 builder.Services.AddScoped<VinculacionesService>();
 builder.Services.AddScoped<ContactosService>();
 builder.Services.AddScoped<FacturacionService>();
+builder.Services.AddScoped<Gestio.Api.Services.Verifactu.RegistroFacturacionService>();
 builder.Services.AddScoped<PerfilesFiscalesService>();
 builder.Services.AddScoped<GeneradorObligaciones>();
 builder.Services.AddScoped<ObligacionesFiscalesService>();

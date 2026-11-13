@@ -5,6 +5,7 @@ using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Infrastructure.Data;
 using Gestio.Api.Models.Request;
 using Gestio.Api.Models.Response;
+using Gestio.Api.Services.Verifactu;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -13,8 +14,15 @@ namespace Gestio.Api.Services;
 public sealed class FacturacionService(
     ApplicationDbContext context,
     GeneradorObligaciones generador,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    RegistroFacturacionService registros,
+    ILogger<FacturacionService> logger)
 {
+    // UT22 / PA 1591: texto del mockup 5. La emisión y su registro se guardan juntos; si falla, no queda nada emitido.
+    private static readonly Error EmisionRevertida = new("Factura.EmisionRevertida",
+        "No se pudo crear el registro de facturación. Se ha revertido la emisión: la factura sigue como borrador y no consume número.",
+        TipoError.CONFLICTO);
+
     private static readonly Error Prohibido = new("Factura.Prohibido", "No tienes permiso para realizar esta operación.", TipoError.PROHIBIDO);
     private static readonly Error NoEncontrada = new("Factura.NoEncontrada", "No se ha encontrado la factura.", TipoError.NO_ENCONTRADO);
     private static readonly Error SoloBorradores = new("Factura.SoloBorradores", "Solo se pueden modificar o eliminar borradores.", TipoError.CONFLICTO);
@@ -174,10 +182,12 @@ public sealed class FacturacionService(
             .Where(f => f.AutonomoId == autonomoId && f.Serie == factura.Serie && f.Numero != null)
             .MaxAsync(f => f.Numero, ct) ?? 0;
 
+        // Un único instante para la emisión y para la fecha de generación del registro.
+        var instante = timeProvider.GetUtcNow();
         factura.Numero = ultimoNumero + 1;
         factura.Estado = EstadoFactura.EMITIDA;
-        factura.Emitida = timeProvider.GetUtcNow();
-        factura.Actualizada = factura.Emitida.Value;
+        factura.Emitida = instante;
+        factura.Actualizada = instante;
         factura.BaseImponible = calculo.BaseImponible;
         factura.CuotaIva = calculo.CuotaIva;
         factura.ImporteRetencion = calculo.ImporteRetencion;
@@ -191,12 +201,30 @@ public sealed class FacturacionService(
 
         try
         {
+            // UT22: registro de alta en la misma transacción y en el mismo SaveChanges que la emisión.
+            await registros.PrepararAltaAsync(factura, instante, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "No se pudo preparar el registro de facturación de la factura {FacturaId}", factura.Id);
+            return Revertir(EmisionRevertida);
+        }
+
+        try
+        {
             await context.SaveChangesAsync(ct);
             if (transaccion is not null) await transaccion.CommitAsync(ct);
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, TableName: "facturas" })
         {
-            return new Error("Factura.NumeroEnConflicto", "No se pudo asignar el número. Recarga e inténtalo de nuevo.", TipoError.CONFLICTO);
+            return Revertir(new Error("Factura.NumeroEnConflicto", "No se pudo asignar el número. Recarga e inténtalo de nuevo.", TipoError.CONFLICTO));
+        }
+        catch (DbUpdateException ex)
+        {
+            // Lo único nuevo que se inserta en este guardado es el registro: cualquier otro fallo se trata como fallo
+            // del registro. La transacción no se confirma, así que la factura sigue como borrador.
+            logger.LogError(ex, "Falló el guardado de la emisión y el registro de facturación de la factura {FacturaId}", factura.Id);
+            return Revertir(EmisionRevertida);
         }
 
         return Mapear(factura, calculo);
@@ -216,17 +244,19 @@ public sealed class FacturacionService(
         return new DireccionContactoFacturaResponse(contacto.Id, contacto.Nombre, contacto.Nif, contacto.Direccion, contacto.Activo);
     }
 
-    private async Task<bool> PuedeConsultarAsync(UsuarioActual usuario, Guid autonomoId, CancellationToken ct)
+    // Descarta los cambios en memoria de una emisión fallida: así ningún SaveChanges posterior en la misma
+    // petición puede guardar la factura como emitida sin su registro (req. 5).
+    private Error Revertir(Error error)
     {
-        if (usuario.Rol == Rol.AUTONOMO) return usuario.Id == autonomoId;
-        if (usuario.Rol != Rol.GESTOR) return false;
-        return await context.Vinculaciones.AnyAsync(v =>
-            v.AutonomoId == autonomoId && v.Estado == EstadoVinculacion.ACTIVA &&
-            context.Usuarios.Any(u => u.Id == usuario.Id && u.Rol == Rol.GESTOR && u.CodigoAsesoria != null && u.CodigoAsesoria == v.CodigoAsesoria), ct);
+        context.ChangeTracker.Clear();
+        return error;
     }
 
+    private Task<bool> PuedeConsultarAsync(UsuarioActual usuario, Guid autonomoId, CancellationToken ct) =>
+        AccesoFacturacion.PuedeConsultarAsync(context, usuario, autonomoId, ct);
+
     private static bool EsPropietario(UsuarioActual usuario, Guid autonomoId) =>
-        usuario.Rol == Rol.AUTONOMO && usuario.Id == autonomoId;
+        AccesoFacturacion.EsPropietario(usuario, autonomoId);
 
     private async Task<Contacto?> ObtenerContactoBorradorAsync(Guid autonomoId, Guid? contactoId, CancellationToken ct)
     {
