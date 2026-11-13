@@ -264,7 +264,9 @@ public sealed class FacturacionTests
     private static UsuarioActual Propietario => new(AutonomoId, Rol.AUTONOMO);
 
     private static FacturacionService Servicio(ApplicationDbContext db) =>
-        new(db, new GeneradorObligaciones(db, TimeProvider.System), TimeProvider.System);
+        new(db, new GeneradorObligaciones(db, TimeProvider.System), TimeProvider.System,
+            new Gestio.Api.Services.Verifactu.RegistroFacturacionService(db),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<FacturacionService>.Instance);
 
     private static async Task<ApplicationDbContext> CrearDbAsync(string? direccion = "Calle Original 1", bool incluirGestor = false,
         string? direccionFiscalEmisor = "Calle Emisor original")

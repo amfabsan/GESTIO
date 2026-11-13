@@ -33,6 +33,7 @@ declare global {
 
 const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim()
 let libreriaPlaces: Promise<LibreriaPlaces> | null = null
+const CALLBACK_PLACES = '__gestioGooglePlacesListo'
 
 function cargarPlaces(): Promise<LibreriaPlaces> {
   if (!apiKey) return Promise.reject(new Error('Google Places no está configurado.'))
@@ -40,18 +41,20 @@ function cargarPlaces(): Promise<LibreriaPlaces> {
 
   if (!libreriaPlaces) {
     libreriaPlaces = new Promise<void>((resolve, reject) => {
-      const existente = document.querySelector<HTMLScriptElement>('script[data-google-maps-places]')
-      if (existente) {
-        existente.addEventListener('load', () => resolve(), { once: true })
-        existente.addEventListener('error', () => reject(new Error('No se pudo cargar Google Places.')), { once: true })
-        return
+      // Con loading=async, el evento 'load' del script llega ANTES de que exista google.maps.importLibrary:
+      // el primer intento fallaba siempre. El callback oficial de Google se invoca cuando la API está lista.
+      const listo = window as unknown as Record<string, unknown>
+      const anterior = listo[CALLBACK_PLACES]
+      listo[CALLBACK_PLACES] = () => {
+        if (typeof anterior === 'function') anterior()
+        resolve()
       }
+      if (document.querySelector<HTMLScriptElement>('script[data-google-maps-places]')) return
 
       const script = document.createElement('script')
       script.dataset.googleMapsPlaces = 'true'
       script.async = true
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&libraries=places&language=es&region=ES&loading=async`
-      script.onload = () => resolve()
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly&libraries=places&language=es&region=ES&loading=async&callback=${CALLBACK_PLACES}`
       script.onerror = () => reject(new Error('No se pudo cargar Google Places.'))
       document.head.appendChild(script)
     }).then(async () => {
@@ -80,7 +83,7 @@ export function DireccionAutocomplete({ value, onChange, className, placeholder,
   const [enfocado, setEnfocado] = useState(false)
   const [consultaCargando, setConsultaCargando] = useState('')
   const [resultado, setResultado] = useState<{ consulta: string; predicciones: PrediccionDireccion[] } | null>(null)
-  const [errorConsulta, setErrorConsulta] = useState(false)
+  const [errorConsulta, setErrorConsulta] = useState<'clave' | 'otro' | null>(null)
   const [seleccionada, setSeleccionada] = useState(-1)
   const tokenSesion = useRef<object | null>(null)
   const peticion = useRef(0)
@@ -96,7 +99,7 @@ export function DireccionAutocomplete({ value, onChange, className, placeholder,
     const idPeticion = ++peticion.current
     const temporizador = window.setTimeout(async () => {
       setConsultaCargando(texto)
-      setErrorConsulta(false)
+      setErrorConsulta(null)
       try {
         const places = await cargarPlaces()
         tokenSesion.current ??= new places.AutocompleteSessionToken()
@@ -111,10 +114,13 @@ export function DireccionAutocomplete({ value, onChange, className, placeholder,
           setResultado({ consulta: texto, predicciones: respuesta.suggestions.flatMap(sugerencia => sugerencia.placePrediction ? [sugerencia.placePrediction] : []).slice(0, 4) })
           setSeleccionada(-1)
         }
-      } catch {
+      } catch (error) {
+        // Sin esto la causa real (clave inválida, API no habilitada, dominio no permitido…) quedaba oculta.
+        const mensaje = error instanceof Error ? error.message : String(error)
+        console.warn('Google Places: no se pudieron obtener sugerencias.', mensaje)
         if (vigente && idPeticion === peticion.current) {
           setResultado({ consulta: texto, predicciones: [] })
-          setErrorConsulta(true)
+          setErrorConsulta(/api key not valid|invalid.?key/i.test(mensaje) ? 'clave' : 'otro')
         }
       } finally {
         if (vigente && idPeticion === peticion.current) setConsultaCargando(actual => actual === texto ? '' : actual)
@@ -144,7 +150,7 @@ export function DireccionAutocomplete({ value, onChange, className, placeholder,
 
   const cambiarValor = (evento: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setResultado(null)
-    setErrorConsulta(false)
+    setErrorConsulta(null)
     onChange(evento.target.value)
   }
 
@@ -188,7 +194,8 @@ export function DireccionAutocomplete({ value, onChange, className, placeholder,
         <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border border-[#d9d4c9] bg-white shadow-lg">
           {faltaClave && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">Configura la clave de Google Places para activar las sugerencias. Puedes escribir la dirección manualmente.</p>}
           {cargando && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">Buscando direcciones…</p>}
-          {errorConsulta && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">No se pudieron cargar las sugerencias. Comprueba la clave y que Places API (New) esté habilitada.</p>}
+          {errorConsulta === 'clave' && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">Google no reconoce la clave de Google Maps (VITE_GOOGLE_MAPS_API_KEY). Revísala en Google Cloud. Puedes escribir la dirección manualmente.</p>}
+          {errorConsulta === 'otro' && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">No se pudieron cargar las sugerencias. Comprueba que Maps JavaScript API y Places API (New) estén habilitadas y que este dominio esté permitido. Detalle en la consola.</p>}
           {predicciones.length > 0 && <>
             <ul id={idLista} role="listbox" aria-label="Sugerencias de dirección" className="max-h-64 overflow-y-auto py-1">
               {predicciones.map((prediccion, indice) => <li

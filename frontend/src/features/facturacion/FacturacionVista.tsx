@@ -8,13 +8,17 @@ import { formatearEuros, formatearFecha } from '../../utils/formato'
 import { FacturaFormulario } from './FacturaFormulario'
 import { FacturaDetalleModal } from './FacturaDetalleModal'
 import { comprobarFactura, eliminarBorrador, emitirFactura, guardarBorrador, guardarDireccionFiscal, guardarDireccionFiscalEmisor, listarFacturas, obtenerDireccionFiscalEmisor, obtenerFactura, type Factura, type FacturaLista, type GuardarFactura } from './facturacionApi'
+import { listarRegistros, type RegistroFacturacion } from './registrosApi'
+import { RegistroVerifactuVista } from './RegistroVerifactuVista'
 
 type Props = { autonomoId: string; soloLectura?: boolean }
-type Pestaña = 'FORMULARIO' | 'BORRADORES' | 'EMITIDAS'
+type Pestaña = 'FORMULARIO' | 'BORRADORES' | 'EMITIDAS' | 'REGISTRO'
 type Modal = { factura: Factura; modo: 'revision' | 'emitida' | 'consulta'; error?: string | null }
 
 export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
   const [facturas, setFacturas] = useState<FacturaLista[]>([])
+  const [registros, setRegistros] = useState<RegistroFacturacion[]>([])
+  const [errorRegistros, setErrorRegistros] = useState<string | null>(null)
   const [contactos, setContactos] = useState<Contacto[]>([])
   const [direccionFiscalEmisor, setDireccionFiscalEmisor] = useState('')
   const [facturaEditada, setFacturaEditada] = useState<Factura | null>(null)
@@ -31,7 +35,12 @@ export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
     setCargando(true)
     setError(null)
     try {
+      // Los registros se piden aparte: si su endpoint falla, las pestañas de facturas deben seguir funcionando.
+      const cadena = listarRegistros(autonomoId).then(
+        datos => { setRegistros(datos); setErrorRegistros(null) },
+        excepcion => { setRegistros([]); setErrorRegistros(obtenerDetalleError(excepcion) ?? 'No se han podido cargar los registros de facturación.') })
       const [lista, agenda, direccion] = await Promise.all([listarFacturas(autonomoId), listarContactos(autonomoId), soloLectura ? Promise.resolve('') : obtenerDireccionFiscalEmisor(autonomoId)])
+      await cadena
       setFacturas(lista)
       setContactos(agenda)
       setDireccionFiscalEmisor(direccion)
@@ -158,6 +167,12 @@ export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
     { clave: 'FORMULARIO', titulo: facturaEditada ? 'Editar borrador' : 'Nueva factura' },
     { clave: 'BORRADORES', titulo: 'Borradores', contador: borradores.length },
     { clave: 'EMITIDAS', titulo: 'Emitidas', contador: emitidas.length },
+    { clave: 'REGISTRO', titulo: 'Registro Verifactu', contador: registros.length },
+  ]
+  const pestañasLectura: { clave: Pestaña; titulo: string; contador: number }[] = [
+    { clave: 'BORRADORES', titulo: 'Borradores', contador: borradores.length },
+    { clave: 'EMITIDAS', titulo: 'Emitidas', contador: emitidas.length },
+    { clave: 'REGISTRO', titulo: 'Registro Verifactu', contador: registros.length },
   ]
 
   return (
@@ -167,7 +182,7 @@ export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
         {pestañas.map(item => <button key={item.clave} type="button" onClick={() => setPestaña(item.clave)} aria-current={pestaña === item.clave ? 'page' : undefined} className={`-mb-px border-b-2 px-1 pb-3 text-sm ${pestaña === item.clave ? 'border-[#c96016] font-semibold text-[#1d2b4f]' : 'border-transparent text-[#6b6656] hover:text-[#1d2b4f]'}`}>{item.titulo}{item.contador !== undefined && <span className="ml-1">({item.contador})</span>}</button>)}
       </nav>}
       {soloLectura && <nav className="mt-5 flex gap-5 border-b border-[#d6d2c8]" aria-label="Facturas consultables">
-        {(['BORRADORES', 'EMITIDAS'] as const).map(clave => <button key={clave} type="button" onClick={() => setPestaña(clave)} aria-current={pestaña === clave ? 'page' : undefined} className={`-mb-px border-b-2 px-1 pb-3 text-sm ${pestaña === clave ? 'border-[#c96016] font-semibold text-[#1d2b4f]' : 'border-transparent text-[#6b6656]'}`}>{clave === 'BORRADORES' ? 'Borradores' : 'Emitidas'} ({clave === 'BORRADORES' ? borradores.length : emitidas.length})</button>)}
+        {pestañasLectura.map(item => <button key={item.clave} type="button" onClick={() => setPestaña(item.clave)} aria-current={pestaña === item.clave ? 'page' : undefined} className={`-mb-px border-b-2 px-1 pb-3 text-sm ${pestaña === item.clave ? 'border-[#c96016] font-semibold text-[#1d2b4f]' : 'border-transparent text-[#6b6656]'}`}>{item.titulo} ({item.contador})</button>)}
       </nav>}
       {error && <p role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {cargando ? <p className="py-10 text-sm text-[#6b6656]" role="status">Cargando facturas…</p> : <>
@@ -177,6 +192,9 @@ export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
           <div className="flex flex-wrap gap-2"><button className={btnSecundario} type="button" onClick={() => void consultar(factura.id)}><Eye size={15} />Vista previa</button>{!soloLectura && <><button className={btnSecundario} type="button" onClick={() => void editarBorrador(factura.id)}><Pencil size={15} />Editar</button><button className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" type="button" onClick={() => { setEliminar(factura); setErrorEliminar(null) }}><Trash2 size={15} />Eliminar</button></>}</div>
         </article>)}</div>}</div>}
         {pestaña === 'EMITIDAS' && <div className="mt-5">{emitidas.length === 0 ? <Vacio texto="No hay facturas emitidas." /> : <div className={`${card} overflow-hidden`}><div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-[#f0ede5] text-xs uppercase text-[#6b6656]"><tr><th className="px-4 py-3">Número</th><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Cliente</th><th className="px-4 py-3 text-right">Base</th><th className="px-4 py-3 text-right">Total</th><th className="px-4 py-3">Acción</th></tr></thead><tbody>{emitidas.map(factura => <tr key={factura.id} className="border-t border-[#eeeae2]"><td className="px-4 py-3 font-semibold">{factura.numeroVisible}</td><td className="px-4 py-3">{formatearFecha(factura.fecha)}</td><td className="px-4 py-3"><p>{factura.clienteNombre || '—'}</p><p className="text-xs text-[#6b6656]">NIF {factura.clienteNif || '—'}{factura.clienteDireccion ? ` · ${factura.clienteDireccion}` : ''}</p></td><td className="px-4 py-3 text-right">{factura.baseImponible === null ? '—' : formatearEuros(factura.baseImponible)}</td><td className="px-4 py-3 text-right font-semibold">{factura.total === null ? '—' : formatearEuros(factura.total)}</td><td className="px-4 py-3"><button className={btnSecundario} type="button" onClick={() => void consultar(factura.id)}><Eye size={15} />Consultar</button></td></tr>)}</tbody></table></div></div>}</div>}
+        {pestaña === 'REGISTRO' && (errorRegistros
+          ? <p role="alert" className="mt-5 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{errorRegistros}</p>
+          : <RegistroVerifactuVista autonomoId={autonomoId} registros={registros} />)}
       </>}
       {modal && <FacturaDetalleModal factura={modal.factura} modo={modal.modo} cargando={guardando} error={modal.error} onVolver={() => setModal(null)} onConfirmar={() => void confirmarEmision()} onCerrar={() => setModal(null)} onEditar={irAEdicionDesdeModal} onConsultar={() => setModal(actual => actual ? { ...actual, modo: 'consulta' } : actual)} />}
       {eliminar && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#101827]/55 p-4"><section role="alertdialog" aria-modal="true" aria-labelledby="titulo-eliminar-factura" className="w-full max-w-md rounded-2xl bg-[#fbfaf7] p-6 shadow-2xl"><h2 id="titulo-eliminar-factura" className="font-serif text-xl font-bold">Eliminar borrador</h2><p className="mt-2 text-sm text-[#555348]">¿Quieres eliminar este borrador? Esta acción no se puede deshacer.</p>{errorEliminar && <p role="alert" className="mt-3 text-sm text-red-700">{errorEliminar}</p>}<div className="mt-5 flex justify-end gap-2"><button className={btnSecundario} type="button" onClick={() => setEliminar(null)}>Cancelar</button><button className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800" type="button" onClick={() => void confirmarEliminacion()}>Eliminar</button></div></section></div>}

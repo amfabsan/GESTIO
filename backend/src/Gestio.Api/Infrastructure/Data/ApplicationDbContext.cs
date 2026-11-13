@@ -27,6 +27,32 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<HistorialCategoria> HistorialCategorias => Set<HistorialCategoria>();
 
+    public DbSet<RegistroFacturacion> RegistrosFacturacion => Set<RegistroFacturacion>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ImpedirCambiosEnRegistrosFacturacion();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ImpedirCambiosEnRegistrosFacturacion();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // Req. 7 / PA 1598: los registros de facturación son inmutables desde la aplicación.
+    // En PostgreSQL lo refuerza además un trigger (migración RegistrosFacturacionUT22), que también cubre
+    // ExecuteUpdate/ExecuteDelete y SQL directo, que no pasan por SaveChanges.
+    private void ImpedirCambiosEnRegistrosFacturacion()
+    {
+        var alterado = ChangeTracker.Entries<RegistroFacturacion>()
+            .FirstOrDefault(e => e.State is EntityState.Modified or EntityState.Deleted);
+        if (alterado is not null)
+            throw new InvalidOperationException(
+                $"Los registros de facturación no se pueden {(alterado.State == EntityState.Deleted ? "eliminar" : "modificar")} una vez creados.");
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
