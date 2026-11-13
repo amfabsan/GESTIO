@@ -1,6 +1,20 @@
 import { ClientesPerfilFiscal } from '../PerfilFiscalPage'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { apiClient, obtenerDetalleError } from '../../services/apiClient'
+import type { Vinculacion } from '../../types/vinculaciones'
 
 export function ClientesPage() {
+  const [vinculaciones, setVinculaciones] = useState<Vinculacion[]>([])
+  const [errorFacturas, setErrorFacturas] = useState('')
+  useEffect(() => {
+    let vigente = true
+    apiClient.get<Vinculacion[]>('/vinculaciones').then(({ data }) => {
+      if (vigente) setVinculaciones(data.filter(v => v.estado === 'ACTIVA' && v.autonomo))
+    }).catch(error => { if (vigente) setErrorFacturas(obtenerDetalleError(error) ?? 'No se han podido cargar los clientes vinculados.') })
+    return () => { vigente = false }
+  }, [])
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#f5f3ef] px-4 py-7 text-[#1b2a4a] sm:px-8 lg:px-14">
       <section className="mb-6">
@@ -50,6 +64,12 @@ export function ClientesPage() {
           <div className="text-sm lg:text-center"><p className="text-xs text-[#697488]">Último contacto</p><strong>ayer</strong></div>
           <button className="rounded-lg bg-[#eeebe4] px-3 py-2 text-sm font-semibold text-[#526078] transition hover:bg-[#e2ded5]" type="button">♧&nbsp; Recordar</button>
         </div>
+      </section>
+      <section id="facturas" className="my-5 rounded-2xl border border-[#dfdbd3] bg-white p-4 shadow-sm sm:p-5" aria-labelledby="titulo-facturas-clientes">
+        <h2 id="titulo-facturas-clientes" className="font-semibold">Facturas de clientes vinculados</h2>
+        <p className="mt-1 text-sm text-[#697488]">Consulta borradores y facturas emitidas; no puedes modificarlos ni emitirlos.</p>
+        {errorFacturas && <p role="alert" className="mt-3 text-sm text-red-700">{errorFacturas}</p>}
+        {vinculaciones.length > 0 ? <ul className="mt-3 divide-y divide-[#ece9e3]">{vinculaciones.map(vinculacion => <li key={vinculacion.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><span className="text-sm font-medium">{vinculacion.autonomo!.nombre} {vinculacion.autonomo!.primerApellido} {vinculacion.autonomo!.segundoApellido}</span><Link className="text-sm font-semibold text-[#c96016] hover:underline" to={`/gestor/clientes/${vinculacion.autonomoId}/facturas`}>Consultar facturas</Link></li>)}</ul> : !errorFacturas && <p className="mt-3 text-sm text-[#697488]">No hay autónomos con vinculación activa.</p>}
       </section>
       <ClientesPerfilFiscal />
     </div>

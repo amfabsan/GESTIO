@@ -4,6 +4,7 @@ import { useAuth } from '../context/useAuth'
 import { apiClient, obtenerDetalleError } from '../services/apiClient'
 import { btnPrimario, btnSecundario, card } from '../components/ui/estilos'
 import type { Vinculacion } from '../types/vinculaciones'
+import { DireccionFiscalEmisor } from '../features/facturacion/DireccionFiscalEmisor'
 
 interface Datos { regimenIva: string; regimenIrpf: string; trabajadoresConRetencion: boolean | null; localAlquiladoConRetencion: boolean | null }
 interface Cambio { id: string; gestor: string | null; usuarioId: string; fechaCambio: string; campo: string; valorAnterior: string | null; valorNuevo: string }
@@ -64,6 +65,7 @@ function Contenido({ id, ejercicio, seleccionar, esGestor }: { id?: string; ejer
     {esGestor && <Link to="/gestor/clientes" className="text-sm text-[#6b6656]">← Volver al panel de clientes</Link>}
     <h1 className="mt-7 font-serif text-4xl font-bold">{esGestor ? nombre || 'Perfil fiscal del cliente' : 'Perfil fiscal'}</h1>
     <div className="mt-6 border-b border-[#d6d2c8] pb-3"><span className="border-b-2 border-[#d96c13] px-3 pb-3 font-semibold">Perfil fiscal</span></div>
+    {!esGestor && id && <DireccionFiscalEmisor autonomoId={id} />}
     <div className={`${card} my-6 inline-flex gap-1 p-1`} aria-label="Ejercicio fiscal">{[2026, 2027].map(a => <button key={a} disabled={guardando} onClick={() => seleccionar(a)} aria-pressed={a === ejercicio} className={a === ejercicio ? btnPrimario : btnSecundario}>Ejercicio {a}</button>)}</div>
     {cargando ? <p role="status">Cargando perfil fiscal…</p> : <>
     {error && <p role="alert" className="mb-4 rounded-xl border border-red-300 bg-red-50 p-4 text-red-800">{error}</p>}

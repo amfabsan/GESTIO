@@ -16,6 +16,8 @@ public sealed class Usuario
 
     public required string Nif { get; set; }
 
+    public string? DireccionFiscal { get; set; }
+
     public string? CodigoAsesoria { get; set; }
 
     // Solo gestores. El administrador es quien acepta, rechaza o finaliza las vinculaciones de su
@@ -35,4 +37,6 @@ public sealed class Usuario
     public ICollection<Documento> Documentos { get; } = [];
 
     public ICollection<Vinculacion> VinculacionesComoAutonomo { get; } = [];
+
+    public ICollection<Contacto> Contactos { get; } = [];
 }

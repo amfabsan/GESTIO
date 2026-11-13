@@ -1,6 +1,7 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Entities;
 using Gestio.Api.Domain.Interfaces;
+using Gestio.Api.Models.Request;
 using Gestio.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,6 +11,26 @@ namespace Gestio.Api.Controllers;
 [Route("api/autonomos/{autonomoId:guid}/perfiles-fiscales")]
 public sealed class PerfilesFiscalesController(PerfilesFiscalesService service, ICurrentUserService currentUser) : ControllerBase
 {
+    [HttpGet("~/api/autonomos/{autonomoId:guid}/direccion-fiscal")]
+    public async Task<IActionResult> ConsultarDireccionFiscal(Guid autonomoId, CancellationToken ct)
+    {
+        var usuario = await currentUser.ObtenerAsync(ct);
+        if (usuario is null) return Unauthorized();
+        var resultado = await service.ConsultarDireccionFiscalAsync(usuario, autonomoId, ct);
+        if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
+        return Ok(new { direccionFiscal = resultado.Valor });
+    }
+
+    [HttpPut("~/api/autonomos/{autonomoId:guid}/direccion-fiscal")]
+    public async Task<IActionResult> GuardarDireccionFiscal(Guid autonomoId, GuardarDireccionFiscalEmisorRequest request, CancellationToken ct)
+    {
+        var usuario = await currentUser.ObtenerAsync(ct);
+        if (usuario is null) return Unauthorized();
+        var resultado = await service.GuardarDireccionFiscalAsync(usuario, autonomoId, request.DireccionFiscal, ct);
+        if (!resultado.EsCorrecto) return resultado.Error!.ToProblem();
+        return Ok(new { direccionFiscal = resultado.Valor });
+    }
+
     [HttpGet("catalogo")]
     public async Task<IActionResult> Catalogo(Guid autonomoId, CancellationToken ct)
     {

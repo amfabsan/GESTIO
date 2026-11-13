@@ -73,6 +73,57 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("anomalias", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Contacto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid>("AutonomoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Clasificacion")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Direccion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<string>("Nif")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Telefono")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutonomoId", "Nif")
+                        .IsUnique();
+
+                    b.HasIndex("AutonomoId", "Nombre");
+
+                    b.ToTable("contactos", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -224,6 +275,98 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("extracciones_ia", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Factura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Actualizada")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("AutonomoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("BaseImponible")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("ClienteDireccion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ClienteNif")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("ClienteNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("ContactoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Creada")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("CuotaIva")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("EmisorDireccion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("EmisorNif")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("EmisorNombre")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<DateTimeOffset?>("Emitida")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Fecha")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("ImporteRetencion")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("Numero")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("RetencionPorcentaje")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("Serie")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<decimal?>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContactoId");
+
+                    b.HasIndex("AutonomoId", "Estado", "Fecha");
+
+                    b.HasIndex("AutonomoId", "Serie", "Numero")
+                        .IsUnique()
+                        .HasFilter("\"Numero\" IS NOT NULL");
+
+                    b.ToTable("facturas", (string)null);
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialCategoria", b =>
@@ -406,6 +549,42 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("intentos_procesamiento", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.LineaFactura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Cantidad")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("Descripcion")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("FacturaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("IvaPorcentaje")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<int>("Orden")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("PrecioUnitario")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacturaId", "Orden")
+                        .IsUnique();
+
+                    b.ToTable("lineas_factura", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -491,6 +670,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.Property<string>("CodigoAsesoria")
                         .HasColumnType("varchar(10)");
+
+                    b.Property<string>("DireccionFiscal")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -621,6 +804,17 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Contacto", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Autonomo")
+                        .WithMany("Contactos")
+                        .HasForeignKey("AutonomoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Autonomo");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
@@ -659,6 +853,24 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Documento");
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Factura", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Autonomo")
+                        .WithMany()
+                        .HasForeignKey("AutonomoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Contacto", "Contacto")
+                        .WithMany()
+                        .HasForeignKey("ContactoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Autonomo");
+
+                    b.Navigation("Contacto");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialCategoria", b =>
@@ -734,6 +946,17 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.LineaFactura", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Factura", "Factura")
+                        .WithMany("Lineas")
+                        .HasForeignKey("FacturaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Factura");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Usuario", null)
@@ -788,6 +1011,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Intentos");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.Factura", b =>
+                {
+                    b.Navigation("Lineas");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
                 {
                     b.Navigation("Historial");
@@ -801,6 +1029,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Usuario", b =>
                 {
                     b.Navigation("Clientes");
+
+                    b.Navigation("Contactos");
 
                     b.Navigation("Documentos");
 
