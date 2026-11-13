@@ -18,6 +18,7 @@ export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
   const [contactos, setContactos] = useState<Contacto[]>([])
   const [direccionFiscalEmisor, setDireccionFiscalEmisor] = useState('')
   const [facturaEditada, setFacturaEditada] = useState<Factura | null>(null)
+  const [reinicioFormulario, setReinicioFormulario] = useState(0)
   const [pestaña, setPestaña] = useState<Pestaña>(soloLectura ? 'EMITIDAS' : 'FORMULARIO')
   const [modal, setModal] = useState<Modal | null>(null)
   const [eliminar, setEliminar] = useState<FacturaLista | null>(null)
@@ -48,6 +49,7 @@ export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
 
   const nuevaFactura = () => {
     setFacturaEditada(null)
+    setReinicioFormulario(actual => actual + 1)
     setError(null)
     setPestaña('FORMULARIO')
   }
@@ -169,7 +171,7 @@ export function FacturacionVista({ autonomoId, soloLectura = false }: Props) {
       </nav>}
       {error && <p role="alert" className="mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {cargando ? <p className="py-10 text-sm text-[#6b6656]" role="status">Cargando facturas…</p> : <>
-        {!soloLectura && pestaña === 'FORMULARIO' && <div className="mt-4"><FacturaFormulario key={facturaEditada?.id ?? 'nueva'} factura={facturaEditada} contactos={contactos} direccionFiscalEmisor={direccionFiscalEmisor} onDireccionFiscalEmisorChange={setDireccionFiscalEmisor} guardando={guardando} error={null} onGuardar={guardar} onGuardarDireccion={guardarDireccion} onRevisar={borrador => void revisar(borrador)} /></div>}
+        {!soloLectura && pestaña === 'FORMULARIO' && <div className="mt-4"><FacturaFormulario key={`${facturaEditada?.id ?? 'nueva'}-${reinicioFormulario}`} factura={facturaEditada} contactos={contactos} direccionFiscalEmisor={direccionFiscalEmisor} onDireccionFiscalEmisorChange={setDireccionFiscalEmisor} guardando={guardando} error={null} onGuardar={guardar} onGuardarDireccion={guardarDireccion} onRevisar={borrador => void revisar(borrador)} /></div>}
         {pestaña === 'BORRADORES' && <div className="mt-5">{borradores.length === 0 ? <Vacio texto="No hay borradores guardados." /> : <div className="space-y-3">{borradores.map(factura => <article key={factura.id} className={`${card} grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center`}>
           <div><p className="font-semibold">{factura.clienteNombre || 'Cliente sin seleccionar'}</p><p className="mt-1 text-sm text-[#6b6656]">{formatearFecha(factura.fecha)} · {factura.numeroLineas} líneas · {factura.total === null ? 'Importe pendiente' : formatearEuros(factura.total)}</p><p className="mt-1 text-xs font-medium text-[#8a6b42]">Sin número asignado</p></div>
           <div className="flex flex-wrap gap-2"><button className={btnSecundario} type="button" onClick={() => void consultar(factura.id)}><Eye size={15} />Vista previa</button>{!soloLectura && <><button className={btnSecundario} type="button" onClick={() => void editarBorrador(factura.id)}><Pencil size={15} />Editar</button><button className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" type="button" onClick={() => { setEliminar(factura); setErrorEliminar(null) }}><Trash2 size={15} />Eliminar</button></>}</div>

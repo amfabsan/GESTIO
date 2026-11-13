@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { DireccionAutocomplete } from '../../../components/ui/DireccionAutocomplete'
 import type { ClasificacionContacto, Contacto, GuardarContacto } from '../contactosApi'
 
 type Props = {
@@ -16,6 +17,10 @@ type Campos = Omit<GuardarContacto, 'email' | 'telefono' | 'direccion'> & {
 }
 
 const normalizarNif = (nif: string) => nif.replace(/[\s-]/g, '').toUpperCase()
+const telefonoValido = (telefono: string) => {
+  if (!/^\+?[0-9\s().-]+$/.test(telefono)) return false
+  return /^(?:\+34)?[6789][0-9]{8}$/.test(telefono.replace(/[\s().-]/g, ''))
+}
 const letrasControlDni = 'TRWAGMYFPDXBNJZSQVHLCKE'
 const letrasControlCif = 'JABCDEFGHI'
 
@@ -73,7 +78,7 @@ export function FormularioContacto({ contacto, enviando, error, onCancelar, onGu
     if (!nif) nuevosErrores.nif = 'El NIF es obligatorio.'
     else if (!nifValido(nif)) nuevosErrores.nif = 'Introduce un DNI, NIE o NIF de empresa válido.'
     if (campos.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(campos.email.trim())) nuevosErrores.email = 'Introduce un correo electrónico válido.'
-    if (campos.telefono.trim() && !/^\+?[0-9\s().-]{6,30}$/.test(campos.telefono.trim())) nuevosErrores.telefono = 'Introduce un teléfono válido.'
+    if (campos.telefono.trim() && !telefonoValido(campos.telefono.trim())) nuevosErrores.telefono = 'Introduce un teléfono español de 9 cifras, con prefijo +34 opcional.'
     if (campos.direccion.length > 500) nuevosErrores.direccion = 'No puede superar los 500 caracteres.'
     setErrores(nuevosErrores)
     if (Object.keys(nuevosErrores).length > 0) return
@@ -119,13 +124,13 @@ export function FormularioContacto({ contacto, enviando, error, onCancelar, onGu
         </label>
         <label className={etiqueta}>
           Teléfono <span className="text-xs font-normal text-[#777265]">(opcional)</span>
-          <input className={claseCampo} maxLength={30} type="tel" value={campos.telefono} onChange={evento => actualizar('telefono', evento.target.value)} aria-invalid={Boolean(errores.telefono)} />
+          <input className={claseCampo} maxLength={30} type="tel" placeholder="612 345 678 o +34 612 345 678" value={campos.telefono} onChange={evento => actualizar('telefono', evento.target.value)} aria-invalid={Boolean(errores.telefono)} />
           {errores.telefono && <span className="mt-1 block text-xs text-red-700">{errores.telefono}</span>}
         </label>
       </div>
       <label className={etiqueta}>
         Dirección fiscal <span className="text-xs font-normal text-[#777265]">(opcional; se completará al facturar)</span>
-        <textarea className={`${claseCampo} min-h-20 resize-y`} maxLength={500} value={campos.direccion} onChange={evento => actualizar('direccion', evento.target.value)} aria-invalid={Boolean(errores.direccion)} />
+        <DireccionAutocomplete className={`${claseCampo} min-h-20 resize-y`} multiline value={campos.direccion} onChange={valor => actualizar('direccion', valor)} ariaInvalid={Boolean(errores.direccion)} />
         {errores.direccion && <span className="mt-1 block text-xs text-red-700">{errores.direccion}</span>}
       </label>
       {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}

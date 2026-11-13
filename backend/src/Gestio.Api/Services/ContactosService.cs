@@ -15,7 +15,8 @@ public sealed record GuardarContactoRequest(string? Clasificacion, string? Nombr
 public sealed class ContactosService(ApplicationDbContext context)
 {
     private static readonly HashSet<string> Clasificaciones = ["CLIENTE", "PROVEEDOR", "AMBOS"];
-    private static readonly Regex TelefonoValido = new(@"^\+?[0-9\s().-]{6,30}$", RegexOptions.Compiled);
+    private static readonly Regex TelefonoConSeparadores = new(@"^\+?[0-9\s().-]+$", RegexOptions.Compiled);
+    private static readonly Regex TelefonoEspanolValido = new(@"^(?:\+34)?[6789][0-9]{8}$", RegexOptions.Compiled);
     private static readonly Regex DocumentoIdentidadValido = new("^[0-9]{8}[A-Z]$|^[XYZ][0-9]{7}[A-Z]$", RegexOptions.Compiled);
     private static readonly Regex NifEmpresaValido = new("^[ABCDEFGHJNPQRSUVW][0-9]{7}[0-9A-J]$", RegexOptions.Compiled);
     private const string LetrasControlDni = "TRWAGMYFPDXBNJZSQVHLCKE";
@@ -114,6 +115,8 @@ public sealed class ContactosService(ApplicationDbContext context)
         if (!await PuedeAccederAsync(usuario, autonomoId, ct)) return ContactoErrores.Prohibido;
         var contacto = await context.Contactos.SingleOrDefaultAsync(c => c.Id == id && c.AutonomoId == autonomoId, ct);
         if (contacto is null) return ContactoErrores.NoEncontrado;
+        if (await context.Facturas.AnyAsync(f => f.AutonomoId == autonomoId && f.ContactoId == id, ct))
+            return ContactoErrores.Referenciado;
         context.Contactos.Remove(contacto);
         await context.SaveChangesAsync(ct);
         return true;
@@ -171,8 +174,8 @@ public sealed class ContactosService(ApplicationDbContext context)
             return new("Contacto.ClasificacionNoValida", "Selecciona una clasificación válida: cliente, proveedor o ambos.", TipoError.VALIDACION);
         if (!string.IsNullOrWhiteSpace(request.Email) && (request.Email.Trim().Length > 320 || !MailAddress.TryCreate(request.Email.Trim(), out _)))
             return new("Contacto.EmailNoValido", "Introduce un correo electrónico válido.", TipoError.VALIDACION);
-        if (!string.IsNullOrWhiteSpace(request.Telefono) && !TelefonoValido.IsMatch(request.Telefono.Trim()))
-            return new("Contacto.TelefonoNoValido", "Introduce un teléfono válido.", TipoError.VALIDACION);
+        if (!string.IsNullOrWhiteSpace(request.Telefono) && !EsTelefonoValido(request.Telefono.Trim()))
+            return new("Contacto.TelefonoNoValido", "Introduce un teléfono español de 9 cifras, con prefijo +34 opcional.", TipoError.VALIDACION);
         if (request.Direccion?.Length > 500) return new("Contacto.DireccionNoValida", "La dirección no puede superar los 500 caracteres.", TipoError.VALIDACION);
         return null;
     }
@@ -191,4 +194,11 @@ public sealed class ContactosService(ApplicationDbContext context)
     }
 
     private static string? Opcional(string? valor) => string.IsNullOrWhiteSpace(valor) ? null : valor.Trim();
+
+    private static bool EsTelefonoValido(string telefono)
+    {
+        if (!TelefonoConSeparadores.IsMatch(telefono)) return false;
+        var normalizado = string.Concat(telefono.Where(caracter => char.IsDigit(caracter) || caracter == '+'));
+        return TelefonoEspanolValido.IsMatch(normalizado);
+    }
 }

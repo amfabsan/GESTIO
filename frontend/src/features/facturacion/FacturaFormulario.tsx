@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Plus, Save, Eye, Trash2 } from 'lucide-react'
 import { btnSecundario, card } from '../../components/ui/estilos'
+import { DireccionAutocomplete } from '../../components/ui/DireccionAutocomplete'
 import type { Contacto } from '../contactos/contactosApi'
 import type { Factura, GuardarFactura } from './facturacionApi'
 
@@ -118,7 +119,7 @@ export function FacturaFormulario({ factura, contactos, direccionFiscalEmisor, o
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,1fr)]">
         <section className={`${card} p-4 sm:p-5`} aria-labelledby="datos-factura">
           <h2 id="datos-factura" className="text-sm font-bold uppercase tracking-wide text-[#696354]">Datos de la factura</h2>
-          <label className="mt-4 block"><span className={etiqueta}>Dirección fiscal del emisor</span><textarea className={claseCampo} maxLength={500} value={direccionFiscalEmisor} onChange={evento => onDireccionFiscalEmisorChange(evento.target.value)} placeholder="Calle, número, código postal y municipio" /><span className="mt-1 block text-xs text-[#777265]">Se guarda en tu perfil fiscal y se copia al emitir. Es obligatoria para emitir.</span></label>
+          <label className="mt-4 block"><span className={etiqueta}>Dirección fiscal del emisor</span><DireccionAutocomplete multiline className={claseCampo} value={direccionFiscalEmisor} onChange={onDireccionFiscalEmisorChange} placeholder="Calle, número, código postal y municipio" /><span className="mt-1 block text-xs text-[#777265]">Se guarda en tu perfil fiscal y se copia al emitir. Es obligatoria para emitir.</span></label>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <label><span className={etiqueta}>Serie</span><input readOnly className={claseCampo} value={`F-${fecha ? fecha.slice(0, 4) : new Date().getFullYear()}`} /></label>
             <label><span className={etiqueta}>Número</span><input readOnly className={claseCampo} value="Al emitir" /></label>
@@ -136,7 +137,7 @@ export function FacturaFormulario({ factura, contactos, direccionFiscalEmisor, o
             {cliente.direccion ? <p className="mt-1 text-xs text-[#6b6656]">{cliente.direccion}</p> : <>
               <p className="mt-1 text-xs font-medium text-[#b45309]">Falta la dirección fiscal; es necesaria para emitir. Puedes guardar el borrador mientras tanto.</p>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                <input className={`${claseCampo} bg-white`} maxLength={500} placeholder="Calle, número, CP y municipio" value={direccion} onChange={evento => { setDireccionEditada({ contactoId: cliente.id, valor: evento.target.value }); setErrorDireccion(''); setMensajeDireccion('') }} />
+                <DireccionAutocomplete className={`${claseCampo} bg-white`} placeholder="Calle, número, CP y municipio" value={direccion} onChange={valor => { setDireccionEditada({ contactoId: cliente.id, valor }); setErrorDireccion(''); setMensajeDireccion('') }} />
                 <button className={`${btnSecundario} shrink-0`} type="button" disabled={guardandoDireccion || !direccion.trim()} onClick={() => void guardarDireccion()}>{guardandoDireccion ? 'Guardando…' : 'Guardar en el contacto'}</button>
               </div>
               {errorDireccion && <p role="alert" className="mt-2 text-xs text-red-700">{errorDireccion}</p>}
