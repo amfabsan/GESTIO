@@ -46,3 +46,4 @@ Cada viernes, una línea sobre qué ha dejado de practicar el desarrollador (lo 
 ## Rechazos del desarrollador (no repetir)
 
 <!-- Cada vez que el desarrollador rechace algo: fecha, qué se rechazó y por qué. Si se puede, convertirlo además en prueba o hook. -->
+- 2026-11-13 (UT22): no quiso la capa final de documentación/guía manual ni responder los exámenes por capa; prefirió una explicación directa del diseño al terminar. No insistir en ellos para cerrar una tarea; ofrecer la explicación. (El hook pre-push sigue exigiendo un aprobado para enviar a `master`: eso lo decide él.)
