@@ -45,5 +45,7 @@ Cada viernes, una línea sobre qué ha dejado de practicar el desarrollador (lo 
 
 ## Rechazos del desarrollador (no repetir)
 
+- 2026-11-14 (UT23): las páginas públicas (sin sesión, p. ej. `/f/:codigo` del QR) no llevan enlaces hacia la app privada («Volver a la demo» del prototipo). Motivo: el público que escanea no debe quedar a un clic de la app, que aún no tiene autenticación real. Aunque un mockup lo traiga, no añadirlo.
+
 <!-- Cada vez que el desarrollador rechace algo: fecha, qué se rechazó y por qué. Si se puede, convertirlo además en prueba o hook. -->
 - 2026-11-13 (UT22): no quiso la capa final de documentación/guía manual ni responder los exámenes por capa; prefirió una explicación directa del diseño al terminar. No insistir en ellos para cerrar una tarea; ofrecer la explicación. (El hook pre-push sigue exigiendo un aprobado para enviar a `master`: eso lo decide él.)

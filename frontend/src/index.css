@@ -12,3 +12,26 @@
     color: #1b2a4a;
   }
 }
+
+/* UT23 (PB-23, D3): «Descargar PDF» usa la impresión del navegador. Solo se imprime la factura abierta
+   (#factura-imprimible): el resto de la app se oculta y la factura se coloca al principio de la página. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #factura-imprimible,
+  #factura-imprimible * {
+    visibility: visible;
+  }
+
+  #factura-imprimible {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* Que el QR y los fondos claros salgan aunque el navegador tenga desactivados los gráficos de fondo. */
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
