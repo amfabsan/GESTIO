@@ -62,6 +62,11 @@ export function FacturaDetalleModal({ factura, modo, cargando = false, error, on
         {error && <p role="alert" className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         {modo === 'emitida' && <p className="mt-5 rounded-xl bg-green-50 p-5 text-sm text-green-900">La factura <strong>{factura.numeroVisible}</strong> se ha emitido correctamente y ya no se puede editar.</p>}
         {modo !== 'emitida' && <div id="factura-imprimible">
+        {/* Solo en el PDF: el título del modal queda fuera de la zona imprimible. */}
+        <div className="hidden items-end justify-between border-b-2 border-[#1d2b4f] pb-3 print:flex">
+          <p className="font-serif text-2xl font-bold text-[#1d2b4f]">{factura.emisorNombre || 'Factura'}</p>
+          <p className="text-right"><span className="block text-xs font-semibold uppercase tracking-wide text-[#777265]">{emitida ? 'Factura' : 'Borrador · sin validez'}</span><span className="text-2xl font-bold text-[#1d2b4f]">{factura.numeroVisible || 'Sin número'}</span></p>
+        </div>
         <div className="mt-5 grid gap-4 rounded-xl bg-white p-4 sm:grid-cols-2">
           <div><p className="text-xs font-semibold uppercase tracking-wide text-[#777265]">Emisor</p><p className="mt-1 font-semibold">{factura.emisorNombre || 'Datos del emisor'}</p><p className="text-sm text-[#6b6656]">NIF {factura.emisorNif || '—'}</p>{factura.emisorDireccion && <p className="text-sm text-[#6b6656]">{factura.emisorDireccion}</p>}</div>
           <div><p className="text-xs font-semibold uppercase tracking-wide text-[#777265]">Cliente</p><p className="mt-1 font-semibold">{factura.clienteNombre || 'Cliente sin seleccionar'}</p><p className="text-sm text-[#6b6656]">NIF {factura.clienteNif || '—'}</p><p className="text-sm text-[#6b6656]">{factura.clienteDireccion || 'Dirección fiscal sin indicar'}</p></div>

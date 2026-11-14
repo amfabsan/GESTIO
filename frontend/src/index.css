@@ -14,22 +14,33 @@
 }
 
 /* UT23 (PB-23, D3): «Descargar PDF» usa la impresión del navegador. Solo se imprime la factura abierta
-   (#factura-imprimible): el resto de la app se oculta y la factura se coloca al principio de la página. */
+   (#factura-imprimible). El resto de la app se quita con display: none: con visibility: hidden seguía ocupando
+   espacio y salía una segunda página en blanco (comprobado en el PDF de F-2026-0003). */
 @media print {
-  body * {
-    visibility: hidden;
+  /* Márgenes propios: sin margen de página el navegador no añade fecha, título, URL ni número de página. */
+  @page {
+    size: A4;
+    margin: 0;
   }
 
-  #factura-imprimible,
-  #factura-imprimible * {
-    visibility: visible;
+  /* Todo lo que no sea la factura, un antecesor suyo o parte de ella. */
+  #root *:not(:has(#factura-imprimible)):not(#factura-imprimible):not(#factura-imprimible *) {
+    display: none !important;
+  }
+
+  /* Los antecesores (layout, overlay y modal) no deben añadir altura, márgenes ni fondo. */
+  #root,
+  #root *:has(#factura-imprimible) {
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   #factura-imprimible {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
+    padding: 15mm 15mm 12mm;
     /* Que el QR y los fondos claros salgan aunque el navegador tenga desactivados los gráficos de fondo. */
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
