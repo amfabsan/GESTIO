@@ -4,6 +4,7 @@ using Gestio.Api.Domain.Errores;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Infrastructure.Data;
 using Gestio.Api.Infrastructure.Data.Configurations;
+using Gestio.Api.Infrastructure.VeriFactu;
 using Gestio.Api.Models.Request;
 using Gestio.Api.Models.Response;
 using Gestio.Api.Services.Verifactu;
@@ -17,6 +18,7 @@ public sealed class FacturacionService(
     GeneradorObligaciones generador,
     TimeProvider timeProvider,
     RegistroFacturacionService registros,
+    QrFacturaService qr,
     ILogger<FacturacionService> logger)
 {
     // UT22 / PA 1591: texto del mockup 5. La emisión y su registro se guardan juntos; si falla, no queda nada emitido.
@@ -329,7 +331,8 @@ public sealed class FacturacionService(
     };
 
     private FacturaResponse Mapear(Factura factura, CalculoFactura? calculo = null) =>
-        FacturaResponse.Desde(factura, calculo ?? Calcular(factura).Calculo);
+        // UT23: el QR se recalcula desde el código guardado en cada consulta (D7); lo que no cambia es el código.
+        FacturaResponse.Desde(factura, calculo ?? Calcular(factura).Calculo, qr.Para(factura.CodigoPublico));
 
     private static bool FechaValida(DateOnly fecha) => fecha.Year is > 1 and < 9999;
 

@@ -281,7 +281,7 @@ public sealed class QrFacturaServicioTests
         new(Options.Create(new VerifactuOptions { UrlPublicaBase = baseConfigurada }));
 
     private static FacturacionService Servicio(ApplicationDbContext db) =>
-        new(db, new GeneradorObligaciones(db, TimeProvider.System), TimeProvider.System, new RegistroFacturacionService(db),
+        new(db, new GeneradorObligaciones(db, TimeProvider.System), TimeProvider.System, new RegistroFacturacionService(db), QrDePrueba.Servicio(),
             NullLogger<FacturacionService>.Instance);
 
     private static async Task<string?> CodigoDeAsync(ApplicationDbContext db, Guid facturaId) =>
