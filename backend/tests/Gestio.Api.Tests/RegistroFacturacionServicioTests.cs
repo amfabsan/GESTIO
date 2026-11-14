@@ -437,7 +437,7 @@ public sealed class RegistroFacturacionServicioTests
     private static RegistroFacturacionService Registros(ApplicationDbContext db) => new(db);
 
     private static FacturacionService Facturacion(ApplicationDbContext db) =>
-        new(db, new GeneradorObligaciones(db, TimeProvider.System), new RelojFijo(Ahora), new RegistroFacturacionService(db),
+        new(db, new GeneradorObligaciones(db, TimeProvider.System), new RelojFijo(Ahora), new RegistroFacturacionService(db), QrDePrueba.Servicio(),
             NullLogger<FacturacionService>.Instance);
 
     private static async Task<Guid> BorradorAsync(ApplicationDbContext db, Guid autonomoId, Guid contactoId, decimal? retencion = null)

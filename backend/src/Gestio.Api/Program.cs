@@ -34,6 +34,14 @@ builder.Services.AddScoped<VinculacionesService>();
 builder.Services.AddScoped<ContactosService>();
 builder.Services.AddScoped<FacturacionService>();
 builder.Services.AddScoped<Gestio.Api.Services.Verifactu.RegistroFacturacionService>();
+// UT23 (PB-23): QR y consulta pública. La URL base se valida al arrancar: sin ella no se emite ningún QR roto.
+builder.Services.AddOptions<VerifactuOptions>()
+    .Bind(builder.Configuration.GetSection(VerifactuOptions.Seccion))
+    .Validate(o => VerifactuOptions.EsUrlBaseValida(o.UrlPublicaBase?.Trim()),
+        $"{VerifactuOptions.Seccion}:UrlPublicaBase debe ser una URL http(s) absoluta sin query ni fragmento.")
+    .ValidateOnStart();
+builder.Services.AddSingleton<Gestio.Api.Infrastructure.VeriFactu.QrFacturaService>();
+builder.Services.AddScoped<Gestio.Api.Services.Verifactu.ConsultaPublicaFacturaService>();
 builder.Services.AddScoped<PerfilesFiscalesService>();
 builder.Services.AddScoped<GeneradorObligaciones>();
 builder.Services.AddScoped<ObligacionesFiscalesService>();

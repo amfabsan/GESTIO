@@ -305,6 +305,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("CodigoPublico")
+                        .HasMaxLength(22)
+                        .HasColumnType("character varying(22)");
+
                     b.Property<Guid?>("ContactoId")
                         .HasColumnType("uuid");
 
@@ -358,6 +362,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CodigoPublico")
+                        .IsUnique()
+                        .HasDatabaseName("UX_facturas_codigo_publico")
+                        .HasFilter("\"CodigoPublico\" IS NOT NULL");
+
                     b.HasIndex("ContactoId");
 
                     b.HasIndex("AutonomoId", "Estado", "Fecha");
@@ -366,7 +375,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsUnique()
                         .HasFilter("\"Numero\" IS NOT NULL");
 
-                    b.ToTable("facturas", (string)null);
+                    b.ToTable("facturas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_facturas_codigo_publico_solo_emitidas", "\"CodigoPublico\" IS NULL OR \"Estado\" = 2");
+                        });
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialCategoria", b =>

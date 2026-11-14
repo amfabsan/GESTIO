@@ -35,7 +35,11 @@ export type Factura = {
   clienteDireccion: string | null
   emitida: string | null
   lineas: LineaFactura[]
+  // UT23 (PB-23): generado en el backend. Null en borradores y en facturas emitidas antes de UT23.
+  qr: QrFactura | null
 }
+
+export type QrFactura = { url: string; imagenPngBase64: string }
 
 export type FacturaLista = {
   id: string

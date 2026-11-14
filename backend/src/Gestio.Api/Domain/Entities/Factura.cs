@@ -25,6 +25,11 @@ public sealed class Factura
     public DateTimeOffset Creada { get; set; }
     public DateTimeOffset Actualizada { get; set; }
     public DateTimeOffset? Emitida { get; set; }
+    /// <summary>
+    /// UT23 (PB-23): identificador público y aleatorio que codifica el QR. Solo lo tienen las facturas emitidas,
+    /// se asigna en la emisión y no cambia nunca (trigger en la BD). No deriva de ningún dato fiscal.
+    /// </summary>
+    public string? CodigoPublico { get; set; }
     public Usuario Autonomo { get; set; } = null!;
     public Contacto? Contacto { get; set; }
     public ICollection<LineaFactura> Lineas { get; set; } = [];

@@ -145,7 +145,7 @@ public sealed class RegistrosFacturacionControllerTests
     private static async Task EmitirAsync(ApplicationDbContext db)
     {
         var facturacion = new FacturacionService(db, new GeneradorObligaciones(db, TimeProvider.System), TimeProvider.System,
-            new RegistroFacturacionService(db), NullLogger<FacturacionService>.Instance);
+            new RegistroFacturacionService(db), QrDePrueba.Servicio(), NullLogger<FacturacionService>.Instance);
         var propietario = new UsuarioActual(AutonomoA, Rol.AUTONOMO);
         var borrador = await facturacion.GuardarBorradorAsync(propietario, AutonomoA, null,
             new GuardarFacturaRequest(ContactoA, new DateOnly(2026, 6, 16), null, [new("Servicio", 1m, 100m, 21m)]), default);

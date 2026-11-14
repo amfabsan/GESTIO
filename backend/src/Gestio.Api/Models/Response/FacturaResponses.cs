@@ -1,6 +1,8 @@
 using Gestio.Api.Domain.Entities;
 using Gestio.Api.Domain.Enums;
+using Gestio.Api.Infrastructure.VeriFactu;
 using Gestio.Api.Services;
+using Gestio.Api.Services.Verifactu;
 
 namespace Gestio.Api.Models.Response;
 
@@ -37,9 +39,11 @@ public sealed record FacturaResponse(
     string? ClienteNif,
     string? ClienteDireccion,
     DateTimeOffset? Emitida,
-    IReadOnlyList<LineaFacturaResponse> Lineas)
+    IReadOnlyList<LineaFacturaResponse> Lineas,
+    // UT23 (PB-23): solo en el detalle (D2). Null en borradores y en facturas emitidas antes de UT23 (D4).
+    QrFacturaResponse? Qr = null)
 {
-    public static FacturaResponse Desde(Factura factura, CalculoFactura? calculo = null)
+    public static FacturaResponse Desde(Factura factura, CalculoFactura? calculo = null, QrFactura? qr = null)
     {
         var emitida = factura.Estado == EstadoFactura.EMITIDA;
         var nombreEmisor = emitida
@@ -79,8 +83,25 @@ public sealed record FacturaResponse(
                 x.IvaPorcentaje,
                 x.Cantidad is not null && x.PrecioUnitario is not null
                     ? CalculadoraFactura.Redondear(x.Cantidad.Value * x.PrecioUnitario.Value)
-                    : null)).ToArray());
+                    : null)).ToArray(),
+            // Defensa: aunque llegara un QR, un borrador nunca lo devuelve (req. 5).
+            emitida && qr is not null ? new QrFacturaResponse(qr.Url, qr.ImagenPngBase64) : null);
     }
+}
+
+/// <summary>UT23: URL que codifica el QR e imagen PNG en base64, generadas en el backend (CLAUDE.md, D2).</summary>
+public sealed record QrFacturaResponse(string Url, string ImagenPngBase64);
+
+/// <summary>
+/// UT23 (PB-23 req. 3): lo único que devuelve la consulta pública del QR. El aviso lo fija el backend para que
+/// ningún cliente pueda presentar la página sin él.
+/// </summary>
+public sealed record FacturaPublicaResponse(string EmisorNombre, string SerieNumero, DateOnly Fecha, decimal Total, string Aviso)
+{
+    public const string AvisoDemostracion = "Demostración académica: factura no cotejable en la AEAT";
+
+    public static FacturaPublicaResponse Desde(FacturaPublica factura) =>
+        new(factura.EmisorNombre, factura.SerieNumero, factura.Fecha, factura.Total, AvisoDemostracion);
 }
 
 public sealed record FacturaListaResponse(
