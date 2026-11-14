@@ -11,7 +11,6 @@ import { ClientesPage } from '../pages/gestor/ClientesPage'
 import { SolicitudesPage } from '../pages/gestor/SolicitudesPage'
 import { BandejaValidacionPage } from '../pages/gestor/BandejaValidacionPage'
 import { UsersPage } from '../pages/UsersPage'
-import { QrPublicoPage } from '../pages/QrPublicoPage'
 import { useAuth } from '../context/useAuth'
 import { AppLayout } from '../components/layout/AppLayout'
 import { RoleGuard } from '../components/guards/RoleGuard'
@@ -24,9 +23,6 @@ function HomeRedirect() {
 export function AppRoutes() {
     return (
         <Routes>
-            {/* UT23 (PB-23): página del QR, pública. Fuera de AppLayout y de los guards: sin sesión ni navegación. */}
-            <Route path="f/:codigo" element={<QrPublicoPage />} />
-
             <Route element={<AppLayout />}>
                 <Route index element={<HomeRedirect />} />
                 <Route path="users" element={<UsersPage />} />
