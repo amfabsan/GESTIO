@@ -39,4 +39,6 @@ public sealed class Documento
     public ICollection<HistorialValidacion> HistorialValidacion { get; } = [];
 
     public ICollection<HistorialCategoria> HistorialCategorias { get; } = [];
+
+    public InclusiónGastoEnEstimación? InclusiónEnEstimación { get; set; }
 }
