@@ -3,6 +3,7 @@ using Gestio.Api.Domain.Enums;
 using Gestio.Api.Domain.Errores;
 using Gestio.Api.Domain.Interfaces;
 using Gestio.Api.Infrastructure.Data;
+using Gestio.Api.Infrastructure.Data.Configurations;
 using Gestio.Api.Models.Request;
 using Gestio.Api.Models.Response;
 using Gestio.Api.Services.Verifactu;
@@ -26,6 +27,10 @@ public sealed class FacturacionService(
     private static readonly Error Prohibido = new("Factura.Prohibido", "No tienes permiso para realizar esta operación.", TipoError.PROHIBIDO);
     private static readonly Error NoEncontrada = new("Factura.NoEncontrada", "No se ha encontrado la factura.", TipoError.NO_ENCONTRADO);
     private static readonly Error SoloBorradores = new("Factura.SoloBorradores", "Solo se pueden modificar o eliminar borradores.", TipoError.CONFLICTO);
+
+    // UT23: colisión del código público (≈2^-131 por par de facturas). Se revierte la emisión como cualquier otro fallo.
+    private static readonly Error CodigoPublicoEnConflicto = new("Factura.CodigoPublicoEnConflicto",
+        "No se pudo generar el código QR de la factura. Se ha revertido la emisión: inténtalo de nuevo.", TipoError.CONFLICTO);
 
     public async Task<Resultado<IReadOnlyList<FacturaListaResponse>>> ListarAsync(
         UsuarioActual usuario, Guid autonomoId, CancellationToken ct)
@@ -198,6 +203,9 @@ public sealed class FacturacionService(
         factura.ClienteNombre = factura.Contacto!.Nombre;
         factura.ClienteNif = factura.Contacto.Nif;
         factura.ClienteDireccion = factura.Contacto.Direccion!.Trim();
+        // UT23 (PB-23 req. 1): el código del QR nace con la emisión, en el mismo SaveChanges que el número y el registro.
+        // Solo se llega aquí desde BORRADOR, así que nunca se asigna a una factura emitida antes de UT23 (D4).
+        factura.CodigoPublico = CodigoPublicoFactura.Generar();
 
         try
         {
@@ -214,6 +222,15 @@ public sealed class FacturacionService(
         {
             await context.SaveChangesAsync(ct);
             if (transaccion is not null) await transaccion.CommitAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: FacturaConfiguration.IndiceCodigoPublico
+        })
+        {
+            // Va antes que el caso del número: los dos son violaciones de unicidad en "facturas".
+            logger.LogError(ex, "Colisión del código público al emitir la factura {FacturaId}", factura.Id);
+            return Revertir(CodigoPublicoEnConflicto);
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, TableName: "facturas" })
         {
