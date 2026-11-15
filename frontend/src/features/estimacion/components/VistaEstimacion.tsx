@@ -1,212 +1,294 @@
-import { AlertCircle, CheckCircle2, Clock, DollarSign } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Ban, Calculator, Check, FileText, Info, Minus, Plus } from 'lucide-react'
 import type { EstimacionResponse, ElementoPorRevisar } from '../../../types/estimacion'
 import { formatearEuros } from '../../../utils/formato'
 
+const card = 'rounded-2xl border border-[#e2dfd7] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]'
+
 interface VistaEstimacionProps {
-  estimacion: EstimacionResponse | null
-  cargando: boolean
-  error: string | null
-  procesando: boolean
-  esGestor: boolean
-  onActualizarInclusion: (documentoId: string, incluida: boolean) => Promise<boolean>
+    estimacion: EstimacionResponse | null
+    cargando: boolean
+    error: string | null
+    procesando: boolean
+    esGestor: boolean
+    onActualizarInclusion: (documentoId: string, incluida: boolean) => Promise<boolean>
 }
 
 export function VistaEstimacion({
-  estimacion,
-  cargando,
-  error,
-  procesando,
-  esGestor,
-  onActualizarInclusion,
+    estimacion,
+    cargando,
+    error,
+    procesando,
+    esGestor,
+    onActualizarInclusion,
 }: VistaEstimacionProps) {
-  if (cargando) {
-    return <p role="status">Calculando estimación…</p>
-  }
+    const [toastMensaje, setToastMensaje] = useState<string | null>(null)
 
-  if (error) {
-    return (
-      <div
-        role="alert"
-        className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-800 flex gap-2"
-      >
-        <AlertCircle className="size-5 flex-shrink-0 mt-0.5" />
-        <p>{error}</p>
-      </div>
-    )
-  }
+    if (cargando) {
+        return <p role="status" className="py-12 text-center text-sm text-[#6b6656]">Calculando estimación fiscal…</p>
+    }
 
-  if (!estimacion) {
-    return <p>No se ha cargado la estimación.</p>
-  }
+    if (error || (estimacion && !estimacion.disponible)) {
+        const motivo =
+            estimacion?.motivoNoDisponible ||
+            'El perfil fiscal 2026 (Recargo de equivalencia · Estimación directa simplificada) requiere reglas que el prototipo no implementa. Solo se calcula el caso simple de IVA en régimen general. No se muestra ninguna cifra para no inducir a error.'
 
-  const { disponible, motivoNoDisponible, ivaIngresos, ivaGastos, diferencia, fechaCalculoUtc, documentosIncluidos, elementosPorRevisar } =
-    estimacion
-
-  if (!disponible) {
-    return (
-      <div className="rounded-xl border border-amber-300 bg-amber-50 p-6">
-        <div className="flex gap-3">
-          <AlertCircle className="size-6 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-amber-900">Estimación no disponible</h3>
-            <p className="mt-1 text-sm text-amber-800">{motivoNoDisponible}</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const fechaFormato = new Date(fechaCalculoUtc).toLocaleString('es-ES', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-
-  return (
-    <div className="space-y-8">
-      {/* Resumen de importes */}
-      <section className="rounded-xl border border-[#dfdbd3] bg-white p-6">
-        <div className="flex items-center justify-between gap-4 border-b border-[#ece9e3] pb-4 mb-6">
-          <h2 className="text-lg font-bold text-[#1b2a4a]">Estimación de IVA</h2>
-          <div className="flex items-center gap-2 text-sm text-[#6b6656]">
-            <Clock className="size-4" />
-            {fechaFormato}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-          {/* IVA de ingresos */}
-          <div className="flex flex-col items-start gap-2">
-            <label className="text-sm font-semibold text-[#6b6656]">IVA de ingresos incluidos</label>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-[#247344]">{formatearEuros(ivaIngresos)}</span>
-            </div>
-          </div>
-
-          {/* IVA de gastos */}
-          <div className="flex flex-col items-start gap-2">
-            <label className="text-sm font-semibold text-[#6b6656]">IVA de gastos incluidos</label>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-[#c62828]">{formatearEuros(ivaGastos)}</span>
-            </div>
-          </div>
-
-          {/* Diferencia orientativa */}
-          <div className="flex flex-col items-start gap-2">
-            <label className="text-sm font-semibold text-[#6b6656]">Diferencia orientativa</label>
-            <div
-              className={`text-3xl font-bold ${diferencia >= 0 ? 'text-[#247344]' : 'text-[#c62828]'}`}
-            >
-              {formatearEuros(diferencia)}
-            </div>
-          </div>
-        </div>
-
-        {diferencia < 0 && (
-          <div className="mt-6 rounded-lg bg-[#fef3e0] p-3 text-sm text-[#a95500] border border-[#f5d4a0]">
-            <strong>Nota:</strong> Saldo negativo orientativo. Esta cifra no afirma la existencia de una devolución.
-          </div>
-        )}
-
-        <p className="mt-6 text-xs text-[#9a8f84]">
-          <strong>Advertencia:</strong> Esta es una estimación orientativa calculada a partir de documentos validados.
-          No es el resultado de una declaración tributaria ni debe utilizarse como cifra definitiva.
-        </p>
-      </section>
-
-      {/* Documentos incluidos */}
-      {documentosIncluidos.length > 0 && (
-        <section className="rounded-xl border border-[#dfdbd3] bg-white overflow-hidden">
-          <div className="border-b border-[#ece9e3] bg-[#f9f8f6] px-6 py-4">
-            <h3 className="font-bold text-[#1b2a4a]">Documentos incluidos ({documentosIncluidos.length})</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-[#ece9e3] bg-[#faf9f7]">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold text-[#6b6656]">Tipo</th>
-                  <th className="px-6 py-3 text-left font-semibold text-[#6b6656]">Emisor / Cliente</th>
-                  <th className="px-6 py-3 text-left font-semibold text-[#6b6656]">NIF</th>
-                  <th className="px-6 py-3 text-left font-semibold text-[#6b6656]">Factura</th>
-                  <th className="px-6 py-3 text-right font-semibold text-[#6b6656]">IVA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documentosIncluidos.map((doc, idx: number) => (
-                  <tr
-                    key={doc.documentoId}
-                    className={idx % 2 === 0 ? 'bg-white' : 'bg-[#faf9f7]'}
-                  >
-                    <td className="px-6 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          doc.tipo === 'INGRESO'
-                            ? 'bg-[#e3f6ea] text-[#008b45]'
-                            : 'bg-[#fff0df] text-[#c86b1c]'
-                        }`}
-                      >
-                        <CheckCircle2 className="size-3" />
-                        {doc.tipo}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-[#1b2a4a]">{doc.emisor || '—'}</td>
-                    <td className="px-6 py-3 font-mono text-[#6b6656]">{doc.nif || '—'}</td>
-                    <td className="px-6 py-3 text-[#6b6656]">{doc.numeroFactura || '—'}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-[#1b2a4a]">
-                      {formatearEuros(doc.ivaIncluido)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* Elementos por revisar */}
-      {elementosPorRevisar.length > 0 && (
-        <section className="rounded-xl border border-amber-300 bg-amber-50">
-          <div className="border-b border-amber-200 bg-amber-100 px-6 py-4">
-            <h3 className="font-bold text-amber-900 flex items-center gap-2">
-              <AlertCircle className="size-5" />
-              Elementos pendientes de revisión ({elementosPorRevisar.length})
-            </h3>
-          </div>
-          <div className="divide-y divide-amber-200">
-            {elementosPorRevisar.map((elemento: ElementoPorRevisar) => (
-              <div key={elemento.documentoId} className="px-6 py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <p className="font-semibold text-amber-900">{elemento.motivo}</p>
-                    <p className="mt-1 text-sm text-amber-800">
-                      Severidad: <strong>{elemento.severidad}</strong>
-                    </p>
-                  </div>
-                  {esGestor && (
-                    <button
-                      type="button"
-                      disabled={procesando}
-                      className="whitespace-nowrap rounded-lg bg-amber-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-800 disabled:opacity-50"
-                    >
-                      Ir a validación
-                    </button>
-                  )}
+        return (
+            <div role="alert" className={`${card} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+                <div className="grid size-12 place-items-center rounded-full bg-[#eef0f3] text-[#647083]">
+                    <Ban className="size-6" strokeWidth={1.8} />
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+                <h2 className="mt-4 text-base font-bold text-[#152546]">Estimación no disponible para este perfil</h2>
+                <p className="mt-2 max-w-[520px] text-sm leading-relaxed text-[#6b6656]">
+                    {motivo}
+                </p>
+            </div>
+        )
+    }
 
-      {/* Vacío: sin documentos incluidos ni por revisar */}
-      {documentosIncluidos.length === 0 && elementosPorRevisar.length === 0 && (
-        <div className="rounded-xl border border-[#dfdbd3] bg-white p-8 text-center">
-          <DollarSign className="mx-auto size-12 text-[#c9bbb4] mb-3" />
-          <p className="text-[#6b6656]">No hay documentos para este trimestre.</p>
+    if (!estimacion) return null
+
+    const { ivaIngresos, ivaGastos, diferencia, documentosIncluidos, elementosPorRevisar, trimestre } = estimacion
+
+    const ingresos = documentosIncluidos.filter(d => d.tipo === 'INGRESO')
+    const gastos = documentosIncluidos.filter(d => d.tipo === 'GASTO')
+    const sinDatos = ingresos.length === 0 && gastos.length === 0
+
+    async function manejarToggleGasto(documentoId: string, etiqueta: string, incluir: boolean) {
+        const ok = await onActualizarInclusion(documentoId, incluir)
+        if (ok) {
+            setToastMensaje(
+                incluir
+                    ? `IVA de ${etiqueta} incluido en la estimación`
+                    : `IVA de ${etiqueta} excluido de la estimación`
+            )
+            setTimeout(() => setToastMensaje(null), 4000)
+        }
+    }
+
+    return (
+        <div className="space-y-5">
+            {/* Fila 1: 3 Tarjetas KPI superiores */}
+            <div className="grid gap-5 md:grid-cols-3">
+                {/* KPI 1: IVA de ingresos incluidos */}
+                <div className={`${card} flex flex-col justify-between p-6`}>
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#6b6656]">
+                        <ArrowUpRight className="size-3.5 text-[#1f7a5c]" strokeWidth={2.4} />
+                        IVA DE INGRESOS INCLUIDOS
+                    </p>
+                    <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-[#152546]">
+                        {formatearEuros(ivaIngresos)}
+                    </p>
+                    <p className="mt-2.5 text-xs text-[#6b6656]">
+                        {ingresos.length} facturas emitidas validadas
+                    </p>
+                </div>
+
+                {/* KPI 2: IVA de gastos incluidos */}
+                <div className={`${card} flex flex-col justify-between p-6`}>
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#6b6656]">
+                        <ArrowDownRight className="size-3.5 text-[#6b6656]" strokeWidth={2.4} />
+                        IVA DE GASTOS INCLUIDOS
+                    </p>
+                    <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-[#152546]">
+                        {formatearEuros(ivaGastos)}
+                    </p>
+                    <p className="mt-2.5 text-xs text-[#6b6656]">
+                        {gastos.length} gastos marcados por el gestor
+                    </p>
+                </div>
+
+                {/* KPI 3: Diferencia orientativa (Tarjeta Azul Marino) */}
+                <div className="flex flex-col justify-between rounded-2xl bg-[#152546] p-6 text-white shadow-sm">
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#9aa8be]">
+                        <Calculator className="size-3.5" strokeWidth={2} />
+                        DIFERENCIA ORIENTATIVA · {trimestre}T
+                    </p>
+                    {sinDatos ? (
+                        <>
+                            <p className="mt-3 text-2xl font-bold tracking-tight text-white">Datos insuficientes</p>
+                            <p className="mt-2 text-xs leading-relaxed text-[#9aa8be]">
+                                No hay documentos validados de este trimestre que permitan estimar una cifra.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-[#f5a623]">
+                                {formatearEuros(diferencia)}
+                            </p>
+                            <p className="mt-2.5 text-xs text-[#9aa8be]">
+                                {formatearEuros(ivaIngresos)} – {formatearEuros(ivaGastos)} · importe a reservar orientativo
+                            </p>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* Fila 2: Banner informativo amarillo */}
+            <div className="flex items-start gap-3 rounded-xl border border-[#ebd899] bg-[#fdf8e6] px-4 py-3 text-xs leading-relaxed text-[#7c6218]">
+                <Info className="mt-0.5 size-4 shrink-0 text-[#b78a14]" />
+                <p>
+                    <strong className="font-bold text-[#5c4810]">Previsión orientativa, no definitiva.</strong> No es el resultado de una declaración tributaria. Solo incluye documentos VALIDADOS del trimestre; el IVA de un gasto solo se resta cuando el gestor lo marca para la estimación (clasificarlo como gasto no implica que sea deducible).
+                </p>
+            </div>
+
+            {/* Fila 3: Desglose en 2 columnas */}
+            <div className="grid items-start gap-5 lg:grid-cols-2">
+                {/* Columna Izquierda: Ingresos utilizados */}
+                <section className={`${card} overflow-hidden`}>
+                    <header className="flex items-center justify-between border-b border-[#ece9e3] px-6 py-4">
+                        <h3 className="flex items-center gap-2 text-sm font-bold text-[#152546]">
+                            <ArrowUpRight className="size-4 text-[#1f7a5c]" strokeWidth={2.4} />
+                            Ingresos utilizados
+                        </h3>
+                        <span className="text-xs text-[#6b6656]">{ingresos.length} documentos</span>
+                    </header>
+
+                    {ingresos.length === 0 ? (
+                        <p className="px-6 py-5 text-sm text-[#6b6656]">Ningún documento incluido.</p>
+                    ) : (
+                        <ul className="divide-y divide-[#f2efe9]">
+                            {ingresos.map(doc => (
+                                <li key={doc.documentoId} className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+                                    <div className="min-w-0">
+                                        <p className="truncate font-bold text-[#152546]">
+                                            {doc.numeroFactura || doc.emisor || 'Factura emitida'}
+                                        </p>
+                                        <p className="mt-0.5 truncate text-xs text-[#6b6656]">
+                                            {doc.emisor ? `${doc.emisor}${doc.nif ? ` (${doc.nif})` : ''} · validado` : 'Documento validado'}
+                                        </p>
+                                    </div>
+                                    <span className="shrink-0 font-bold text-[#152546]">
+                                        {formatearEuros(doc.ivaIncluido)}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    <footer className="flex items-center justify-between border-t border-[#ece9e3] px-6 py-3.5 text-sm font-bold text-[#152546]">
+                        <span>Suma de cuotas de IVA</span>
+                        <span>{formatearEuros(ivaIngresos)}</span>
+                    </footer>
+                </section>
+
+                {/* Columna Derecha: Gastos incluidos por el gestor */}
+                <section className={`${card} overflow-hidden`}>
+                    <header className="flex items-center justify-between border-b border-[#ece9e3] px-6 py-4">
+                        <h3 className="flex items-center gap-2 text-sm font-bold text-[#152546]">
+                            <ArrowDownRight className="size-4 text-[#6b6656]" strokeWidth={2.4} />
+                            Gastos incluidos por el gestor
+                        </h3>
+                        <span className="text-xs text-[#6b6656]">{gastos.length} documentos</span>
+                    </header>
+
+                    {gastos.length === 0 ? (
+                        <p className="px-6 py-5 text-sm text-[#6b6656]">Ningún documento incluido.</p>
+                    ) : (
+                        <ul className="divide-y divide-[#f2efe9]">
+                            {gastos.map(doc => {
+                                const nombreVisible = doc.numeroFactura || doc.emisor || 'Gasto deducible'
+                                return (
+                                    <li key={doc.documentoId} className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
+                                        <div className="min-w-0">
+                                            <p className="truncate font-bold text-[#152546]">{nombreVisible}</p>
+                                            <p className="mt-0.5 truncate text-xs text-[#6b6656]">
+                                                {doc.emisor ? `${doc.emisor}${doc.nif ? ` (${doc.nif})` : ''} · validado` : 'Documento validado'}
+                                            </p>
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-3">
+                                            <span className="font-bold text-[#152546]">
+                                                {formatearEuros(doc.ivaIncluido)}
+                                            </span>
+                                            {esGestor && (
+                                                <button
+                                                    type="button"
+                                                    disabled={procesando}
+                                                    onClick={() => void manejarToggleGasto(doc.documentoId, nombreVisible, false)}
+                                                    title="Excluir gasto de la estimación"
+                                                    className="grid size-6 place-items-center rounded-full bg-[#f0ede6] text-[#6b6656] transition hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
+                                                >
+                                                    <Minus className="size-3.5" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </li>
+                                )
+                            })}
+                        </ul>
+                    )}
+
+                    <footer className="flex items-center justify-between border-t border-[#ece9e3] px-6 py-3.5 text-sm font-bold text-[#152546]">
+                        <span>Suma de cuotas de IVA</span>
+                        <span>{formatearEuros(ivaGastos)}</span>
+                    </footer>
+                </section>
+            </div>
+
+            {/* Fila 4: Elementos por revisar · excluidos del cálculo */}
+            <section className={`${card} overflow-hidden`}>
+                <header className="flex items-center justify-between border-b border-[#ece9e3] px-6 py-4">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-[#152546]">
+                        <AlertTriangle className="size-4 text-[#d97706]" />
+                        Elementos por revisar · excluidos del cálculo
+                    </h3>
+                    <span className="text-xs font-semibold text-[#6b6656]">{elementosPorRevisar.length}</span>
+                </header>
+
+                {elementosPorRevisar.length === 0 ? (
+                    <p className="px-6 py-5 text-sm text-[#6b6656]">No hay documentos excluidos en este trimestre.</p>
+                ) : (
+                    <ul className="divide-y divide-[#f2efe9]">
+                        {elementosPorRevisar.map((elemento: ElementoPorRevisar) => {
+                            const esAnomaliaOPendiente =
+                                elemento.severidad === 'ANOMALIA' ||
+                                elemento.motivo.toLowerCase().includes('anomalía') ||
+                                elemento.motivo.toLowerCase().includes('pendiente de validación')
+
+                            const puedeIncluirse = esGestor && !esAnomaliaOPendiente
+
+                            return (
+                                <li key={elemento.documentoId} className="flex flex-col justify-between gap-3 px-6 py-4 text-sm sm:flex-row sm:items-center">
+                                    <div className="flex items-start gap-3">
+                                        <FileText className="mt-0.5 size-4 shrink-0 text-[#8a94a6]" />
+                                        <div>
+                                            <p className="font-bold text-[#152546]">
+                                                Documento {elemento.documentoId.slice(0, 8)}
+                                            </p>
+                                            <p className={`mt-0.5 text-xs ${puedeIncluirse ? 'text-[#6b6656]' : 'text-[#b45309]'}`}>
+                                                {elemento.motivo}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {puedeIncluirse && (
+                                        <button
+                                            type="button"
+                                            disabled={procesando}
+                                            onClick={() => void manejarToggleGasto(elemento.documentoId, elemento.documentoId.slice(0, 8), true)}
+                                            className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-xl bg-[#152546] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#243b6b] disabled:opacity-50 sm:self-auto"
+                                        >
+                                            <Plus className="size-3.5" />
+                                            Incluir IVA
+                                        </button>
+                                    )}
+                                </li>
+                            )
+                        })}
+                    </ul>
+                )}
+            </section>
+
+            {/* Toast oscuro inferior al incluir/excluir (solo gestor) */}
+            {toastMensaje && (
+                <div
+                    role="status"
+                    className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-[#1c1b18] px-4 py-3 text-xs font-semibold text-white shadow-lg"
+                >
+                    <Check className="size-4 text-[#34d399]" />
+                    <span>{toastMensaje}</span>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  )
+    )
 }

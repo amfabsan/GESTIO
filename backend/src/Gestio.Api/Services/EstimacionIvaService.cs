@@ -81,19 +81,36 @@ public sealed class EstimacionIvaService(
                 ElementosPorRevisar: []);
         }
 
-        // 3. Filtrar documentos del autónomo en estado VALIDADO del trimestre
-        var documentsosDelTrimestre = await context.Documentos
+        // 3. Calcular rango de fechas del trimestre (traducible a SQL por EF Core)
+        var mesInicio = (trimestre - 1) * 3 + 1;
+        var fechaInicio = new DateOnly(ejercicio, mesInicio, 1);
+        var fechaFinExclusiva = fechaInicio.AddMonths(3);
+
+        // A. Filtrar documentos externos (tickets, facturas recibidas, etc.) en estado VALIDADO
+        var documentosDelTrimestre = await context.Documentos
             .AsNoTracking()
             .Where(d =>
                 d.UsuarioId == autonomoId &&
                 d.Estado == EstadoDocumento.VALIDADO &&
                 d.ExtraccionIa != null &&
                 d.ExtraccionIa.FechaEmision.HasValue &&
-                CalculadorTrimestre.PerteneceAlTrimestre(d.ExtraccionIa.FechaEmision.Value, ejercicio, trimestre))
+                d.ExtraccionIa.FechaEmision.Value >= fechaInicio &&
+                d.ExtraccionIa.FechaEmision.Value < fechaFinExclusiva)
             .Include(d => d.ExtraccionIa)
             .Include(d => d.Anomalias)
             .Include(d => d.InclusiónEnEstimación)
             .Include(d => d.Usuario)
+            .ToListAsync(cancellationToken);
+
+        // B. Filtrar facturas propias emitidas por el autónomo en estado EMITIDA
+        var facturasEmitidasDelTrimestre = await context.Facturas
+            .AsNoTracking()
+            .Where(f =>
+                f.AutonomoId == autonomoId &&
+                f.Estado == EstadoFactura.EMITIDA &&
+                f.Fecha >= fechaInicio &&
+                f.Fecha < fechaFinExclusiva)
+            .Include(f => f.Autonomo)
             .ToListAsync(cancellationToken);
 
         var documentosIncluidos = new List<EstimacionDocumentoResponse>();
@@ -102,7 +119,26 @@ public sealed class EstimacionIvaService(
         decimal ivaIngresos = 0;
         decimal ivaGastos = 0;
 
-        foreach (var documento in documentsosDelTrimestre)
+        // Procesar primero las facturas propias emitidas (cuentan directamente como INGRESO)
+        foreach (var factura in facturasEmitidasDelTrimestre)
+        {
+            if (factura.CuotaIva.HasValue)
+            {
+                ivaIngresos += factura.CuotaIva.Value;
+                var numeroFormateado = factura.Numero.HasValue ? $"{factura.Serie}-{factura.Numero.Value:D4}" : factura.Serie;
+
+                documentosIncluidos.Add(new EstimacionDocumentoResponse(
+                    DocumentoId: factura.Id,
+                    Tipo: "INGRESO",
+                    Emisor: factura.EmisorNombre ?? "Emisor",
+                    Nif: factura.EmisorNif ?? "",
+                    NumeroFactura: numeroFormateado,
+                    IvaIncluido: factura.CuotaIva.Value));
+            }
+        }
+
+        // Procesar los documentos del buzón (ingresos/gastos escaneados)
+        foreach (var documento in documentosDelTrimestre)
         {
             var tipo = ObtenerTipoDocumento(documento);
             var extraccion = documento.ExtraccionIa!;
@@ -143,7 +179,6 @@ public sealed class EstimacionIvaService(
 
             if (tipo == "INGRESO")
             {
-                // Ingresos siempre se incluyen si son válidos
                 ivaIngresos += extraccion.CuotaIva!.Value;
                 documentosIncluidos.Add(new EstimacionDocumentoResponse(
                     DocumentoId: documento.Id,
@@ -155,7 +190,6 @@ public sealed class EstimacionIvaService(
             }
             else if (tipo == "GASTO")
             {
-                // Gastos solo se incluyen si está marcado explícitamente
                 var inclusion = documento.InclusiónEnEstimación;
                 if (inclusion?.Incluida == true)
                 {
@@ -170,7 +204,6 @@ public sealed class EstimacionIvaService(
                 }
                 else
                 {
-                    // Gasto no marcado como incluido: aparece en elementos por revisar
                     elementosPorRevisar.Add(new ElementoPorRevisarResponse(
                         DocumentoId: documento.Id,
                         Motivo: "Gasto clasificado pero no confirmado para incluir en la estimación",
@@ -199,12 +232,9 @@ public sealed class EstimacionIvaService(
 
     /// <summary>
     /// Valida si el perfil fiscal es soportado por el prototipo.
-    /// Por ahora, cualquier perfil con regímenes válidos es soportado.
-    /// En futuras versiones se pueden añadir restricciones.
     /// </summary>
     private static bool EsPerfilSoportado(PerfilFiscal perfil)
     {
-        // El prototipo soporta todos los regímenes del catálogo
         return PerfilesFiscalesService.CatalogoIva.ContainsKey(perfil.RegimenIva) &&
                PerfilesFiscalesService.CatalogoIrpf.ContainsKey(perfil.RegimenIrpf);
     }
@@ -228,7 +258,6 @@ public sealed class EstimacionIvaService(
         if (!extraccion.BaseImponible.HasValue || !extraccion.TipoIva.HasValue || !extraccion.CuotaIva.HasValue)
             return false;
 
-        // Tolerancia de 0.01€ por redondeos
         var esperado = Math.Round(extraccion.BaseImponible.Value * extraccion.TipoIva.Value / 100, 2);
         var diferencia = Math.Abs(esperado - extraccion.CuotaIva.Value);
 
@@ -237,7 +266,6 @@ public sealed class EstimacionIvaService(
 
     /// <summary>
     /// Determina si un documento es INGRESO o GASTO según el NIF del emisor.
-    /// Mismo criterio que DocumentosController.TipoDocumento.
     /// </summary>
     private static string ObtenerTipoDocumento(Documento documento)
     {
@@ -246,7 +274,7 @@ public sealed class EstimacionIvaService(
 
         return !string.IsNullOrEmpty(nifEmisor) &&
                string.Equals(nifEmisor, nifPropietario, StringComparison.OrdinalIgnoreCase)
-            ? "INGRESO"
-            : "GASTO";
+             ? "INGRESO"
+             : "GASTO";
     }
 }
