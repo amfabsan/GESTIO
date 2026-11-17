@@ -20,7 +20,7 @@ export function CalendarioMes({ ejercicio, mes, obligaciones, seleccionar, selec
           <div className="mt-1 space-y-1">{entradas.map(o => <button type="button" key={o.id} aria-pressed={seleccionada === o.id}
             aria-label={`Modelo ${o.modelo}, ${o.periodo} ${o.ejercicio}, ${o.fechaPrevista}, ${o.estado}`}
             onClick={() => seleccionar(o.id)} className={`block w-full rounded px-1 py-1 text-[10px] font-semibold ${seleccionada === o.id ? 'bg-[#d96c13] text-white' : 'bg-[#1d2b4f] text-white'}`}>
-            <span className="block sm:inline">{o.modelo}</span><span className="block sm:inline"> {o.periodo}</span><span className="hidden text-[9px] sm:block">{o.estado === 'PRESENTADA' ? 'Presentada' : 'Pendiente'}</span><span className="block text-[9px] sm:hidden">{o.estado === 'PRESENTADA' ? 'Pres.' : 'Pte.'}</span>
+            <span className="block sm:inline">{o.modelo}</span><span className="block sm:inline"> {o.periodo}</span><span className="hidden text-[9px] sm:block">{o.estado === 'PRESENTADA' ? 'Presentada' : o.estado === 'LISTA' ? 'Lista' : 'Incompleta'}</span><span className="block text-[9px] sm:hidden">{o.estado === 'PRESENTADA' ? 'Pres.' : o.estado === 'LISTA' ? 'Lista' : 'Inc.'}</span>
           </button>)}</div>
         </div>
       })}
