@@ -181,6 +181,50 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("documentos", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.ElementoChecklistObligacion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigoPlantilla")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("FechaUltimoCambio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ObligacionFiscalId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Obligatorio")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("OrigenUltimoCambio")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("UsuarioUltimoCambioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioUltimoCambioId");
+
+                    b.HasIndex("ObligacionFiscalId", "CodigoPlantilla")
+                        .IsUnique();
+
+                    b.ToTable("elementos_checklist_obligacion", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.EventoDocumento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -413,6 +457,39 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.HasIndex("DocumentoId", "FechaCambio");
 
                     b.ToTable("historial_categorias", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialElementoChecklist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ElementoChecklistObligacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("EstadoAnterior")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EstadoNuevo")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Origen")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("ElementoChecklistObligacionId", "Fecha");
+
+                    b.ToTable("historial_elementos_checklist", (string)null);
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialObligacionFiscal", b =>
@@ -932,6 +1009,24 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.ElementoChecklistObligacion", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.ObligacionFiscal", "ObligacionFiscal")
+                        .WithMany("Checklist")
+                        .HasForeignKey("ObligacionFiscalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "UsuarioUltimoCambio")
+                        .WithMany()
+                        .HasForeignKey("UsuarioUltimoCambioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("ObligacionFiscal");
+
+                    b.Navigation("UsuarioUltimoCambio");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.EventoDocumento", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
@@ -994,6 +1089,25 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Documento");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialElementoChecklist", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.ElementoChecklistObligacion", "Elemento")
+                        .WithMany("Historial")
+                        .HasForeignKey("ElementoChecklistObligacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Elemento");
 
                     b.Navigation("Usuario");
                 });
@@ -1141,6 +1255,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Intentos");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.ElementoChecklistObligacion", b =>
+                {
+                    b.Navigation("Historial");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Factura", b =>
                 {
                     b.Navigation("Lineas");
@@ -1148,6 +1267,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
                 {
+                    b.Navigation("Checklist");
+
                     b.Navigation("Historial");
                 });
 

@@ -29,6 +29,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<RegistroFacturacion> RegistrosFacturacion => Set<RegistroFacturacion>();
 
+    public DbSet<ElementoChecklistObligacion> ElementosChecklistObligacion => Set<ElementoChecklistObligacion>();
+
+    public DbSet<HistorialElementoChecklist> HistorialElementosChecklist => Set<HistorialElementoChecklist>();
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ImpedirCambiosEnRegistrosFacturacion();

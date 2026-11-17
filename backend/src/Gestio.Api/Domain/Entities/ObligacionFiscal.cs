@@ -11,8 +11,9 @@ public sealed class ObligacionFiscal
     public int Ejercicio { get; set; }
     public required string Periodo { get; set; }
     public DateOnly FechaPrevista { get; set; }
-    public EstadoObligacion Estado { get; set; } = EstadoObligacion.PENDIENTE;
+    public EstadoObligacion Estado { get; set; } = EstadoObligacion.INCOMPLETA;
     public ICollection<HistorialObligacionFiscal> Historial { get; set; } = [];
+    public ICollection<ElementoChecklistObligacion> Checklist { get; set; } = [];
 }
 
 public sealed class HistorialObligacionFiscal

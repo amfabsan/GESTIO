@@ -45,6 +45,7 @@ builder.Services.AddScoped<Gestio.Api.Services.Verifactu.ConsultaPublicaFacturaS
 builder.Services.AddScoped<PerfilesFiscalesService>();
 builder.Services.AddScoped<GeneradorObligaciones>();
 builder.Services.AddScoped<ObligacionesFiscalesService>();
+builder.Services.AddScoped<ChecklistObligacionesService>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
