@@ -11,7 +11,10 @@ namespace Gestio.Api.Controllers;
 
 [ApiController]
 [Route("api/documentos")]
-public sealed class DocumentosController(DocumentosService documentosService, ICurrentUserService currentUserService) : ControllerBase
+public sealed class DocumentosController(
+    DocumentosService documentosService,
+    ICurrentUserService currentUserService,
+    InclusionGastoService inclusionGastoService) : ControllerBase
 {
     [HttpGet("configuracion-subida")]
     public ActionResult<ConfiguracionSubidaResponse> GetConfiguracionSubida()
@@ -158,6 +161,23 @@ public sealed class DocumentosController(DocumentosService documentosService, IC
         if (usuario is null) return Unauthorized();
 
         var resultado = await documentosService.EnviarNotaAsync(usuario, id, request.Nota, cancellationToken);
+        return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
+    }
+
+    /// <summary>
+    /// Actualiza la inclusión de un gasto en la estimación de IVA.
+    /// Solo gestores autorizados pueden cambiar la inclusión.
+    /// </summary>
+    [HttpPatch("{id:guid}/inclusion-estimacion")]
+    public async Task<ActionResult<DocumentoResponse>> ActualizarInclusiónEstimacion(
+        Guid id,
+        [FromBody] ActualizarInclusiónEstimacionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var usuario = await currentUserService.ObtenerAsync(cancellationToken);
+        if (usuario is null) return Unauthorized();
+
+        var resultado = await inclusionGastoService.ActualizarInclusiónAsync(usuario, id, request.Incluida, cancellationToken);
         return resultado.EsCorrecto ? Ok(MapearDocumento(resultado.Valor!)) : resultado.Error!.ToProblem();
     }
 

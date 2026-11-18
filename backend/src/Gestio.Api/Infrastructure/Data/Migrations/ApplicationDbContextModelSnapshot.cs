@@ -597,6 +597,34 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("historial_validacion", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.InclusiónGastoEnEstimación", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActualizadoPorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("FechaCambio")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Incluida")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActualizadoPorId");
+
+                    b.HasIndex("DocumentoId")
+                        .IsUnique();
+
+                    b.ToTable("InclusionesGastosEnEstimación");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.IntentoProcesamiento", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1157,6 +1185,25 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.InclusiónGastoEnEstimación", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "ActualizadoPor")
+                        .WithMany()
+                        .HasForeignKey("ActualizadoPorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
+                        .WithOne("InclusiónEnEstimación")
+                        .HasForeignKey("Gestio.Api.Domain.Entities.InclusiónGastoEnEstimación", "DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ActualizadoPor");
+
+                    b.Navigation("Documento");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.IntentoProcesamiento", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", null)
@@ -1251,6 +1298,8 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("HistorialCategorias");
 
                     b.Navigation("HistorialValidacion");
+
+                    b.Navigation("InclusiónEnEstimación");
 
                     b.Navigation("Intentos");
                 });

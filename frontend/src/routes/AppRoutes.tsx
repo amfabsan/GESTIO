@@ -6,10 +6,12 @@ import { InicioPage } from '../pages/autonomo/InicioPage'
 import { MiAsesoriaPage } from '../pages/autonomo/MiAsesoriaPage'
 import { ContactosPage } from '../pages/autonomo/ContactosPage'
 import { FacturacionPage } from '../pages/autonomo/FacturacionPage'
+import { EstimacionPage } from '../pages/autonomo/EstimacionPage'
 import { FacturasClientePage } from '../pages/gestor/FacturasClientePage'
 import { ClientesPage } from '../pages/gestor/ClientesPage'
 import { SolicitudesPage } from '../pages/gestor/SolicitudesPage'
 import { BandejaValidacionPage } from '../pages/gestor/BandejaValidacionPage'
+import { EstimacionClientePage } from '../pages/gestor/EstimacionClientePage'
 import { UsersPage } from '../pages/UsersPage'
 import { useAuth } from '../context/useAuth'
 import { AppLayout } from '../components/layout/AppLayout'
@@ -35,12 +37,14 @@ export function AppRoutes() {
                     <Route path="autonomo/mi-asesoria" element={<MiAsesoriaPage />} />
                     <Route path="autonomo/contactos" element={<ContactosPage />} />
                     <Route path="autonomo/facturas" element={<FacturacionPage />} />
+                    <Route path="autonomo/estimacion" element={<EstimacionPage />} />
                 </Route>
 
                 <Route element={<RoleGuard rolPermitido="GESTOR" />}>
                     <Route path="gestor/clientes/:autonomoId/calendario" element={<CalendarioFiscalPage />} />
                     <Route path="gestor/clientes/:autonomoId/perfil-fiscal" element={<PerfilFiscalPage />} />
                     <Route path="gestor/clientes/:autonomoId/facturas" element={<FacturasClientePage />} />
+                    <Route path="gestor/clientes/:autonomoId/estimacion" element={<EstimacionClientePage />} />
                     <Route path="gestor/clientes" element={<ClientesPage />} />
                     <Route path="gestor/solicitudes" element={<SolicitudesPage />} />
                     <Route path="gestor/bandeja-validacion" element={<BandejaValidacionPage />} />
