@@ -8,7 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Gestio.Api.Services;
 
-public sealed class ObligacionesFiscalesService(ApplicationDbContext context, PerfilesFiscalesService perfiles, GeneradorObligaciones generador)
+public sealed class ObligacionesFiscalesService(
+    ApplicationDbContext context,
+    PerfilesFiscalesService perfiles,
+    GeneradorObligaciones generador,
+    ChecklistObligacionesService checklists)
 {
     private static readonly Error Prohibido = new("ObligacionFiscal.Prohibido", "No tienes permiso para acceder a estas obligaciones fiscales.", TipoError.PROHIBIDO);
     private static readonly Error EjercicioNoValido = new("ObligacionFiscal.EjercicioNoValido", "El ejercicio debe estar entre 1 y 9998.", TipoError.VALIDACION);
@@ -23,12 +27,15 @@ public sealed class ObligacionesFiscalesService(ApplicationDbContext context, Pe
         var nombre = await context.Usuarios.AsNoTracking().Where(u => u.Id == autonomoId)
             .Select(u => u.Nombre + " " + u.PrimerApellido + " " + u.SegundoApellido).SingleAsync(ct);
         var perfil = await context.Set<PerfilFiscal>().AsNoTracking().SingleOrDefaultAsync(p => p.AutonomoId == autonomoId && p.Ejercicio == ejercicio, ct);
-        var obligaciones = await context.Set<ObligacionFiscal>().AsNoTracking()
+        await checklists.AsegurarCalendarioAsync(autonomoId, ejercicio, ct);
+        var obligaciones = await context.Set<ObligacionFiscal>().AsNoTracking().Include(o => o.Checklist)
             .Where(o => o.AutonomoId == autonomoId && o.Ejercicio == ejercicio)
             .OrderBy(o => o.FechaPrevista).ThenBy(o => o.Modelo).ToListAsync(ct);
-        return new CalendarioFiscalResponse(ejercicio, nombre.Trim(), perfil is not null,
+        var respuesta = new CalendarioFiscalResponse(ejercicio, nombre.Trim(), perfil is not null,
             perfil is null ? null : new ResumenPerfilFiscalResponse(PerfilesFiscalesService.CatalogoIva[perfil.RegimenIva], PerfilesFiscalesService.CatalogoIrpf[perfil.RegimenIrpf]),
             CatalogoObligacionesDemo.Aviso, obligaciones.Select(ObligacionFiscalResponse.Desde).ToArray());
+        if (lectura is not null) await lectura.CommitAsync(ct);
+        return respuesta;
     }
 
     public async Task<Resultado<CalendarioFiscalResponse>> GenerarAsync(UsuarioActual usuario, Guid autonomoId, int ejercicio, CancellationToken ct)
@@ -48,7 +55,8 @@ public sealed class ObligacionesFiscalesService(ApplicationDbContext context, Pe
     public async Task<Resultado<ObligacionFiscalDetalleResponse>> DetalleAsync(UsuarioActual usuario, Guid autonomoId, Guid obligacionId, CancellationToken ct)
     {
         if (!await perfiles.PuedeAccederAsync(usuario, autonomoId, false, ct)) return Prohibido;
-        var obligacion = await context.Set<ObligacionFiscal>().AsNoTracking().Include(o => o.Historial).ThenInclude(h => h.Usuario)
+        var obligacion = await context.Set<ObligacionFiscal>().AsNoTracking().Include(o => o.Checklist)
+            .Include(o => o.Historial).ThenInclude(h => h.Usuario)
             .SingleOrDefaultAsync(o => o.Id == obligacionId && o.AutonomoId == autonomoId, ct);
         if (obligacion is null) return new Error("ObligacionFiscal.NoEncontrada", "No se ha encontrado esta obligación fiscal.", TipoError.NO_ENCONTRADO);
         return new ObligacionFiscalDetalleResponse(ObligacionFiscalResponse.Desde(obligacion), CatalogoObligacionesDemo.Aviso,

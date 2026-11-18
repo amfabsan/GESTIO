@@ -850,7 +850,7 @@ public sealed class DocumentosTests
         Assert.Equal(EstadoDocumento.EXTRAYENDO_DATOS, activo.Estado);
         Assert.Equal("EXTRAYENDO_DATOS", Assert.Single(activo.Intentos).Resultado);
         Assert.Contains(activo.Eventos, e => e.Tipo == TipoEventoDocumento.PROCESAMIENTO_INICIADO && e.Detalle!.Contains("Extrayendo datos…"));
-        var controller = new DocumentosController(servicio, new UsuarioActualFijo(Ramon));
+        var controller = new DocumentosController(servicio, new UsuarioActualFijo(Ramon), new InclusionGastoService(context, TimeProvider.System));
         var durante = Assert.IsType<DocumentoResponse>(Assert.IsType<OkObjectResult>((await controller.GetDocumento(activo.Id, default)).Result).Value);
         Assert.Equal("EXTRAYENDO_DATOS", durante.Estado);
         Assert.Null(durante.Extraccion);
@@ -906,7 +906,7 @@ public sealed class DocumentosTests
         var tareaTercera = servicioTercero.ProcesarAsync(Ramon, correcto.Id, true, default);
         await tercero.Iniciado.Task.WaitAsync(TimeSpan.FromSeconds(10));
         Assert.NotNull(await context.ExtraccionesIa.SingleOrDefaultAsync(e => e.DocumentoId == correcto.Id));
-        var respuesta = await new DocumentosController(servicioTercero, new UsuarioActualFijo(Ramon)).GetDocumento(correcto.Id, default);
+        var respuesta = await new DocumentosController(servicioTercero, new UsuarioActualFijo(Ramon), new InclusionGastoService(context, TimeProvider.System)).GetDocumento(correcto.Id, default);
         var dto = Assert.IsType<DocumentoResponse>(Assert.IsType<OkObjectResult>(respuesta.Result).Value);
         Assert.Null(dto.Extraccion);
         Assert.Null(dto.NivelConfianzaPropuesta);
@@ -936,7 +936,7 @@ public sealed class DocumentosTests
             new AccesoDocumentos(context));
 
     private static DocumentosController CrearControlador(ApplicationDbContext context, UsuarioActual usuario) =>
-        new(CrearServicio(context, new AlmacenamientoEnMemoria()), new UsuarioActualFijo(usuario));
+        new(CrearServicio(context, new AlmacenamientoEnMemoria()), new UsuarioActualFijo(usuario), new InclusionGastoService(context, TimeProvider.System));
 
     private static async Task<IReadOnlyList<DocumentoResponse>> ObtenerListado(DocumentosController controller)
     {

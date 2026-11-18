@@ -6,7 +6,7 @@ namespace Gestio.Api.Services;
 public static class CatalogoObligacionesDemo
 {
     public const string Aviso = "Fechas configuradas para la demostración";
-    public const string Version = "PB13-reducido-v1";
+    public const string Version = "PB13-reducido-v2";
 
     public sealed record Entrada(string Modelo, string Nombre, string Periodo, DateOnly FechaPrevista);
 
@@ -19,6 +19,10 @@ public static class CatalogoObligacionesDemo
             modelos.Add(("130", "Pago fraccionado del IRPF"));
         if (perfil.RegimenIrpf == "ESTIMACION_OBJETIVA")
             modelos.Add(("131", "Pago fraccionado del IRPF"));
+        if (perfil.TrabajadoresConRetencion)
+            modelos.Add(("111", "Retenciones de trabajadores"));
+        if (perfil.LocalAlquiladoConRetencion)
+            modelos.Add(("115", "Retenciones del alquiler"));
 
         return modelos.SelectMany(m => Enumerable.Range(1, 4).Select(t => new Entrada(m.Codigo, m.Nombre,
             $"{t}T", t == 4 ? new DateOnly(perfil.Ejercicio + 1, 1, 25) : new DateOnly(perfil.Ejercicio, t * 3 + 1, 25)))).ToArray();

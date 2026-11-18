@@ -331,7 +331,7 @@ public sealed class AnomaliasTests
             NullLogger<DocumentosService>.Instance, new LectorFijo(texto), new AccesoDocumentos(context));
 
     private static DocumentosController CrearControlador(ApplicationDbContext context, UsuarioActual usuario) =>
-        new(CrearServicio(context), new UsuarioActualFijo(usuario));
+        new(CrearServicio(context), new UsuarioActualFijo(usuario), new InclusionGastoService(context, TimeProvider.System));
 }
 
 // Devuelve siempre el mismo texto reconocido; no verifica el motor OCR.

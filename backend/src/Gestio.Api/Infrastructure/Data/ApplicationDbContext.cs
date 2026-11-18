@@ -29,6 +29,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     public DbSet<RegistroFacturacion> RegistrosFacturacion => Set<RegistroFacturacion>();
 
+    public DbSet<ElementoChecklistObligacion> ElementosChecklistObligacion => Set<ElementoChecklistObligacion>();
+
+    public DbSet<HistorialElementoChecklist> HistorialElementosChecklist => Set<HistorialElementoChecklist>();
     public DbSet<InclusiónGastoEnEstimación> InclusionesGastosEnEstimación => Set<InclusiónGastoEnEstimación>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)

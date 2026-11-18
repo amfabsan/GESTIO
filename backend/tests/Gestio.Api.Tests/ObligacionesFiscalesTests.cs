@@ -32,7 +32,8 @@ public sealed class ObligacionesFiscalesTests
     {
         var generador = new GeneradorObligaciones(db, TimeProvider.System);
         var perfiles = new PerfilesFiscalesService(db, TimeProvider.System, generador);
-        return (perfiles, new ObligacionesFiscalesService(db, perfiles, generador));
+        var checklists = new ChecklistObligacionesService(db, perfiles, TimeProvider.System);
+        return (perfiles, new ObligacionesFiscalesService(db, perfiles, generador, checklists));
     }
 
     [Theory]
@@ -53,8 +54,24 @@ public sealed class ObligacionesFiscalesTests
         {
             Assert.Equal(new[] { "1T", "2T", "3T", "4T" }, modelo.Select(o => o.Periodo));
             Assert.Equal(new[] { new DateOnly(2031, 4, 25), new DateOnly(2031, 7, 25), new DateOnly(2031, 10, 25), new DateOnly(2032, 1, 25) }, modelo.Select(o => o.FechaPrevista));
-            Assert.All(modelo, o => { Assert.Equal("PENDIENTE", o.Estado); Assert.Equal(autonomo, o.AutonomoId); });
+            Assert.All(modelo, o => { Assert.Equal("INCOMPLETA", o.Estado); Assert.Equal(autonomo, o.AutonomoId); });
         }
+    }
+
+    [Fact]
+    public async Task CatalogoIncluyeModelos111Y115SegunRetencionesDelPerfil()
+    {
+        await using var db = await CrearAsync();
+        var (perfiles, obligaciones) = Servicios(db);
+        var perfil = General with { TrabajadoresConRetencion = true, LocalAlquiladoConRetencion = true };
+        await perfiles.GuardarAsync(new(gestor, Rol.GESTOR), autonomo, 2031, perfil, default);
+
+        var calendario = (await obligaciones.GenerarAsync(new(autonomo, Rol.AUTONOMO), autonomo, 2031, default)).Valor!;
+
+        Assert.Equal(new[] { "111", "115", "130", "303" }, calendario.Obligaciones.Select(o => o.Modelo).Distinct().Order());
+        Assert.Equal(16, calendario.Obligaciones.Count);
+        Assert.All(calendario.Obligaciones, o => Assert.Equal("INCOMPLETA", o.Estado));
+        Assert.All(calendario.Obligaciones, o => Assert.True(o.TotalObligatorios > 0));
     }
 
     [Fact]
