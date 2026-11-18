@@ -26,7 +26,7 @@ public sealed record ChecklistObligacionResponse(ObligacionFiscalResponse Obliga
                 e.Estado.ToString(), e.OrigenUltimoCambio?.ToString(), e.UsuarioUltimoCambioId,
                 Nombre(e.UsuarioUltimoCambio), e.FechaUltimoCambio,
                 e.Historial.OrderBy(h => h.Fecha).ThenBy(h => h.Id).Select(h => new CambioChecklistResponse(
-                    h.Id, h.UsuarioId, Nombre(h.Usuario), h.Fecha, h.EstadoAnterior.ToString(), h.EstadoNuevo.ToString(), h.Origen.ToString())).ToArray()))
+                    h.Id, h.UsuarioId, Nombre(h.Usuario) ?? "Usuario desconocido", h.Fecha, h.EstadoAnterior.ToString(), h.EstadoNuevo.ToString(), h.Origen.ToString())).ToArray()))
             .ToArray();
 
         return new(ObligacionFiscalResponse.Desde(obligacion), CatalogoObligacionesDemo.Aviso,
