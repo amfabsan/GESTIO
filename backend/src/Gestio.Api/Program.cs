@@ -21,6 +21,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, UsuarioActualDesdeCabecera>();
+builder.Services.AddScoped<PanelGestorService>();
 
 builder.Services.Configure<DocumentosOptions>(builder.Configuration.GetSection(DocumentosOptions.Seccion));
 builder.Services.AddSingleton(TimeProvider.System);
