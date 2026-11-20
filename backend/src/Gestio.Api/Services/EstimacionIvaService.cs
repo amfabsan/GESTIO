@@ -177,7 +177,7 @@ public sealed class EstimacionIvaService(
                 continue;
             }
 
-            if (tipo == "INGRESO")
+            if (documento.Categoria == CategoriaDocumento.INGRESO || tipo == "INGRESO")
             {
                 ivaIngresos += extraccion.CuotaIva!.Value;
                 documentosIncluidos.Add(new EstimacionDocumentoResponse(
@@ -188,7 +188,7 @@ public sealed class EstimacionIvaService(
                     NumeroFactura: extraccion.NumeroFactura,
                     IvaIncluido: extraccion.CuotaIva.Value));
             }
-            else if (tipo == "GASTO")
+            else if (documento.Categoria == CategoriaDocumento.GASTO)
             {
                 var inclusion = documento.InclusiónEnEstimación;
                 if (inclusion?.Incluida == true)
@@ -209,6 +209,13 @@ public sealed class EstimacionIvaService(
                         Motivo: "Gasto clasificado pero no confirmado para incluir en la estimación",
                         Severidad: "BAJA"));
                 }
+            }
+            else
+            {
+                elementosPorRevisar.Add(new ElementoPorRevisarResponse(
+                    DocumentoId: documento.Id,
+                    Motivo: "Documento pendiente de clasificación como GASTO antes de incluir en la estimación",
+                    Severidad: "MEDIA"));
             }
         }
 

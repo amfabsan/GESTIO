@@ -28,10 +28,10 @@ export function VistaEstimacion({
         return <p role="status" className="py-12 text-center text-sm text-[#6b6656]">Calculando estimación fiscal…</p>
     }
 
-    if (error || (estimacion && !estimacion.disponible)) {
+    if (estimacion && !estimacion.disponible) {
         const motivo =
-            estimacion?.motivoNoDisponible ||
-            'El perfil fiscal 2026 (Recargo de equivalencia · Estimación directa simplificada) requiere reglas que el prototipo no implementa. Solo se calcula el caso simple de IVA en régimen general. No se muestra ninguna cifra para no inducir a error.'
+            estimacion.motivoNoDisponible ||
+            'No hay estimación disponible para el perfil fiscal de este ejercicio.'
 
         return (
             <div role="alert" className={`${card} flex flex-col items-center justify-center px-6 py-16 text-center`}>
@@ -42,6 +42,14 @@ export function VistaEstimacion({
                 <p className="mt-2 max-w-[520px] text-sm leading-relaxed text-[#6b6656]">
                     {motivo}
                 </p>
+            </div>
+        )
+    }
+
+    if (error && !estimacion) {
+        return (
+            <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+                {error}
             </div>
         )
     }
@@ -68,6 +76,12 @@ export function VistaEstimacion({
 
     return (
         <div className="space-y-5">
+            {error && (
+                <div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+                    {error}
+                </div>
+            )}
+
             {/* Fila 1: 3 Tarjetas KPI superiores */}
             <div className="grid gap-5 md:grid-cols-3">
                 {/* KPI 1: IVA de ingresos incluidos */}

@@ -68,7 +68,7 @@ function Contenido({ id, ejercicio, seleccionar, esGestor }: { id?: string; ejer
             <nav className="mt-6 flex gap-6 border-b border-[#d6d2c8] text-sm font-semibold">
                 <span aria-disabled="true" className="cursor-not-allowed pb-3 text-[#6b6656]/55">Resumen</span>
                 <span className="border-b-2 border-[#d96c13] pb-3 text-[#1b2a4a]">Perfil fiscal</span>
-                <span aria-disabled="true" className="cursor-not-allowed pb-3 text-[#6b6656]/55">Obligaciones y checklist</span>
+                <Link to={`/gestor/clientes/${id}/calendario`} className="pb-3 text-[#6b6656] hover:text-[#1b2a4a]">Obligaciones y checklist</Link>
                 <Link to={`/gestor/clientes/${id}/estimacion`} className="pb-3 text-[#6b6656] hover:text-[#1b2a4a]">Estimación</Link>
             </nav>
         ) : (

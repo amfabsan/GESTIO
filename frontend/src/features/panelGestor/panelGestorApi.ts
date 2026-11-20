@@ -1,6 +1,6 @@
 // src/features/panelGestor/panelGestorApi.ts
 import { apiClient } from '../../services/apiClient'
-import type { PanelGestorResponse } from '../../types/panelGestor'
+import type { PanelClienteDetalleResponse, PanelGestorResponse } from '../../types/panelGestor'
 
 export interface ParametrosPanelGestor {
     soloRequiereAtencion?: boolean
@@ -27,5 +27,16 @@ export async function obtenerPanelGestor({
         params,
         signal,
     })
+    return data
+}
+
+export async function obtenerDetalleClienteGestor(
+    autonomoId: string,
+    signal?: AbortSignal,
+): Promise<PanelClienteDetalleResponse> {
+    const { data } = await apiClient.get<PanelClienteDetalleResponse>(
+        `/gestor/panel/clientes/${autonomoId}`,
+        { signal },
+    )
     return data
 }

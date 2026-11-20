@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Gestio.Api.Controllers;
 
 [ApiController]
-[Route("gestor/panel")]
+[Route("api/gestor/panel")]
 public sealed class PanelGestorController(
     PanelGestorService service,
     ICurrentUserService currentUser) : ControllerBase
