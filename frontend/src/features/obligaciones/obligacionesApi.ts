@@ -20,7 +20,32 @@ export interface CambioChecklist {
   fecha: string
   estadoAnterior: string
   estadoNuevo: string
-  origen: 'AUTONOMO' | 'GESTOR'
+  origen: 'AUTONOMO' | 'GESTOR' | 'VINCULACION_EVIDENCIA'
+}
+
+export type EstadoVinculoEvidencia = 'PROPUESTA' | 'CONFIRMADA' | 'RECHAZADA' | 'RETIRADA'
+
+export interface CambioVinculoEvidencia {
+  id: string
+  estadoAnterior: EstadoVinculoEvidencia | null
+  estadoNuevo: EstadoVinculoEvidencia
+  usuarioId: string | null
+  usuario: string
+  fecha: string
+}
+
+export interface VinculoEvidenciaChecklist {
+  id: string
+  documentoId: string
+  nombreArchivo: string
+  categoriaDocumento: string
+  estado: EstadoVinculoEvidencia
+  fechaPropuesta: string
+  confirmadaPorId: string | null
+  confirmadaPor: string | null
+  fechaConfirmacion: string | null
+  fechaEmision: string | null
+  historial: CambioVinculoEvidencia[]
 }
 
 export interface ElementoChecklist {
@@ -29,11 +54,29 @@ export interface ElementoChecklist {
   descripcion: string
   obligatorio: boolean
   estado: 'PENDIENTE' | 'APORTADO' | 'CONFIRMADO'
-  origen: 'AUTONOMO' | 'GESTOR' | null
+  origen: 'AUTONOMO' | 'GESTOR' | 'VINCULACION_EVIDENCIA' | null
   usuarioUltimoCambioId: string | null
   usuarioUltimoCambio: string | null
   fechaUltimoCambio: string | null
   historial: CambioChecklist[]
+  evidencias: VinculoEvidenciaChecklist[]
+}
+
+export async function buscarEvidenciasChecklist(autonomoId: string, obligacionId: string) {
+  const { data } = await apiClient.post<number>(`${ruta(autonomoId)}/${obligacionId}/checklist/evidencias/buscar`)
+  return data
+}
+
+export async function revisarVinculoEvidencia(
+  autonomoId: string,
+  obligacionId: string,
+  vinculoId: string,
+  accion: 'confirmar' | 'rechazar' | 'retirar',
+) {
+  const { data } = await apiClient.post<ChecklistObligacion>(
+    `${ruta(autonomoId)}/${obligacionId}/checklist/evidencias/${vinculoId}/${accion}`,
+  )
+  return data
 }
 
 export interface ChecklistObligacion {
