@@ -16,6 +16,7 @@ public sealed class ElementoChecklistObligacion
     public Usuario? UsuarioUltimoCambio { get; set; }
     public DateTimeOffset? FechaUltimoCambio { get; set; }
     public ICollection<HistorialElementoChecklist> Historial { get; set; } = [];
+    public ICollection<VinculoEvidenciaChecklist> VinculosEvidencia { get; set; } = [];
 }
 
 public sealed class HistorialElementoChecklist

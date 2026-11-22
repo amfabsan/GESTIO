@@ -47,6 +47,7 @@ builder.Services.AddScoped<PerfilesFiscalesService>();
 builder.Services.AddScoped<GeneradorObligaciones>();
 builder.Services.AddScoped<ObligacionesFiscalesService>();
 builder.Services.AddScoped<ChecklistObligacionesService>();
+builder.Services.AddScoped<VinculacionEvidenciasChecklistService>();
 builder.Services.AddScoped<EstimacionIvaService>();
 builder.Services.AddScoped<InclusionGastoService>();
 

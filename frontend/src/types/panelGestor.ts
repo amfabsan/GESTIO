@@ -50,3 +50,46 @@ export interface PanelGestorResponse {
     resumen: PanelResumenGlobales
     clientes: PanelClienteFila[]
 }
+
+export interface PanelClienteDetalleResponse {
+    autonomoId: string
+    nombreCompleto: string
+    actividad: string | null
+    nif: string
+    requiereAtencion: boolean
+    obligacionesProximas: PanelObligacionProximaDetalle[]
+    documentosPorValidar: PanelDocumentoPendienteDetalle[]
+    anomaliasPendientes: PanelAnomaliaPendienteDetalle[]
+}
+
+export interface PanelObligacionProximaDetalle {
+    obligacionFiscalId: string
+    modelo: string
+    nombre: string
+    ejercicio: number
+    periodo: string
+    fechaPrevista: string
+    diasRestantes: number
+    estadoObligacion: string
+    obligatoriosConfirmados: number
+    obligatoriosTotales: number
+    checklistIncompleto: boolean
+}
+
+export interface PanelDocumentoPendienteDetalle {
+    documentoId: string
+    nombreArchivo: string
+    fechaSubida: string
+    estado: string
+}
+
+export interface PanelAnomaliaPendienteDetalle {
+    anomaliaId: string
+    documentoId: string
+    nombreArchivoDocumento: string
+    tipo: string
+    severidad: string
+    campo: string | null
+    descripcion: string
+    fechaDeteccion: string
+}
