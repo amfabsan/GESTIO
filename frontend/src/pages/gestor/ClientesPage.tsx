@@ -42,8 +42,6 @@ export function ClientesPage() {
 
     useEffect(() => {
         const controller = new AbortController()
-        setCargando(true)
-        setError(null)
 
         obtenerPanelGestor({
             soloRequiereAtencion,
@@ -65,6 +63,12 @@ export function ClientesPage() {
 
         return () => controller.abort()
     }, [soloRequiereAtencion, ordenarPor, busqueda])
+
+    function actualizarFiltros(actualizar: () => void) {
+        setCargando(true)
+        setError(null)
+        actualizar()
+    }
 
     function navegarDesdeAviso(cliente: PanelClienteFila, aviso: PanelAvisoOrigen) {
         if (aviso.tipo === 'CHECKLIST') {
@@ -166,7 +170,7 @@ export function ClientesPage() {
                             <button
                                 type="button"
                                 aria-pressed={soloRequiereAtencion}
-                                onClick={() => setSoloRequiereAtencion((prev) => !prev)}
+                                onClick={() => actualizarFiltros(() => setSoloRequiereAtencion((prev) => !prev))}
                                 className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${soloRequiereAtencion
                                         ? 'border-[#c86b1c] bg-[#c86b1c] text-white'
                                         : 'border-[#ded9cf] bg-[#fbfaf7] text-[#3d3a30] hover:bg-[#f2efe8]'
@@ -180,7 +184,7 @@ export function ClientesPage() {
                                 <span className="sr-only">Ordenar clientes por</span>
                                 <select
                                     value={ordenarPor}
-                                    onChange={(e) => setOrdenarPor(e.target.value as 'proxima' | 'nombre')}
+                                    onChange={(e) => actualizarFiltros(() => setOrdenarPor(e.target.value as 'proxima' | 'nombre'))}
                                     className="rounded-lg border border-[#ded9cf] bg-[#fbfaf7] px-3 py-2 text-xs font-semibold text-[#1b2a4a] outline-none focus:border-[#1d2b4f]"
                                 >
                                     <option value="proxima">⇅ Obligación más próxima</option>
@@ -197,7 +201,7 @@ export function ClientesPage() {
                             <input
                                 type="search"
                                 value={busqueda}
-                                onChange={(e) => setBusqueda(e.target.value)}
+                                onChange={(e) => actualizarFiltros(() => setBusqueda(e.target.value))}
                                 placeholder="Buscar cliente o actividad"
                                 aria-label="Buscar cliente o actividad"
                                 className="w-full rounded-lg border border-[#ded9cf] bg-[#fbfaf7] py-2 pl-9 pr-3 text-sm text-[#1b2a4a] outline-none placeholder:text-[#8c877b] focus:border-[#1d2b4f]"
