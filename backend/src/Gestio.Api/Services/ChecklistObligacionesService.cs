@@ -26,6 +26,8 @@ public sealed class ChecklistObligacionesService(
         "Checklist.ObligacionPresentada", "No se puede modificar el checklist de una obligación presentada.", TipoError.CONFLICTO);
     private static readonly Error ConfirmadoPorGestor = new(
         "Checklist.ConfirmadoPorGestor", "Solo el gestor puede devolver a pendiente un elemento confirmado.", TipoError.CONFLICTO);
+    private static readonly Error EvidenciaConfirmada = new(
+        "Checklist.EvidenciaConfirmada", "Retira primero la evidencia confirmada para devolver este elemento a pendiente.", TipoError.CONFLICTO);
 
     public async Task<Resultado<ObligacionFiscal>> ConsultarAsync(
         UsuarioActual usuario, Guid autonomoId, Guid obligacionId, CancellationToken ct)
@@ -93,6 +95,8 @@ public sealed class ChecklistObligacionesService(
 
         var elemento = obligacion.Checklist.SingleOrDefault(e => e.Id == elementoId);
         if (elemento is null) return ElementoNoEncontrado;
+        if (!confirmar && elemento.VinculosEvidencia.Any(v => v.Estado == EstadoVinculoEvidencia.CONFIRMADA))
+            return EvidenciaConfirmada;
         var nuevoEstado = confirmar ? EstadoElementoChecklist.CONFIRMADO : EstadoElementoChecklist.PENDIENTE;
         cambio |= await RegistrarCambioAsync(elemento, nuevoEstado, usuario.Id, OrigenCambioChecklist.GESTOR, ct);
         cambio |= ActualizarEstado(obligacion);
@@ -127,6 +131,9 @@ public sealed class ChecklistObligacionesService(
         context.Set<ObligacionFiscal>().AsSplitQuery()
             .Include(o => o.Checklist).ThenInclude(e => e.UsuarioUltimoCambio)
             .Include(o => o.Checklist).ThenInclude(e => e.Historial).ThenInclude(h => h.Usuario)
+            .Include(o => o.Checklist).ThenInclude(e => e.VinculosEvidencia).ThenInclude(v => v.Documento).ThenInclude(d => d.ExtraccionIa)
+            .Include(o => o.Checklist).ThenInclude(e => e.VinculosEvidencia).ThenInclude(v => v.ConfirmadaPor)
+            .Include(o => o.Checklist).ThenInclude(e => e.VinculosEvidencia).ThenInclude(v => v.Historial).ThenInclude(h => h.Usuario)
             .SingleOrDefaultAsync(o => o.Id == obligacionId && o.AutonomoId == autonomoId, ct);
 
     private bool AsegurarElementos(ObligacionFiscal obligacion)
@@ -170,7 +177,23 @@ public sealed class ChecklistObligacionesService(
         return true;
     }
 
-    private static bool ActualizarEstado(ObligacionFiscal obligacion)
+    internal async Task<bool> RecalcularPorEvidenciasAsync(
+        ElementoChecklistObligacion elemento, Guid usuarioId, CancellationToken ct)
+    {
+        var evidenciaConfirmada = elemento.VinculosEvidencia.Any(v => v.Estado == EstadoVinculoEvidencia.CONFIRMADA);
+        if (evidenciaConfirmada)
+            return await RegistrarCambioAsync(elemento, EstadoElementoChecklist.CONFIRMADO, usuarioId,
+                OrigenCambioChecklist.VINCULACION_EVIDENCIA, ct);
+
+        if (elemento.Estado == EstadoElementoChecklist.CONFIRMADO &&
+            elemento.OrigenUltimoCambio == OrigenCambioChecklist.VINCULACION_EVIDENCIA)
+            return await RegistrarCambioAsync(elemento, EstadoElementoChecklist.PENDIENTE, usuarioId,
+                OrigenCambioChecklist.VINCULACION_EVIDENCIA, ct);
+
+        return false;
+    }
+
+    internal static bool ActualizarEstado(ObligacionFiscal obligacion)
     {
         if (obligacion.Estado == EstadoObligacion.PRESENTADA) return false;
         var requeridos = obligacion.Checklist.Where(e => e.Obligatorio).ToList();

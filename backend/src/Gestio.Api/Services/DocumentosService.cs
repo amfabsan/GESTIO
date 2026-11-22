@@ -24,7 +24,8 @@ public sealed class DocumentosService(
     TimeProvider timeProvider,
     ILogger<DocumentosService> logger,
     ILectorDocumento lector,
-    AccesoDocumentos acceso)
+    AccesoDocumentos acceso,
+    VinculacionEvidenciasChecklistService? vinculacionEvidencias = null)
 {
     // Catálogo asignable (PB-09). SIN_CLASIFICAR es solo el estado inicial: no se puede elegir.
     private static readonly CategoriaDocumento[] CatalogoCategorias =
@@ -373,6 +374,20 @@ public sealed class DocumentosService(
         context.Add(evento);
 
         await context.SaveChangesAsync(cancellationToken);
+
+        if (vinculacionEvidencias is not null && documento.Estado == EstadoDocumento.VALIDADO)
+        {
+            try
+            {
+                await vinculacionEvidencias.ProponerParaDocumentoAsync(documento.Id, usuario.Id, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "No se pudieron actualizar las evidencias del checklist tras cambiar la categoría de {DocumentoId}", documento.Id);
+                context.ChangeTracker.Clear();
+            }
+        }
+
         return (await ObtenerAsync(usuario, id, CancellationToken.None))!;
     }
 
@@ -519,6 +534,19 @@ public sealed class DocumentosService(
         });
 
         await context.SaveChangesAsync(cancellationToken);
+
+        if (vinculacionEvidencias is not null)
+        {
+            try
+            {
+                await vinculacionEvidencias.ProponerParaDocumentoAsync(id, usuario.Id, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "No se pudieron proponer evidencias del checklist para {DocumentoId}; la validación se conserva", id);
+                context.ChangeTracker.Clear();
+            }
+        }
 
         return (await ObtenerAsync(usuario, id, cancellationToken))!;
     }

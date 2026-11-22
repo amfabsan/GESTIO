@@ -597,6 +597,39 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("historial_validacion", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialVinculoEvidencia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EstadoAnterior")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("EstadoNuevo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("VinculoEvidenciaChecklistId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("VinculoEvidenciaChecklistId", "Fecha");
+
+                    b.ToTable("historial_vinculos_evidencia_checklist", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.InclusiónGastoEnEstimación", b =>
                 {
                     b.Property<Guid>("Id")
@@ -999,6 +1032,44 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("vinculaciones", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.VinculoEvidenciaChecklist", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ConfirmadaPorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ElementoChecklistObligacionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset?>("FechaConfirmacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("FechaPropuesta")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConfirmadaPorId");
+
+                    b.HasIndex("ElementoChecklistObligacionId");
+
+                    b.HasIndex("DocumentoId", "ElementoChecklistObligacionId")
+                        .IsUnique();
+
+                    b.ToTable("vinculos_evidencia_checklist", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Anomalia", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
@@ -1185,6 +1256,24 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.HistorialVinculoEvidencia", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Gestio.Api.Domain.Entities.VinculoEvidenciaChecklist", "Vinculo")
+                        .WithMany("Historial")
+                        .HasForeignKey("VinculoEvidenciaChecklistId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+
+                    b.Navigation("Vinculo");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.InclusiónGastoEnEstimación", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Usuario", "ActualizadoPor")
@@ -1287,6 +1376,32 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Autonomo");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.VinculoEvidenciaChecklist", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "ConfirmadaPor")
+                        .WithMany()
+                        .HasForeignKey("ConfirmadaPorId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
+                        .WithMany("VinculosChecklist")
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.ElementoChecklistObligacion", "ElementoChecklistObligacion")
+                        .WithMany("VinculosEvidencia")
+                        .HasForeignKey("ElementoChecklistObligacionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ConfirmadaPor");
+
+                    b.Navigation("Documento");
+
+                    b.Navigation("ElementoChecklistObligacion");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Documento", b =>
                 {
                     b.Navigation("Anomalias");
@@ -1302,11 +1417,15 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("InclusiónEnEstimación");
 
                     b.Navigation("Intentos");
+
+                    b.Navigation("VinculosChecklist");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ElementoChecklistObligacion", b =>
                 {
                     b.Navigation("Historial");
+
+                    b.Navigation("VinculosEvidencia");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Factura", b =>
@@ -1335,6 +1454,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documentos");
 
                     b.Navigation("VinculacionesComoAutonomo");
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.VinculoEvidenciaChecklist", b =>
+                {
+                    b.Navigation("Historial");
                 });
 #pragma warning restore 612, 618
         }

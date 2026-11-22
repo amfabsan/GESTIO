@@ -40,5 +40,7 @@ public sealed class Documento
 
     public ICollection<HistorialCategoria> HistorialCategorias { get; } = [];
 
+    public ICollection<VinculoEvidenciaChecklist> VinculosChecklist { get; } = [];
+
     public InclusiónGastoEnEstimación? InclusiónEnEstimación { get; set; }
 }
