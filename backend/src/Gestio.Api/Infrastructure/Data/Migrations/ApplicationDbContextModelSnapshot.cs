@@ -154,6 +154,10 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<string>("ReferenciaMensaje")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("StorageKey")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -173,12 +177,20 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
 
                     b.HasIndex("Estado");
 
+                    b.HasIndex("ReferenciaMensaje")
+                        .IsUnique()
+                        .HasDatabaseName("ux_documentos_referencia_mensaje")
+                        .HasFilter("\"ReferenciaMensaje\" IS NOT NULL");
+
                     b.HasIndex("UsuarioId", "FechaSubida")
                         .IsDescending(false, true);
 
                     b.HasIndex("UsuarioId", "HashSha256");
 
-                    b.ToTable("documentos", (string)null);
+                    b.ToTable("documentos", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_documentos_referencia_solo_whatsapp", "(\"Origen\" = 'WHATSAPP') = (\"ReferenciaMensaje\" IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ElementoChecklistObligacion", b =>
@@ -733,6 +745,119 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("lineas_factura", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.MensajeWhatsappRecibido", b =>
+                {
+                    b.Property<string>("MensajeId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("FechaRecepcion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MediaId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("MimeType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("NombreArchivo")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Resultado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("MensajeId");
+
+                    b.HasIndex("DocumentoId");
+
+                    b.HasIndex("Resultado");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("mensajes_whatsapp", (string)null);
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.NumeroWhatsapp", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CodigoCaducaEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CodigoVerificacion")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset?>("FechaVerificacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TelefonoPendiente")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("TelefonoVerificado")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodigoVerificacion")
+                        .IsUnique()
+                        .HasDatabaseName("ux_numeros_whatsapp_codigo")
+                        .HasFilter("\"CodigoVerificacion\" IS NOT NULL");
+
+                    b.HasIndex("TelefonoVerificado")
+                        .IsUnique()
+                        .HasDatabaseName("ux_numeros_whatsapp_telefono_verificado")
+                        .HasFilter("\"TelefonoVerificado\" IS NOT NULL");
+
+                    b.HasIndex("UsuarioId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_numeros_whatsapp_usuario");
+
+                    b.ToTable("numeros_whatsapp", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_numeros_whatsapp_codigo", "\"CodigoVerificacion\" ~ '^GESTIO-[A-Z0-9]{6}$'");
+
+                            t.HasCheckConstraint("ck_numeros_whatsapp_telefono_pendiente", "\"TelefonoPendiente\" ~ '^[1-9][0-9]{7,14}$'");
+
+                            t.HasCheckConstraint("ck_numeros_whatsapp_telefono_verificado", "\"TelefonoVerificado\" ~ '^[1-9][0-9]{7,14}$'");
+
+                            t.HasCheckConstraint("ck_numeros_whatsapp_verificacion_completa", "(\"CodigoVerificacion\" IS NULL) = (\"TelefonoPendiente\" IS NULL) AND (\"CodigoVerificacion\" IS NULL) = (\"CodigoCaducaEn\" IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>
@@ -1311,6 +1436,34 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Factura");
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.MensajeWhatsappRecibido", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
+                        .WithMany()
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Documento");
+
+                    b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.NumeroWhatsapp", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>

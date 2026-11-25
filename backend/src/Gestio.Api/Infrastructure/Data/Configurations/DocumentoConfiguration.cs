@@ -6,9 +6,14 @@ namespace Gestio.Api.Infrastructure.Data.Configurations;
 
 public sealed class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
 {
+    public const string IndiceReferenciaMensaje = "ux_documentos_referencia_mensaje";
+    public const string RestriccionReferenciaSoloWhatsapp = "ck_documentos_referencia_solo_whatsapp";
+
     public void Configure(EntityTypeBuilder<Documento> builder)
     {
-        builder.ToTable("documentos");
+        // UT27: un documento de WhatsApp siempre lleva la referencia del mensaje, y uno de la web nunca.
+        builder.ToTable("documentos", t => t.HasCheckConstraint(RestriccionReferenciaSoloWhatsapp,
+            "(\"Origen\" = 'WHATSAPP') = (\"ReferenciaMensaje\" IS NOT NULL)"));
 
         builder.HasKey(documento => documento.Id);
 
@@ -54,5 +59,14 @@ public sealed class DocumentoConfiguration : IEntityTypeConfiguration<Documento>
         builder.HasIndex(documento => new { documento.UsuarioId, documento.HashSha256 });
 
         builder.HasIndex(documento => documento.Estado);
+
+        // UT27 (requisito 5, PA 3603): un mensaje del proveedor da como mucho un documento.
+        builder.Property(documento => documento.ReferenciaMensaje)
+            .HasMaxLength(128);
+
+        builder.HasIndex(documento => documento.ReferenciaMensaje)
+            .IsUnique()
+            .HasFilter("\"ReferenciaMensaje\" IS NOT NULL")
+            .HasDatabaseName(IndiceReferenciaMensaje);
     }
 }

@@ -50,6 +50,9 @@ builder.Services.AddScoped<ChecklistObligacionesService>();
 builder.Services.AddScoped<VinculacionEvidenciasChecklistService>();
 builder.Services.AddScoped<EstimacionIvaService>();
 builder.Services.AddScoped<InclusionGastoService>();
+// UT27: canal de WhatsApp.
+builder.Services.Configure<WhatsappOptions>(builder.Configuration.GetSection(WhatsappOptions.Seccion));
+builder.Services.AddScoped<Gestio.Api.Services.Whatsapp.VerificacionNumeroWhatsappService>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();

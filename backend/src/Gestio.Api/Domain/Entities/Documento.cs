@@ -18,6 +18,10 @@ public sealed class Documento
 
     public OrigenDocumento Origen { get; set; }
 
+    // UT27: id del mensaje del proveedor (p. ej. «wamid.…») cuando Origen = WHATSAPP. Único: reprocesar el mismo
+    // mensaje no puede crear un segundo documento.
+    public string? ReferenciaMensaje { get; set; }
+
     public string? StorageKey { get; set; }
 
     public string? HashSha256 { get; set; }

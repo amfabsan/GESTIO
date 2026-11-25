@@ -35,6 +35,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<VinculoEvidenciaChecklist> VinculosEvidenciaChecklist => Set<VinculoEvidenciaChecklist>();
     public DbSet<HistorialVinculoEvidencia> HistorialVinculosEvidencia => Set<HistorialVinculoEvidencia>();
     public DbSet<InclusiónGastoEnEstimación> InclusionesGastosEnEstimación => Set<InclusiónGastoEnEstimación>();
+    public DbSet<NumeroWhatsapp> NumerosWhatsapp => Set<NumeroWhatsapp>();
+    public DbSet<MensajeWhatsappRecibido> MensajesWhatsapp => Set<MensajeWhatsappRecibido>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
