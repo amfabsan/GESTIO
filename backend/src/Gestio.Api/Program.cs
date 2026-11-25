@@ -53,6 +53,11 @@ builder.Services.AddScoped<InclusionGastoService>();
 // UT27: canal de WhatsApp.
 builder.Services.Configure<WhatsappOptions>(builder.Configuration.GetSection(WhatsappOptions.Seccion));
 builder.Services.AddScoped<Gestio.Api.Services.Whatsapp.VerificacionNumeroWhatsappService>();
+builder.Services.AddScoped<Gestio.Api.Services.Whatsapp.RecepcionWhatsappService>();
+builder.Services.AddSingleton<Gestio.Api.Services.Whatsapp.ColaMensajesWhatsapp>();
+builder.Services.AddHostedService<Gestio.Api.Services.Whatsapp.ProcesadorMensajesWhatsapp>();
+// La capa 4 registra el proveedor de Meta cuando Whatsapp:Habilitado = true.
+builder.Services.AddSingleton<IProveedorWhatsapp, Gestio.Api.Infrastructure.Whatsapp.ProveedorWhatsappDesactivado>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
