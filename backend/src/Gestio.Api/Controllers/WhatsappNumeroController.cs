@@ -1,5 +1,6 @@
 using Gestio.Api.Common;
 using Gestio.Api.Domain.Interfaces;
+using Gestio.Api.Infrastructure.Whatsapp;
 using Gestio.Api.Services.Whatsapp;
 using Microsoft.AspNetCore.Mvc;
 
@@ -44,16 +45,29 @@ public sealed class WhatsappNumeroController(
     }
 
     // Los teléfonos salen enmascarados: con la identidad por cabecera, quien suplante a un autónomo no ve su número.
-    private static NumeroWhatsappResponse Mapear(EstadoNumeroWhatsapp estado) => new(
-        estado.CanalHabilitado,
-        estado.NumeroCanal,
-        estado.TelefonoVerificado is not null,
-        estado.TelefonoVerificado is null ? null : TelefonoWhatsapp.Enmascarar(estado.TelefonoVerificado),
-        estado.FechaVerificacion,
-        estado.CodigoVerificacion is null ? null : new VerificacionPendienteResponse(
-            TelefonoWhatsapp.Enmascarar(estado.TelefonoPendiente!),
-            estado.CodigoVerificacion,
-            estado.CodigoCaducaEn!.Value));
+    // UT27, capa 5: QR del canal y, con una verificación pendiente, el enlace y el QR que abren el chat con el código.
+    private static NumeroWhatsappResponse Mapear(EstadoNumeroWhatsapp estado)
+    {
+        var enlaceCanal = estado.CanalHabilitado ? QrWhatsapp.EnlaceCanal(estado.NumeroCanal) : null;
+        var enlaceCodigo = enlaceCanal is null || estado.CodigoVerificacion is null
+            ? null
+            : QrWhatsapp.EnlaceCanal(estado.NumeroCanal, estado.CodigoVerificacion);
+
+        return new NumeroWhatsappResponse(
+            estado.CanalHabilitado,
+            estado.NumeroCanal,
+            estado.TelefonoVerificado is not null,
+            estado.TelefonoVerificado is null ? null : TelefonoWhatsapp.Enmascarar(estado.TelefonoVerificado),
+            estado.FechaVerificacion,
+            enlaceCanal,
+            enlaceCanal is null ? null : QrWhatsapp.ImagenPngBase64(enlaceCanal),
+            estado.CodigoVerificacion is null ? null : new VerificacionPendienteResponse(
+                TelefonoWhatsapp.Enmascarar(estado.TelefonoPendiente!),
+                estado.CodigoVerificacion,
+                estado.CodigoCaducaEn!.Value,
+                enlaceCodigo,
+                enlaceCodigo is null ? null : QrWhatsapp.ImagenPngBase64(enlaceCodigo)));
+    }
 }
 
 public sealed record IniciarVerificacionWhatsappRequest(string? Telefono);
@@ -64,6 +78,13 @@ public sealed record NumeroWhatsappResponse(
     bool Verificado,
     string? TelefonoVerificado,
     DateTimeOffset? FechaVerificacion,
+    string? EnlaceCanal,
+    string? QrCanalPngBase64,
     VerificacionPendienteResponse? VerificacionPendiente);
 
-public sealed record VerificacionPendienteResponse(string Telefono, string Codigo, DateTimeOffset CaducaEn);
+public sealed record VerificacionPendienteResponse(
+    string Telefono,
+    string Codigo,
+    DateTimeOffset CaducaEn,
+    string? EnlaceCodigo,
+    string? QrCodigoPngBase64);

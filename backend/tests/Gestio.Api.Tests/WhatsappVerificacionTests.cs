@@ -321,6 +321,53 @@ public sealed class WhatsappVerificacionTests
         Assert.Equal(403, problema.StatusCode);
     }
 
+    // ─── QR para la web (capa 5) ─────────────────────────────────────────────────
+
+    [Fact]
+    public void QrWhatsapp_EnlacesAWaMeConSoloDigitos_YElCodigoEscapado()
+    {
+        Assert.Equal("https://wa.me/15550000000", Gestio.Api.Infrastructure.Whatsapp.QrWhatsapp.EnlaceCanal("+1 555 000 0000"));
+        Assert.Equal("https://wa.me/15550000000?text=GESTIO-ABC234",
+            Gestio.Api.Infrastructure.Whatsapp.QrWhatsapp.EnlaceCanal("+1 555 000 0000", "GESTIO-ABC234"));
+        Assert.Equal("https://wa.me/15550000000?text=hola%20y%20adi%C3%B3s",
+            Gestio.Api.Infrastructure.Whatsapp.QrWhatsapp.EnlaceCanal("+1 555 000 0000", "hola y adiós"));
+        Assert.Null(Gestio.Api.Infrastructure.Whatsapp.QrWhatsapp.EnlaceCanal(""));
+        Assert.Null(Gestio.Api.Infrastructure.Whatsapp.QrWhatsapp.EnlaceCanal(null));
+        Assert.Null(Gestio.Api.Infrastructure.Whatsapp.QrWhatsapp.EnlaceCanal("1234567"));
+        Assert.Equal("https://wa.me/34600123456", Gestio.Api.Infrastructure.Whatsapp.QrWhatsapp.EnlaceCanal("0034 600 123 456"));
+    }
+
+    [Fact]
+    public async Task Api_ConVerificacionPendiente_DevuelveLosQrDelCanalYDelCodigo()
+    {
+        var (_, _, servicio) = await PrepararAsync(nameof(Api_ConVerificacionPendiente_DevuelveLosQrDelCanalYDelCodigo));
+        var codigo = (await servicio.IniciarAsync(Ramon, MovilRamon, CancellationToken.None)).Valor!.CodigoVerificacion!;
+        var controlador = new WhatsappNumeroController(servicio, new UsuarioFijo(Ramon));
+
+        var respuesta = Assert.IsType<NumeroWhatsappResponse>(
+            Assert.IsType<OkObjectResult>((await controlador.Get(CancellationToken.None)).Result).Value);
+
+        Assert.Equal("https://wa.me/15550000000", respuesta.EnlaceCanal);
+        Assert.Equal($"https://wa.me/15550000000?text={codigo}", respuesta.VerificacionPendiente!.EnlaceCodigo);
+        // Cabecera PNG: \x89PNG
+        Assert.Equal([0x89, 0x50, 0x4E, 0x47], Convert.FromBase64String(respuesta.QrCanalPngBase64!)[..4]);
+        Assert.Equal([0x89, 0x50, 0x4E, 0x47], Convert.FromBase64String(respuesta.VerificacionPendiente.QrCodigoPngBase64!)[..4]);
+    }
+
+    [Fact]
+    public async Task Api_ConElCanalDeshabilitado_NoDevuelveQr()
+    {
+        var (_, _, servicio) = await PrepararAsync(nameof(Api_ConElCanalDeshabilitado_NoDevuelveQr), habilitado: false);
+        var controlador = new WhatsappNumeroController(servicio, new UsuarioFijo(Ramon));
+
+        var respuesta = Assert.IsType<NumeroWhatsappResponse>(
+            Assert.IsType<OkObjectResult>((await controlador.Get(CancellationToken.None)).Result).Value);
+
+        Assert.False(respuesta.CanalHabilitado);
+        Assert.Null(respuesta.EnlaceCanal);
+        Assert.Null(respuesta.QrCanalPngBase64);
+    }
+
     // ─── Contra PostgreSQL ───────────────────────────────────────────────────────
 
     // Requisito 2 con concurrencia real: dos cuentas verifican el mismo número a la vez. Gana una y la otra recibe el
