@@ -14,6 +14,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<LineaFactura> LineasFactura => Set<LineaFactura>();
 
     public DbSet<Documento> Documentos => Set<Documento>();
+    public DbSet<MensajeDocumento> MensajesDocumento => Set<MensajeDocumento>();
+    public DbSet<AvisoMensajeDocumento> AvisosMensajeDocumento => Set<AvisoMensajeDocumento>();
 
     public DbSet<ExtraccionIa> ExtraccionesIa => Set<ExtraccionIa>();
 

@@ -13,6 +13,7 @@ import { SolicitudesPage } from '../pages/gestor/SolicitudesPage'
 import { BandejaValidacionPage } from '../pages/gestor/BandejaValidacionPage'
 import { EstimacionClientePage } from '../pages/gestor/EstimacionClientePage'
 import { UsersPage } from '../pages/UsersPage'
+import { MensajesPage } from '../pages/MensajesPage'
 import { useAuth } from '../context/useAuth'
 import { AppLayout } from '../components/layout/AppLayout'
 import { RoleGuard } from '../components/guards/RoleGuard'
@@ -28,6 +29,7 @@ export function AppRoutes() {
             <Route element={<AppLayout />}>
                 <Route index element={<HomeRedirect />} />
                 <Route path="users" element={<UsersPage />} />
+                <Route path="mensajes/:documentoId?" element={<MensajesPage />} />
 
                 <Route element={<RoleGuard rolPermitido="AUTONOMO" />}>
                     <Route path="autonomo/calendario" element={<CalendarioFiscalPage />} />

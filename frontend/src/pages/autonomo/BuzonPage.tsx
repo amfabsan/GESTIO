@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AlertTriangle, FileText } from 'lucide-react'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Vacio } from '../../components/ui/Vacio'
@@ -7,6 +8,7 @@ import { useAuth } from '../../context/useAuth'
 import { DropzoneSubida } from '../../features/documentos/components/DropzoneSubida'
 import { EstadoBadge } from '../../features/documentos/components/EstadoBadge'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
+import { AclaracionesDocumento } from '../../features/documentos/components/ConversacionDocumento'
 import { textoEstadoExtraccion } from '../../features/documentos/estadosDocumento'
 import { FILTROS_BUZON, cumpleFiltro, tieneAnomaliaAbierta, type FiltroBuzon } from '../../features/documentos/filtrosBuzon'
 import { useDocumentos } from '../../features/documentos/hooks/useDocumentos'
@@ -16,6 +18,8 @@ import type { NivelConfianza } from '../../types/documentos'
 const TEXTO_CONFIANZA: Record<NivelConfianza, string> = { ALTO: 'alta', MEDIO: 'media', DUDOSO: 'dudosa' }
 
 export function BuzonPage() {
+    const [parametros] = useSearchParams()
+    const foco = parametros.get('documento')
     const { perfilActivo } = useAuth()
     const { documentos, cargando, error, errorOriginal, agregarDocumento, abrirOriginal, reintentar, reintentando } = useDocumentos(perfilActivo?.id)
     const [filtro, setFiltro] = useState<FiltroBuzon>('TODOS')
@@ -87,7 +91,7 @@ export function BuzonPage() {
                                                             </div>
                                                             <p className="text-xs text-[#6b6656]">{formatearFecha(documento.fechaSubida)}</p>
                                                             <div className="mt-1 sm:hidden"><EstadoBadge estado={documento.estado} /></div>
-                                                            <details className="mt-2 text-sm">
+                                                            <details className="mt-2 text-sm" open={foco === documento.id || undefined}>
                                                                 <summary className="cursor-pointer">Ver datos propuestos</summary>
                                                                 <EstadoBadge estado={documento.estado} />
                                                                 {documento.estado === 'EXTRAYENDO_DATOS' ? <p className="mt-2 text-sm text-[#6b6656]">Los datos propuestos estarán disponibles cuando termine la extracción.</p> : <>
@@ -138,6 +142,7 @@ export function BuzonPage() {
                                                                 {documento.tieneOriginal && (documento.estado === 'ERROR' || documento.estado === 'PENDIENTE_VALIDACION') && <button type="button" disabled={reintentando !== null} onClick={() => void reintentar(documento.id)} className="mt-2 text-[#c8651a] hover:underline">{reintentando === documento.id ? 'Solicitando extracción…' : documento.estado === 'ERROR' ? 'Reintentar extracción' : 'Volver a extraer'}</button>}
                                                                 <HistorialDocumento documentoId={documento.id} version={documento.historial.length} />
                                                             </details>
+                                                            <AclaracionesDocumento documentoId={documento.id} abrir={foco === documento.id} />
                                                         </div>
                                                     </div>
                                                 </td>

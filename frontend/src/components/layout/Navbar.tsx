@@ -1,10 +1,14 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
+import { useConversaciones } from '../../features/documentos/hooks/useConversaciones'
 import { obtenerEtiquetaRol, obtenerIniciales, obtenerNombreCompleto } from '../../utils/usuarios'
 
 export function Navbar() {
     const { perfilActivo, esGestor } = useAuth()
     const location = useLocation()
+
+    const conversaciones = useConversaciones(perfilActivo?.id)
+    const sinLeer = conversaciones?.datos.reduce((total, item) => total + item.sinLeer, 0) ?? 0
 
     if (!perfilActivo) return null
 
@@ -47,12 +51,6 @@ export function Navbar() {
                             className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]"
                             type="button"
                         >
-                            ◯ Mensajes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-[10px] font-bold">3</span>
-                        </button>
-                        <button
-                            className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]"
-                            type="button"
-                        >
                             ♧ Equipo
                         </button>
                     </>
@@ -76,17 +74,14 @@ export function Navbar() {
                         <Link className={claseEnlace('/autonomo/contactos')} to="/autonomo/contactos">
                             ♙ Contactos
                         </Link>
-                        <button
-                            className="whitespace-nowrap rounded-lg px-3 py-2 text-sm text-[#dbe3f2] hover:bg-[#344362]"
-                            type="button"
-                        >
-                            ◯ Mensajes <span className="ml-1 rounded-full bg-[#d96c13] px-1.5 text-[10px] font-bold">2</span>
-                        </button>
                         <Link className={claseEnlace('/autonomo/mi-asesoria')} to="/autonomo/mi-asesoria">
                             ↔ Mi asesoría
                         </Link>
                     </>
                 )}
+                <Link className={claseEnlace(location.pathname.startsWith('/mensajes/') ? location.pathname : '/mensajes')} to="/mensajes">
+                    Mensajes {sinLeer > 0 && <span aria-label={`${sinLeer} ${sinLeer === 1 ? 'mensaje' : 'mensajes'} sin leer`} className="ml-1 rounded-full bg-violet-700 px-1.5 text-xs font-bold">{sinLeer}</span>}
+                </Link>
             </div>
 
             <Link
