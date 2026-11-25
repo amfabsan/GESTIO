@@ -51,13 +51,25 @@ builder.Services.AddScoped<VinculacionEvidenciasChecklistService>();
 builder.Services.AddScoped<EstimacionIvaService>();
 builder.Services.AddScoped<InclusionGastoService>();
 // UT27: canal de WhatsApp.
-builder.Services.Configure<WhatsappOptions>(builder.Configuration.GetSection(WhatsappOptions.Seccion));
+builder.Services.AddOptions<WhatsappOptions>()
+    .Bind(builder.Configuration.GetSection(WhatsappOptions.Seccion))
+    .Validate(WhatsappOptions.EsValida,
+        $"{WhatsappOptions.Seccion}: con Habilitado = true hacen falta NumeroCanal, PhoneNumberId, TokenAcceso, AppSecret, TokenVerificacion y una UrlGraph https.")
+    .ValidateOnStart();
 builder.Services.AddScoped<Gestio.Api.Services.Whatsapp.VerificacionNumeroWhatsappService>();
 builder.Services.AddScoped<Gestio.Api.Services.Whatsapp.RecepcionWhatsappService>();
 builder.Services.AddSingleton<Gestio.Api.Services.Whatsapp.ColaMensajesWhatsapp>();
 builder.Services.AddHostedService<Gestio.Api.Services.Whatsapp.ProcesadorMensajesWhatsapp>();
-// La capa 4 registra el proveedor de Meta cuando Whatsapp:Habilitado = true.
-builder.Services.AddSingleton<IProveedorWhatsapp, Gestio.Api.Infrastructure.Whatsapp.ProveedorWhatsappDesactivado>();
+// Con el canal habilitado, la WhatsApp Cloud API de Meta; si no, un proveedor que no envía nada.
+if (builder.Configuration.GetValue<bool>($"{WhatsappOptions.Seccion}:Habilitado"))
+    builder.Services.AddHttpClient<IProveedorWhatsapp, Gestio.Api.Infrastructure.Whatsapp.ProveedorWhatsappMeta>(cliente =>
+    {
+        cliente.Timeout = TimeSpan.FromSeconds(30);
+        // Sin User-Agent, el CDN de descarga de Meta puede responder una página HTML en lugar del archivo.
+        cliente.DefaultRequestHeaders.UserAgent.ParseAdd("Gestio/1.0");
+    });
+else
+    builder.Services.AddSingleton<IProveedorWhatsapp, Gestio.Api.Infrastructure.Whatsapp.ProveedorWhatsappDesactivado>();
 
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();

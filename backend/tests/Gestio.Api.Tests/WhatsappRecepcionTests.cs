@@ -675,7 +675,7 @@ public sealed class WhatsappRecepcionTests
 
     // ─── Entorno de prueba ───────────────────────────────────────────────────────
 
-    private sealed class Entorno
+    internal sealed class Entorno
     {
         public required ApplicationDbContext Context { get; init; }
         public required DbContextOptions<ApplicationDbContext> Opciones { get; init; }
@@ -819,6 +819,7 @@ internal sealed class InterceptorFallos : Microsoft.EntityFrameworkCore.Diagnost
 {
     public bool FallarAlGuardarDocumentos { get; set; }
     public bool FallarAlGuardarMensajes { get; set; }
+    public string? FallarAlGuardarMensaje { get; set; }
 
     public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
         Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
@@ -830,6 +831,9 @@ internal sealed class InterceptorFallos : Microsoft.EntityFrameworkCore.Diagnost
             throw new DbUpdateException("Fallo simulado de la base de datos");
         if (FallarAlGuardarMensajes &&
             eventData.Context!.ChangeTracker.Entries<MensajeWhatsappRecibido>().Any(e => e.State == EntityState.Added))
+            throw new DbUpdateException("Fallo simulado de la base de datos");
+        if (FallarAlGuardarMensaje is not null && eventData.Context!.ChangeTracker.Entries<MensajeWhatsappRecibido>()
+                .Any(e => e.State == EntityState.Added && e.Entity.MensajeId == FallarAlGuardarMensaje))
             throw new DbUpdateException("Fallo simulado de la base de datos");
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }

@@ -4,6 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- UT27: secretos de WhatsApp en desarrollo con `dotnet user-secrets` (fuera del repositorio). -->
+    <UserSecretsId>gestio-api-ut27-whatsapp</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
