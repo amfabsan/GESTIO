@@ -73,6 +73,24 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("anomalias", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.AvisoMensajeDocumento", b =>
+                {
+                    b.Property<Guid>("MensajeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DestinatarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("FechaLectura")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("MensajeId", "DestinatarioId");
+
+                    b.HasIndex("DestinatarioId", "FechaLectura");
+
+                    b.ToTable("avisos_mensaje_documento", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Contacto", b =>
                 {
                     b.Property<Guid>("Id")
@@ -747,6 +765,35 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.ToTable("lineas_factura", (string)null);
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.MensajeDocumento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AutorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Contenido")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("DocumentoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AutorId");
+
+                    b.HasIndex("DocumentoId", "Fecha", "Id");
+
+                    b.ToTable("mensajes_documento", (string)null);
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.MensajeWhatsappRecibido", b =>
                 {
                     b.Property<string>("MensajeId")
@@ -1211,6 +1258,23 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Documento");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.AvisoMensajeDocumento", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("DestinatarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.MensajeDocumento", "Mensaje")
+                        .WithMany("Avisos")
+                        .HasForeignKey("MensajeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mensaje");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Contacto", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Autonomo")
@@ -1438,6 +1502,23 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
                     b.Navigation("Factura");
                 });
 
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.MensajeDocumento", b =>
+                {
+                    b.HasOne("Gestio.Api.Domain.Entities.Usuario", "Autor")
+                        .WithMany()
+                        .HasForeignKey("AutorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Gestio.Api.Domain.Entities.Documento", null)
+                        .WithMany()
+                        .HasForeignKey("DocumentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Autor");
+                });
+
             modelBuilder.Entity("Gestio.Api.Domain.Entities.MensajeWhatsappRecibido", b =>
                 {
                     b.HasOne("Gestio.Api.Domain.Entities.Documento", "Documento")
@@ -1584,6 +1665,11 @@ namespace Gestio.Api.Infrastructure.Data.Migrations
             modelBuilder.Entity("Gestio.Api.Domain.Entities.Factura", b =>
                 {
                     b.Navigation("Lineas");
+                });
+
+            modelBuilder.Entity("Gestio.Api.Domain.Entities.MensajeDocumento", b =>
+                {
+                    b.Navigation("Avisos");
                 });
 
             modelBuilder.Entity("Gestio.Api.Domain.Entities.ObligacionFiscal", b =>

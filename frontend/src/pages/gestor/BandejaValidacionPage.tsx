@@ -1,15 +1,15 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
     AlertCircle,
     Check,
     FileText,
-    HelpCircle,
     Loader2,
     Pencil,
     RefreshCw,
     Save,
-    Send,
 } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { AclaracionesDocumento } from '../../features/documentos/components/ConversacionDocumento'
 import type { CategoriaDocumento, Documento, EstadoDocumento } from '../../types/documentos'
 import { obtenerOriginal } from '../../features/documentos/documentosApi'
 import { HistorialDocumento } from '../../features/documentos/components/HistorialDocumento'
@@ -232,14 +232,13 @@ export function BandejaValidacionPage() {
         corregir,
         aprobar,
         clasificar,
-        pedirAclaracion,
     } = useValidacionDocumentos()
 
-    const [pestana, setPestana] = useState<Pestana>('PENDIENTES')
-    const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null)
+    const [parametros] = useSearchParams()
+    const foco = parametros.get('documento')
+    const [pestana, setPestana] = useState<Pestana>(foco ? 'TODOS' : 'PENDIENTES')
+    const [seleccionadoId, setSeleccionadoId] = useState<string | null>(foco)
     const [modoCorreccion, setModoCorreccion] = useState(false)
-    const [modoAclaracion, setModoAclaracion] = useState(false)
-    const [pregunta, setPregunta] = useState('')
     const [cambios, setCambios] = useState<Record<string, string>>({})
     // Documento en el que falló la última acción: su error se muestra junto a sus datos.
     const [errorAccionDe, setErrorAccionDe] = useState<string | null>(null)
@@ -331,18 +330,14 @@ export function BandejaValidacionPage() {
     function seleccionarDocumento(id: string) {
         setSeleccionadoId(id)
         setModoCorreccion(false)
-        setModoAclaracion(false)
         setCambios({})
-        setPregunta('')
     }
 
     function cambiarPestana(nueva: Pestana) {
         setPestana(nueva)
         setSeleccionadoId(null)
         setModoCorreccion(false)
-        setModoAclaracion(false)
         setCambios({})
-        setPregunta('')
     }
 
     function abrirDocumentoRelacionado(id: string) {
@@ -409,21 +404,6 @@ export function BandejaValidacionPage() {
         const actualizado = await clasificar(documentoSeleccionado.id, categoria)
 
         if (actualizado) {
-            setErrorAccionDe(null)
-        } else {
-            setErrorAccionDe(documentoSeleccionado.id)
-        }
-    }
-
-    async function enviarAclaracion() {
-        if (!documentoSeleccionado || !pregunta.trim()) return
-
-        const enviada = await pedirAclaracion(documentoSeleccionado.id, pregunta.trim())
-
-        if (enviada) {
-            setPregunta('')
-            setModoAclaracion(false)
-            setSeleccionadoId(null)
             setErrorAccionDe(null)
         } else {
             setErrorAccionDe(documentoSeleccionado.id)
@@ -776,6 +756,7 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         <div className="mt-6">
+                                            <AclaracionesDocumento key={documentoSeleccionado.id} documentoId={documentoSeleccionado.id} abrir={foco === documentoSeleccionado.id} />
                                             {/* Con cada evento nuevo (categoría, corrección…) el historial se recarga sin cerrarse. */}
                                             <HistorialDocumento
                                                 documentoId={documentoSeleccionado.id}
@@ -953,57 +934,6 @@ export function BandejaValidacionPage() {
                                             </div>
                                         )}
 
-                                        {modoAclaracion && (
-                                            <div className="mt-4 rounded-2xl border border-[#d9d4ca] bg-[#faf9f6] p-3">
-                                                <p className="mb-2 text-sm font-bold text-[#1d2b55]">
-                                                    ¿Qué necesitas que aclare el
-                                                    cliente?
-                                                </p>
-
-                                                <textarea
-                                                    value={pregunta}
-                                                    onChange={(event) =>
-                                                        setPregunta(
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    maxLength={500}
-                                                    rows={3}
-                                                    placeholder="Escribe tu pregunta..."
-                                                    className="w-full resize-none rounded-lg border border-[#1d2b55] bg-white p-3 text-sm outline-none"
-                                                />
-
-                                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setModoAclaracion(false)
-                                                            setPregunta('')
-                                                        }}
-                                                        className="rounded-lg bg-[#eeeae1] px-3 py-2 text-sm font-bold text-[#1d2b55]"
-                                                    >
-                                                        Cancelar
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void enviarAclaracion()}
-                                                        disabled={
-                                                            !pregunta.trim() || procesando
-                                                        }
-                                                        className="rounded-lg bg-[#d66b13] px-3 py-2 text-sm font-bold text-white disabled:opacity-50 flex items-center justify-center gap-1"
-                                                    >
-                                                        {procesando ? (
-                                                            <Loader2 className="size-3.5 animate-spin" />
-                                                        ) : (
-                                                            <Send className="size-3.5" />
-                                                        )}
-                                                        Enviar
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-
                                         {errorAccion && (
                                             <div
                                                 role="alert"
@@ -1022,8 +952,8 @@ export function BandejaValidacionPage() {
                                             </p>
                                         )}
 
-                                        {admiteValidacion && !modoAclaracion && !modoCorreccion && (
-                                            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#e6e1d8] pt-4">
+                                        {admiteValidacion && !modoCorreccion && (
+                                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#e6e1d8] pt-4">
                                                 <button
                                                     type="button"
                                                     onClick={() =>
@@ -1051,16 +981,6 @@ export function BandejaValidacionPage() {
                                                     Corregir
                                                 </button>
 
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setModoAclaracion(true)
-                                                    }
-                                                    className="flex items-center justify-center gap-1.5 rounded-lg bg-[#eeeae1] px-2 py-2 text-sm font-bold text-[#1d2b55]"
-                                                >
-                                                    <HelpCircle className="size-3.5" />
-                                                    Aclaración
-                                                </button>
                                             </div>
                                         )}
 
