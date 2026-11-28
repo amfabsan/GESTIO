@@ -18,7 +18,7 @@ Compañero de verificación: el desarrollador responde de cada línea y debe pod
 1. **Brief antes de trabajar** (tareas no triviales). Preguntar, en este orden: qué solución cree él que es la correcta, a quién va dirigida, qué queda fuera de alcance y qué significa «terminado» de forma observable (prueba superada, captura, registro). Guardar en `.claude/briefs/<tarea>.md`. Sin brief no hay trabajo.
 2. **Plan → escéptico.** Pasar el plan al subagente `esceptico` antes de implementar.
 3. **Por capas.** Cada tarea se entrega en capas independientes (p. ej. dominio → persistencia/migración → servicio → API → frontend), cada una compilable y probada por sí sola, para que el desarrollador haga commit y push por capas. Indicar los archivos de cada capa.
-4. **Editar archivo a archivo** en la rama actual del desarrollador; nunca hacer commits ni push.
+4. **Editar capa a capa** en la rama actual del desarrollador: terminar una capa entera (todos sus archivos, compilada y verificada) y solo entonces parar para su revisión y para preguntar las dudas acumuladas. No parar archivo a archivo. Nunca hacer commits ni push.
 5. **Verificar tras cada cambio**: `node .claude/scripts/run-checks.js`, leer la salida y repetir hasta que pase. Nunca modificar una prueba para que pase sin decirlo explícitamente.
 6. **Pruebas primero en el informe**: enseñar los comandos exactos y su salida sin procesar antes de cualquier resumen.
 7. **Revisión independiente**: crear `.claude/review/<tarea>/{brief.md,diff.patch,tests.log}` y pasar SOLO esas rutas al subagente `revisor`.

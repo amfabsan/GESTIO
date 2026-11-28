@@ -61,7 +61,18 @@ public sealed class DocumentosService(
         return contenido is null ? null : new ArchivoOriginal(contenido, documento.TipoMime, documento.NombreArchivo);
     }
 
-    public async Task<Resultado<Documento>> SubirAsync(UsuarioActual usuario, string nombreArchivo, Stream contenido, long tamanoBytes, CancellationToken cancellationToken)
+    // UT27: la recepción por WhatsApp usa este mismo método (mismas comprobaciones, hash, duplicados de PB-10, historial
+    // y estados) con origen WHATSAPP, la referencia del mensaje y procesar = false, para poder confirmar la recepción
+    // antes de lanzar la extracción con ProcesarAsync.
+    public async Task<Resultado<Documento>> SubirAsync(
+        UsuarioActual usuario,
+        string nombreArchivo,
+        Stream contenido,
+        long tamanoBytes,
+        CancellationToken cancellationToken,
+        OrigenDocumento origen = OrigenDocumento.SUBIDA_WEB,
+        string? referenciaMensaje = null,
+        bool procesar = true)
     {
         if (usuario.Rol != Rol.AUTONOMO) return DocumentoErrores.SoloAutonomoPuedeSubir;
         if (tamanoBytes <= 0) return DocumentoErrores.ArchivoVacio;
@@ -98,7 +109,8 @@ public sealed class DocumentosService(
             NombreArchivo = nombre,
             TipoMime = tipoMime,
             TamanoBytes = tamanoBytes,
-            Origen = OrigenDocumento.SUBIDA_WEB,
+            Origen = origen,
+            ReferenciaMensaje = referenciaMensaje,
             StorageKey = storageKey,
             HashSha256 = hash,
             FechaSubida = ahora,
@@ -109,7 +121,9 @@ public sealed class DocumentosService(
             usuario.Id,
             TipoEventoDocumento.SUBIDA,
             ahora,
-            $"Archivo original recibido ({tamanoBytes} bytes)."));
+            origen == OrigenDocumento.WHATSAPP
+                ? $"Archivo original recibido por WhatsApp ({tamanoBytes} bytes)."
+                : $"Archivo original recibido ({tamanoBytes} bytes)."));
 
         context.Documentos.Add(documento);
 
@@ -133,6 +147,8 @@ public sealed class DocumentosService(
             logger.LogError(ex, "No se pudo comprobar si {DocumentoId} es un duplicado; la carga se conserva", documento.Id);
             context.ChangeTracker.Clear();
         }
+
+        if (!procesar) return (await ObtenerAsync(usuario, documento.Id, CancellationToken.None))!;
 
         try
         {

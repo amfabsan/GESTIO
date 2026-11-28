@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { AlertTriangle, FileText } from 'lucide-react'
+import { AlertTriangle, FileText, Smartphone } from 'lucide-react'
+import { WhatsappModal } from '../../features/whatsapp/components/WhatsappModal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Vacio } from '../../components/ui/Vacio'
 import { card, etiqueta } from '../../components/ui/estilos'
@@ -23,6 +24,7 @@ export function BuzonPage() {
     const { perfilActivo } = useAuth()
     const { documentos, cargando, error, errorOriginal, agregarDocumento, abrirOriginal, reintentar, reintentando } = useDocumentos(perfilActivo?.id)
     const [filtro, setFiltro] = useState<FiltroBuzon>('TODOS')
+    const [whatsappAbierto, setWhatsappAbierto] = useState(false)
 
     const filtrados = documentos.filter((documento) => cumpleFiltro(documento, filtro))
     const contar = (id: FiltroBuzon) => documentos.filter((documento) => cumpleFiltro(documento, id)).length
@@ -32,7 +34,8 @@ export function BuzonPage() {
             <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
                 <PageHeader titulo="Buzón de documentos" subtitulo="Sube una factura o ticket para extraer sus datos y dejarlos pendientes de validación" />
 
-                <DropzoneSubida onSubido={agregarDocumento} />
+                <DropzoneSubida onSubido={agregarDocumento} onWhatsapp={() => setWhatsappAbierto(true)} />
+                {whatsappAbierto && <WhatsappModal onCerrar={() => setWhatsappAbierto(false)} />}
 
                 {error ? (
                     <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
@@ -89,7 +92,15 @@ export function BuzonPage() {
                                                                     </>
                                                                 )}
                                                             </div>
-                                                            <p className="text-xs text-[#6b6656]">{formatearFecha(documento.fechaSubida)}</p>
+                                                            <p className="flex items-center gap-1.5 text-xs text-[#6b6656]">
+                                                                {formatearFecha(documento.fechaSubida)}
+                                                                {/* UT27: origen visible para distinguir lo recibido por el canal de WhatsApp. */}
+                                                                {documento.origen === 'WHATSAPP' && (
+                                                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#eff2f4] px-2 py-0.5 text-[11px] font-semibold text-[#141e38]">
+                                                                        <Smartphone aria-hidden="true" className="size-3" /> WhatsApp
+                                                                    </span>
+                                                                )}
+                                                            </p>
                                                             <div className="mt-1 sm:hidden"><EstadoBadge estado={documento.estado} /></div>
                                                             <details className="mt-2 text-sm" open={foco === documento.id || undefined}>
                                                                 <summary className="cursor-pointer">Ver datos propuestos</summary>

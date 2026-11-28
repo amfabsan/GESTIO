@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from 'react'
-import { CheckCircle2, Loader2, Upload } from 'lucide-react'
+import { CheckCircle2, Loader2, Smartphone, Upload } from 'lucide-react'
 import { btnPrimario } from '../../../components/ui/estilos'
 import type { Documento } from '../../../types/documentos'
 import { formatearTamano } from '../../../utils/archivos'
@@ -8,9 +8,10 @@ import { describirTiposPermitidos } from '../validarArchivo'
 
 type DropzoneSubidaProps = {
   onSubido: (documento: Documento) => void
+  onWhatsapp?: () => void
 }
 
-export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
+export function DropzoneSubida({ onSubido, onWhatsapp }: DropzoneSubidaProps) {
   const { configuracion, subiendo, error, exito, subir } = useUploadDocumento(onSubido)
   const [arrastrando, setArrastrando] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -60,10 +61,23 @@ export function DropzoneSubida({ onSubido }: DropzoneSubidaProps) {
             {describirTiposPermitidos(configuracion)} · Facturas, tickets, recibos · Máximo {formatearTamano(configuracion.tamanoMaximoBytes)}
           </p>
         )}
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
           <button type="button" className={btnPrimario} disabled={deshabilitado}>
             <Upload aria-hidden="true" className="size-4" /> Seleccionar archivo
           </button>
+          {onWhatsapp && (
+            // UT27 · Figma «Button / Desde WhatsApp» (5139:9296). No abre el selector de archivos de la zona.
+            <button
+              type="button"
+              onClick={(evento) => {
+                evento.stopPropagation()
+                onWhatsapp()
+              }}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-[24px] border border-[#dfdfdc] bg-white px-6 text-[15px] font-semibold text-[#141e38] transition-colors hover:border-[#141e38]"
+            >
+              <Smartphone aria-hidden="true" className="size-[18px]" /> Desde WhatsApp
+            </button>
+          )}
         </div>
       </div>
 
