@@ -1,21 +1,21 @@
 import { Outlet } from 'react-router-dom'
 import { useAuth } from '../../context/useAuth'
-import { Navbar } from './Navbar'
+import { BarraLateral } from './BarraLateral'
 
 export function AppLayout() {
   const { cargando, error, recargarPerfiles } = useAuth()
 
   if (cargando) {
-    return <main className="min-h-screen bg-[#f5f3ef] p-8 text-[#1b2a4a]" aria-busy="true">Cargando usuarios...</main>
+    return <main className="min-h-screen bg-fondo p-8 text-tinta" aria-busy="true">Cargando usuarios...</main>
   }
 
   if (error) {
     return (
-      <main className="min-h-screen bg-[#f5f3ef] px-6 py-12 text-[#1b2a4a] sm:px-10 lg:px-24">
-        <h1 className="font-serif text-3xl font-bold">No se pueden cargar los perfiles</h1>
-        <p className="mt-3 max-w-xl text-[#647083]">{error}</p>
+      <main className="min-h-screen bg-fondo px-6 py-12 text-tinta sm:px-10 lg:px-24">
+        <h1 className="text-3xl font-bold">No se pueden cargar los perfiles</h1>
+        <p className="mt-3 max-w-xl text-texto-suave">{error}</p>
         <button
-          className="mt-6 rounded-lg bg-[#1b2a4a] px-4 py-3 text-sm font-bold text-white hover:bg-[#2b3e66]"
+          className="mt-6 rounded-control bg-tinta px-4 py-3 text-sm font-semibold text-white hover:bg-tinta-hover"
           type="button"
           onClick={recargarPerfiles}
         >
@@ -26,9 +26,9 @@ export function AppLayout() {
   }
 
   return (
-    <>
-      <Navbar />
-      <main><Outlet /></main>
-    </>
+    <div className="min-h-screen md:flex">
+      <BarraLateral />
+      <main className="min-w-0 flex-1"><Outlet /></main>
+    </div>
   )
 }

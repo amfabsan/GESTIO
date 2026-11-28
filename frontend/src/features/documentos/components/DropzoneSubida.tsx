@@ -45,19 +45,19 @@ export function DropzoneSubida({ onSubido, onWhatsapp }: DropzoneSubidaProps) {
           if (!deshabilitado) inputRef.current?.click()
         }}
         className={`rounded-2xl border-2 border-dashed p-8 text-center transition-all sm:p-10 ${
-          arrastrando ? 'border-[#c8651a] bg-amber-50' : 'border-[#d6d2c8] bg-white hover:border-[#1d2b4f]'
+          arrastrando ? 'border-acento bg-amber-50' : 'border-borde bg-white hover:border-tinta'
         } ${deshabilitado ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
       >
-        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-[#ede9e0]">
+        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-fondo">
           {subiendo
-            ? <Loader2 aria-hidden="true" className="size-6 animate-spin text-[#1d2b4f]" />
-            : <Upload aria-hidden="true" className="size-6 text-[#1d2b4f]" />}
+            ? <Loader2 aria-hidden="true" className="size-6 animate-spin text-tinta" />
+            : <Upload aria-hidden="true" className="size-6 text-tinta" />}
         </div>
-        <p className="font-semibold text-[#1d2b4f]">
+        <p className="font-semibold text-tinta">
           {subiendo ? 'Cargando documento… Consulta el estado de la extracción en el listado.' : 'Arrastra tu archivo aquí o haz clic para seleccionarlo'}
         </p>
         {configuracion && (
-          <p className="mt-1 text-sm text-[#6b6656]">
+          <p className="mt-1 text-sm text-texto-suave">
             {describirTiposPermitidos(configuracion)} · Facturas, tickets, recibos · Máximo {formatearTamano(configuracion.tamanoMaximoBytes)}
           </p>
         )}
@@ -73,7 +73,7 @@ export function DropzoneSubida({ onSubido, onWhatsapp }: DropzoneSubidaProps) {
                 evento.stopPropagation()
                 onWhatsapp()
               }}
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-[24px] border border-[#dfdfdc] bg-white px-6 text-[15px] font-semibold text-[#141e38] transition-colors hover:border-[#141e38]"
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-[24px] border border-borde bg-white px-6 text-[15px] font-semibold text-tinta transition-colors hover:border-tinta"
             >
               <Smartphone aria-hidden="true" className="size-[18px]" /> Desde WhatsApp
             </button>

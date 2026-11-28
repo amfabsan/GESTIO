@@ -7,16 +7,16 @@ import { useNumeroWhatsapp } from '../hooks/useNumeroWhatsapp'
 // disponible) reutilizan la misma cabecera, la misma tarjeta gris y el mismo botón.
 const estilos = {
     fondo: 'fixed inset-0 z-50 flex items-end justify-center bg-[rgba(20,30,56,0.45)] p-0 sm:items-center sm:p-4',
-    ventana: 'flex w-full max-w-[520px] flex-col gap-[18px] rounded-t-[24px] border border-[#dfdfdc] bg-white p-[30px] shadow-[0_24px_24px_rgba(15,23,42,0.18)] sm:rounded-[24px]',
-    titulo: 'text-[22px] font-bold tracking-[-0.22px] text-[#141e38]',
-    subtitulo: 'text-[14px] leading-5 text-[#64748b]',
-    cerrar: 'flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[#eff2f4] text-[#141e38] hover:bg-[#e2e6ea]',
-    tarjeta: 'flex w-full items-center gap-[18px] rounded-[16px] bg-[#eff2f4] p-[18px]',
-    destacado: 'text-[20px] font-bold text-[#141e38]',
-    texto: 'text-[13px] leading-[19px] text-[#64748b]',
-    primario: 'inline-flex h-12 w-full items-center justify-center gap-2 rounded-[24px] bg-[#141e38] px-5 text-[14px] font-semibold text-white hover:bg-[#1f2c50] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[243px]',
-    enlace: 'font-semibold text-[#141e38] underline underline-offset-2 hover:text-[#2a3d6b] disabled:opacity-50',
-    campo: 'h-11 w-full rounded-[12px] border border-[#dfdfdc] bg-white px-3 text-[15px] text-[#141e38] outline-none focus:border-[#141e38]',
+    ventana: 'flex w-full max-w-[520px] flex-col gap-[18px] rounded-t-[24px] border border-borde bg-white p-[30px] shadow-[0_24px_24px_rgba(15,23,42,0.18)] sm:rounded-[24px]',
+    titulo: 'text-[22px] font-bold tracking-[-0.22px] text-tinta',
+    subtitulo: 'text-[14px] leading-5 text-texto-suave',
+    cerrar: 'flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-fondo text-tinta hover:bg-borde',
+    tarjeta: 'flex w-full items-center gap-[18px] rounded-[16px] bg-fondo p-[18px]',
+    destacado: 'text-[20px] font-bold text-tinta',
+    texto: 'text-[13px] leading-[19px] text-texto-suave',
+    primario: 'inline-flex h-12 w-full items-center justify-center gap-2 rounded-[24px] bg-tinta px-5 text-[14px] font-semibold text-white hover:bg-tinta-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-[243px]',
+    enlace: 'font-semibold text-tinta underline underline-offset-2 hover:text-acento disabled:opacity-50',
+    campo: 'h-11 w-full rounded-[12px] border border-borde bg-white px-3 text-[15px] text-tinta outline-none focus:border-tinta',
 }
 
 type Props = { onCerrar: () => void }
@@ -55,7 +55,7 @@ export function WhatsappModal({ onCerrar }: Props) {
 
                 {cargando || !estado ? (
                     <div className={estilos.tarjeta}>
-                        {cargando ? <Loader2 aria-hidden="true" className="size-5 animate-spin text-[#141e38]" /> : null}
+                        {cargando ? <Loader2 aria-hidden="true" className="size-5 animate-spin text-tinta" /> : null}
                         <p className={estilos.texto}>{cargando ? 'Consultando tu número…' : 'No se ha podido cargar el canal de WhatsApp.'}</p>
                     </div>
                 ) : !estado.canalHabilitado ? (
@@ -72,7 +72,7 @@ export function WhatsappModal({ onCerrar }: Props) {
                             </p>
                         </div>
                         <label className="flex flex-col gap-1.5">
-                            <span className="text-[13px] font-semibold text-[#141e38]">Tu número de WhatsApp</span>
+                            <span className="text-[13px] font-semibold text-tinta">Tu número de WhatsApp</span>
                             <input
                                 className={estilos.campo}
                                 type="tel"

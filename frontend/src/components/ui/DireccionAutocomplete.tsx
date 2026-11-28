@@ -191,11 +191,11 @@ export function DireccionAutocomplete({ value, onChange, className, placeholder,
     <div className="relative">
       {multiline ? <textarea {...propsCampo} rows={2} /> : <input {...propsCampo} type="text" />}
       {enfocado && (faltaClave || cargando || errorConsulta || predicciones.length > 0) && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border border-[#d9d4c9] bg-white shadow-lg">
-          {faltaClave && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">Configura la clave de Google Places para activar las sugerencias. Puedes escribir la dirección manualmente.</p>}
-          {cargando && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">Buscando direcciones…</p>}
-          {errorConsulta === 'clave' && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">Google no reconoce la clave de Google Maps (VITE_GOOGLE_MAPS_API_KEY). Revísala en Google Cloud. Puedes escribir la dirección manualmente.</p>}
-          {errorConsulta === 'otro' && <p role="status" className="px-3 py-2 text-xs text-[#6b6656]">No se pudieron cargar las sugerencias. Comprueba que Maps JavaScript API y Places API (New) estén habilitadas y que este dominio esté permitido. Detalle en la consola.</p>}
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-control border border-borde bg-white shadow-lg">
+          {faltaClave && <p role="status" className="px-3 py-2 text-xs text-texto-suave">Configura la clave de Google Places para activar las sugerencias. Puedes escribir la dirección manualmente.</p>}
+          {cargando && <p role="status" className="px-3 py-2 text-xs text-texto-suave">Buscando direcciones…</p>}
+          {errorConsulta === 'clave' && <p role="status" className="px-3 py-2 text-xs text-texto-suave">Google no reconoce la clave de Google Maps (VITE_GOOGLE_MAPS_API_KEY). Revísala en Google Cloud. Puedes escribir la dirección manualmente.</p>}
+          {errorConsulta === 'otro' && <p role="status" className="px-3 py-2 text-xs text-texto-suave">No se pudieron cargar las sugerencias. Comprueba que Maps JavaScript API y Places API (New) estén habilitadas y que este dominio esté permitido. Detalle en la consola.</p>}
           {predicciones.length > 0 && <>
             <ul id={idLista} role="listbox" aria-label="Sugerencias de dirección" className="max-h-64 overflow-y-auto py-1">
               {predicciones.map((prediccion, indice) => <li
@@ -205,10 +205,10 @@ export function DireccionAutocomplete({ value, onChange, className, placeholder,
                 aria-selected={seleccionada === indice}
                 onMouseDown={evento => evento.preventDefault()}
                 onClick={() => void elegirPrediccion(prediccion)}
-                className={`cursor-pointer px-3 py-2 text-sm text-[#202b43] ${seleccionada === indice ? 'bg-[#f0ede5]' : 'hover:bg-[#f5f3ef]'}`}
+                className={`cursor-pointer px-3 py-2 text-sm text-tinta ${seleccionada === indice ? 'bg-acento-suave' : 'hover:bg-fondo'}`}
               >{prediccion.text.text}</li>)}
             </ul>
-            <div className="flex justify-end border-t border-[#eeeae2] px-3 py-1.5">
+            <div className="flex justify-end border-t border-fondo px-3 py-1.5">
               <img src="https://maps.gstatic.com/mapfiles/api-3/images/powered-by-google-on-white3.png" alt="Powered by Google" className="h-4 w-auto" />
             </div>
           </>}

@@ -110,16 +110,16 @@ export function FacturaFormulario({ factura, contactos, direccionFiscalEmisor, o
     }
   }
 
-  const claseCampo = 'w-full rounded-lg border border-[#d9d4c9] bg-[#f7f6f3] px-3 py-2.5 text-sm text-[#202b43] outline-none focus:border-[#435271] focus:ring-2 focus:ring-[#435271]/15 disabled:opacity-60'
-  const etiqueta = 'mb-1 block text-xs font-medium text-[#555348]'
+  const claseCampo = 'w-full rounded-control border border-borde bg-fondo px-3 py-2.5 text-sm text-tinta outline-none focus:border-tinta-hover focus:ring-2 focus:ring-tinta-hover/15 disabled:opacity-60'
+  const etiqueta = 'mb-1 block text-xs font-medium text-tinta'
 
   return (
     <form className="space-y-4" onSubmit={guardar}>
       {error && <p role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,1fr)]">
         <section className={`${card} p-4 sm:p-5`} aria-labelledby="datos-factura">
-          <h2 id="datos-factura" className="text-sm font-bold uppercase tracking-wide text-[#696354]">Datos de la factura</h2>
-          <label className="mt-4 block"><span className={etiqueta}>Dirección fiscal del emisor</span><DireccionAutocomplete multiline className={claseCampo} value={direccionFiscalEmisor} onChange={onDireccionFiscalEmisorChange} placeholder="Calle, número, código postal y municipio" /><span className="mt-1 block text-xs text-[#777265]">Se guarda en tu perfil fiscal y se copia al emitir. Es obligatoria para emitir.</span></label>
+          <h2 id="datos-factura" className="text-sm font-bold uppercase tracking-wide text-texto-suave">Datos de la factura</h2>
+          <label className="mt-4 block"><span className={etiqueta}>Dirección fiscal del emisor</span><DireccionAutocomplete multiline className={claseCampo} value={direccionFiscalEmisor} onChange={onDireccionFiscalEmisorChange} placeholder="Calle, número, código postal y municipio" /><span className="mt-1 block text-xs text-texto-suave">Se guarda en tu perfil fiscal y se copia al emitir. Es obligatoria para emitir.</span></label>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <label><span className={etiqueta}>Serie</span><input readOnly className={claseCampo} value={`F-${fecha ? fecha.slice(0, 4) : new Date().getFullYear()}`} /></label>
             <label><span className={etiqueta}>Número</span><input readOnly className={claseCampo} value="Al emitir" /></label>
@@ -131,11 +131,11 @@ export function FacturaFormulario({ factura, contactos, direccionFiscalEmisor, o
               {contactos.filter(contacto => contacto.activo && (contacto.clasificacion === 'CLIENTE' || contacto.clasificacion === 'AMBOS')).map(contacto => <option key={contacto.id} value={contacto.id}>{contacto.nombre} · {contacto.nif}</option>)}
             </select>
           </label>
-          {cliente && <div className="mt-3 rounded-xl bg-[#f5f3ef] p-3 text-sm">
-            <p className="font-semibold text-[#202b43]">{cliente.nombre} · NIF {cliente.nif}</p>
-            {cliente.email && <p className="mt-0.5 text-xs text-[#6b6656]">{cliente.email}</p>}
-            {cliente.direccion ? <p className="mt-1 text-xs text-[#6b6656]">{cliente.direccion}</p> : <>
-              <p className="mt-1 text-xs font-medium text-[#b45309]">Falta la dirección fiscal; es necesaria para emitir. Puedes guardar el borrador mientras tanto.</p>
+          {cliente && <div className="mt-3 rounded-xl bg-fondo p-3 text-sm">
+            <p className="font-semibold text-tinta">{cliente.nombre} · NIF {cliente.nif}</p>
+            {cliente.email && <p className="mt-0.5 text-xs text-texto-suave">{cliente.email}</p>}
+            {cliente.direccion ? <p className="mt-1 text-xs text-texto-suave">{cliente.direccion}</p> : <>
+              <p className="mt-1 text-xs font-medium text-aviso">Falta la dirección fiscal; es necesaria para emitir. Puedes guardar el borrador mientras tanto.</p>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                 <DireccionAutocomplete className={`${claseCampo} bg-white`} placeholder="Calle, número, CP y municipio" value={direccion} onChange={valor => { setDireccionEditada({ contactoId: cliente.id, valor }); setErrorDireccion(''); setMensajeDireccion('') }} />
                 <button className={`${btnSecundario} shrink-0`} type="button" disabled={guardandoDireccion || !direccion.trim()} onClick={() => void guardarDireccion()}>{guardandoDireccion ? 'Guardando…' : 'Guardar en el contacto'}</button>
@@ -147,35 +147,35 @@ export function FacturaFormulario({ factura, contactos, direccionFiscalEmisor, o
         </section>
 
         <aside className={`${card} p-4 sm:p-5`} aria-labelledby="desglose-factura">
-          <div className="flex items-center justify-between"><h2 id="desglose-factura" className="text-sm font-bold uppercase tracking-wide text-[#696354]">Desglose</h2><span className="text-xs text-[#777265]">estimación</span></div>
+          <div className="flex items-center justify-between"><h2 id="desglose-factura" className="text-sm font-bold uppercase tracking-wide text-texto-suave">Desglose</h2><span className="text-xs text-texto-suave">estimación</span></div>
           <div className="mt-3 space-y-2 text-sm">
-            {desglose.grupos.map(grupo => <div key={grupo.tipo} className="flex justify-between gap-3 text-[#555348]"><span>Base al {grupo.tipo} % {euro(grupo.base)}</span><span>IVA {grupo.tipo} % {euro(grupo.cuota)}</span></div>)}
-            <div className="flex justify-between border-t border-[#eeeae2] pt-2"><span>Base imponible</span><span>{euro(desglose.base)}</span></div>
+            {desglose.grupos.map(grupo => <div key={grupo.tipo} className="flex justify-between gap-3 text-tinta"><span>Base al {grupo.tipo} % {euro(grupo.base)}</span><span>IVA {grupo.tipo} % {euro(grupo.cuota)}</span></div>)}
+            <div className="flex justify-between border-t border-fondo pt-2"><span>Base imponible</span><span>{euro(desglose.base)}</span></div>
             <div className="flex justify-between"><span>Cuotas de IVA</span><span>{euro(desglose.cuota)}</span></div>
-            {desglose.retencion > 0 && <div className="flex justify-between text-[#9a3412]"><span>Retención IRPF ({porcentajeRetencion} %)</span><span>− {euro(desglose.retencion)}</span></div>}
-            <div className="flex justify-between border-t border-[#eeeae2] pt-3 text-lg font-bold text-[#1d2b4f]"><span>Total</span><span>{euro(desglose.total)}</span></div>
+            {desglose.retencion > 0 && <div className="flex justify-between text-error"><span>Retención IRPF ({porcentajeRetencion} %)</span><span>− {euro(desglose.retencion)}</span></div>}
+            <div className="flex justify-between border-t border-fondo pt-3 text-lg font-bold text-tinta"><span>Total</span><span>{euro(desglose.total)}</span></div>
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-[#777265]">El cálculo definitivo se valida en el servidor al revisar la factura.</p>
+          <p className="mt-3 text-xs leading-relaxed text-texto-suave">El cálculo definitivo se valida en el servidor al revisar la factura.</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <button type="button" className={btnSecundario} disabled={guardando} onClick={guardarBorrador}><Save size={16} aria-hidden="true" />{guardando ? 'Guardando…' : 'Guardar borrador'}</button>
-            <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c96016] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#ab4e10] disabled:opacity-50" disabled={guardando}><Eye size={16} aria-hidden="true" />Revisar y emitir</button>
+            <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-acento px-4 py-2.5 text-sm font-semibold text-white hover:bg-acento-hover disabled:opacity-50" disabled={guardando}><Eye size={16} aria-hidden="true" />Revisar y emitir</button>
           </div>
         </aside>
       </div>
 
       <section className={`${card} p-4 sm:p-5`} aria-labelledby="lineas-factura">
-        <h2 id="lineas-factura" className="text-sm font-bold uppercase tracking-wide text-[#696354]">Líneas</h2>
+        <h2 id="lineas-factura" className="text-sm font-bold uppercase tracking-wide text-texto-suave">Líneas</h2>
         <div className="mt-4 space-y-3">
-          {lineas.map((linea, indice) => <div key={indice} className="grid gap-2 rounded-xl border border-[#eeeae2] p-3 sm:grid-cols-[minmax(180px,1fr)_90px_110px_110px_36px] sm:items-end sm:border-0 sm:p-0">
+          {lineas.map((linea, indice) => <div key={indice} className="grid gap-2 rounded-xl border border-fondo p-3 sm:grid-cols-[minmax(180px,1fr)_90px_110px_110px_36px] sm:items-end sm:border-0 sm:p-0">
             <label><span className={etiqueta}>Descripción</span><input className={claseCampo} maxLength={500} value={linea.descripcion} onChange={evento => cambiarLinea(indice, 'descripcion', evento.target.value)} /></label>
             <label><span className={etiqueta}>Cantidad</span><input className={claseCampo} type="number" min="0" step="0.0001" value={linea.cantidad} onChange={evento => cambiarLinea(indice, 'cantidad', evento.target.value)} /></label>
             <label><span className={etiqueta}>Precio unitario</span><input className={claseCampo} type="number" min="0" step="0.0001" value={linea.precioUnitario} onChange={evento => cambiarLinea(indice, 'precioUnitario', evento.target.value)} /></label>
             <label><span className={etiqueta}>IVA</span><select className={claseCampo} value={linea.ivaPorcentaje} onChange={evento => cambiarLinea(indice, 'ivaPorcentaje', evento.target.value)}><option value="">Selecciona IVA</option><option value="0">0 %</option><option value="4">4 %</option><option value="10">10 %</option><option value="21">21 %</option></select></label>
-            <button type="button" aria-label={`Eliminar línea ${indice + 1}`} className="grid size-10 place-items-center rounded-lg text-[#756f60] hover:bg-red-50 hover:text-red-700" onClick={() => setLineas(actuales => actuales.filter((_, posicion) => posicion !== indice))}><Trash2 size={17} /></button>
+            <button type="button" aria-label={`Eliminar línea ${indice + 1}`} className="grid size-10 place-items-center rounded-control text-texto-suave hover:bg-red-50 hover:text-red-700" onClick={() => setLineas(actuales => actuales.filter((_, posicion) => posicion !== indice))}><Trash2 size={17} /></button>
           </div>)}
         </div>
-        <button type="button" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[#c96016] hover:underline" onClick={() => setLineas(actuales => [...actuales, lineaVacia()])}><Plus size={16} />Añadir línea</button>
-        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#eeeae2] pt-4">
+        <button type="button" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-acento hover:underline" onClick={() => setLineas(actuales => [...actuales, lineaVacia()])}><Plus size={16} />Añadir línea</button>
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-fondo pt-4">
           <label className="text-sm font-medium">Retención IRPF
             <select className={`${claseCampo} mt-1 min-w-48`} value={retencion} onChange={evento => { setRetencion(evento.target.value); setErrorRetencion('') }}><option value="0">Sin retención</option><option value="otra">Otra retención</option></select>
           </label>

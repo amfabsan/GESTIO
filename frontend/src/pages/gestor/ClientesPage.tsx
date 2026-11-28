@@ -94,15 +94,15 @@ export function ClientesPage() {
     }
 
     return (
-        <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f3ef] px-4 py-7 text-[#1b2a4a] sm:px-8 lg:px-14">
+        <div className="min-h-screen bg-fondo px-4 py-7 text-tinta sm:px-8 lg:px-9">
             <div className="mx-auto max-w-7xl space-y-6">
                 <header className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
                     <div>
-                        <h1 className="font-serif text-3xl font-bold tracking-tight text-[#152546] sm:text-4xl">
+                        <h1 className="text-3xl font-bold text-tinta sm:text-[34px]">
                             Panel de clientes
                         </h1>
                         {panel && (
-                            <p className="mt-1.5 text-sm text-[#647083]">
+                            <p className="mt-1.5 text-sm text-texto-suave">
                                 {panel.nombreGestor}
                                 {panel.nombreAsesoria ? ` · ${panel.nombreAsesoria}` : ''} ·{' '}
                                 <strong>{panel.clientesActivosCount}</strong>{' '}
@@ -123,69 +123,69 @@ export function ClientesPage() {
                     className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
                     aria-label="Resumen de indicadores del panel"
                 >
-                    <article className="rounded-2xl border border-[#e3ded4] bg-white p-4 shadow-sm">
-                        <AlertTriangle className="size-4 text-[#c86b1c]" aria-hidden="true" />
-                        <p className="mt-2.5 text-2xl font-bold text-[#c86b1c]">{resumen.requierenAtencion}</p>
-                        <h2 className="mt-1 text-xs font-medium text-[#647083]">Requieren atención</h2>
+                    <article className="rounded-tarjeta bg-tarjeta p-4 shadow-tarjeta">
+                        <AlertTriangle className="size-4 text-acento" aria-hidden="true" />
+                        <p className="mt-2.5 text-2xl font-bold text-acento">{resumen.requierenAtencion}</p>
+                        <h2 className="mt-1 text-xs font-medium text-texto-suave">Requieren atención</h2>
                     </article>
 
-                    <article className="rounded-2xl border border-[#e3ded4] bg-white p-4 shadow-sm">
-                        <CalendarClock className="size-4 text-[#1d2b4f]" aria-hidden="true" />
-                        <p className="mt-2.5 text-2xl font-bold text-[#152546]">
+                    <article className="rounded-tarjeta bg-tarjeta p-4 shadow-tarjeta">
+                        <CalendarClock className="size-4 text-tinta" aria-hidden="true" />
+                        <p className="mt-2.5 text-2xl font-bold text-tinta">
                             {resumen.obligacionesProximas}
                         </p>
-                        <h2 className="mt-1 text-xs font-medium text-[#647083]">
+                        <h2 className="mt-1 text-xs font-medium text-texto-suave">
                             Obligaciones próximas (≤ {panel?.diasAntelacionObligaciones ?? 35} días)
                         </h2>
                     </article>
 
-                    <article className="rounded-2xl border border-[#e3ded4] bg-white p-4 shadow-sm">
-                        <ListChecks className="size-4 text-[#c86b1c]" aria-hidden="true" />
-                        <p className="mt-2.5 text-2xl font-bold text-[#c86b1c]">
+                    <article className="rounded-tarjeta bg-tarjeta p-4 shadow-tarjeta">
+                        <ListChecks className="size-4 text-acento" aria-hidden="true" />
+                        <p className="mt-2.5 text-2xl font-bold text-acento">
                             {resumen.checklistsIncompletos}
                         </p>
-                        <h2 className="mt-1 text-xs font-medium text-[#647083]">Checklists incompletos</h2>
+                        <h2 className="mt-1 text-xs font-medium text-texto-suave">Checklists incompletos</h2>
                     </article>
 
-                    <article className="rounded-2xl border border-[#e3ded4] bg-white p-4 shadow-sm">
-                        <FileCheck2 className="size-4 text-[#2563eb]" aria-hidden="true" />
-                        <p className="mt-2.5 text-2xl font-bold text-[#2563eb]">
+                    <article className="rounded-tarjeta bg-tarjeta p-4 shadow-tarjeta">
+                        <FileCheck2 className="size-4 text-info" aria-hidden="true" />
+                        <p className="mt-2.5 text-2xl font-bold text-info">
                             {resumen.documentosPorValidar}
                         </p>
-                        <h2 className="mt-1 text-xs font-medium text-[#647083]">Documentos por validar</h2>
+                        <h2 className="mt-1 text-xs font-medium text-texto-suave">Documentos por validar</h2>
                     </article>
 
-                    <article className="col-span-2 rounded-2xl border border-[#e3ded4] bg-white p-4 shadow-sm sm:col-span-1">
+                    <article className="col-span-2 rounded-tarjeta bg-tarjeta p-4 sm:col-span-1 shadow-tarjeta">
                         <AlertTriangle className="size-4 text-red-600" aria-hidden="true" />
                         <p className="mt-2.5 text-2xl font-bold text-red-600">
                             {resumen.anomaliasPendientes}
                         </p>
-                        <h2 className="mt-1 text-xs font-medium text-[#647083]">Anomalías pendientes</h2>
+                        <h2 className="mt-1 text-xs font-medium text-texto-suave">Anomalías pendientes</h2>
                     </article>
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-[#e3ded4] bg-white shadow-sm">
-                    <div className="flex flex-col justify-between gap-3 border-b border-[#ece9e3] p-4 sm:flex-row sm:items-center sm:px-5">
+                <section className="overflow-hidden rounded-tarjeta bg-tarjeta shadow-tarjeta">
+                    <div className="flex flex-col justify-between gap-3 border-b border-borde p-4 sm:flex-row sm:items-center sm:px-5">
                         <div className="flex flex-wrap items-center gap-2.5">
                             <button
                                 type="button"
                                 aria-pressed={soloRequiereAtencion}
                                 onClick={() => actualizarFiltros(() => setSoloRequiereAtencion((prev) => !prev))}
                                 className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${soloRequiereAtencion
-                                        ? 'border-[#c86b1c] bg-[#c86b1c] text-white'
-                                        : 'border-[#ded9cf] bg-[#fbfaf7] text-[#3d3a30] hover:bg-[#f2efe8]'
+                                        ? 'border-acento bg-acento text-white'
+                                        : 'border-borde bg-fondo text-tinta hover:bg-borde'
                                     }`}
                             >
                                 <Filter className="size-3.5" aria-hidden="true" />
                                 Solo requieren atención
                             </button>
 
-                            <label className="inline-flex items-center gap-2 text-xs font-medium text-[#647083]">
+                            <label className="inline-flex items-center gap-2 text-xs font-medium text-texto-suave">
                                 <span className="sr-only">Ordenar clientes por</span>
                                 <select
                                     value={ordenarPor}
                                     onChange={(e) => actualizarFiltros(() => setOrdenarPor(e.target.value as 'proxima' | 'nombre'))}
-                                    className="rounded-lg border border-[#ded9cf] bg-[#fbfaf7] px-3 py-2 text-xs font-semibold text-[#1b2a4a] outline-none focus:border-[#1d2b4f]"
+                                    className="rounded-control border border-borde bg-fondo px-3 py-2 text-xs font-semibold text-tinta outline-none focus:border-tinta"
                                 >
                                     <option value="proxima">⇅ Obligación más próxima</option>
                                     <option value="nombre">⇅ Nombre</option>
@@ -195,7 +195,7 @@ export function ClientesPage() {
 
                         <label className="relative block w-full sm:w-72">
                             <Search
-                                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#857f70]"
+                                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-texto-suave"
                                 aria-hidden="true"
                             />
                             <input
@@ -204,7 +204,7 @@ export function ClientesPage() {
                                 onChange={(e) => actualizarFiltros(() => setBusqueda(e.target.value))}
                                 placeholder="Buscar cliente o actividad"
                                 aria-label="Buscar cliente o actividad"
-                                className="w-full rounded-lg border border-[#ded9cf] bg-[#fbfaf7] py-2 pl-9 pr-3 text-sm text-[#1b2a4a] outline-none placeholder:text-[#8c877b] focus:border-[#1d2b4f]"
+                                className="w-full rounded-control border border-borde bg-fondo py-2 pl-9 pr-3 text-sm text-tinta outline-none placeholder:text-texto-suave focus:border-tinta"
                             />
                         </label>
                     </div>
@@ -236,7 +236,7 @@ export function ClientesPage() {
 
                     {cargando ? (
                         <div
-                            className="flex items-center justify-center gap-2 py-16 text-sm text-[#647083]"
+                            className="flex items-center justify-center gap-2 py-16 text-sm text-texto-suave"
                             aria-busy="true"
                         >
                             <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -244,10 +244,10 @@ export function ClientesPage() {
                         </div>
                     ) : !panel || panel.clientes.length === 0 ? (
                         <div className="px-6 py-14 text-center">
-                            <p className="text-sm font-semibold text-[#1b2a4a]">
+                            <p className="text-sm font-semibold text-tinta">
                                 No hay clientes que coincidan con el filtro actual.
                             </p>
-                            <p className="mt-1 text-xs text-[#647083]">
+                            <p className="mt-1 text-xs text-texto-suave">
                                 {panel?.clientesActivosCount === 0
                                     ? 'Aún no tienes clientes con vinculación activa en tu asesoría.'
                                     : 'Prueba a desactivar el filtro o limpiar la búsqueda.'}
@@ -255,7 +255,7 @@ export function ClientesPage() {
                         </div>
                     ) : (
                         <>
-                            <div className="hidden grid-cols-[minmax(280px,2.4fr)_repeat(4,minmax(76px,0.7fr))_minmax(130px,1fr)_auto] items-center gap-3 border-b border-[#ece9e3] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#7c8592] lg:grid">
+                            <div className="hidden grid-cols-[minmax(280px,2.4fr)_repeat(4,minmax(76px,0.7fr))_minmax(130px,1fr)_auto] items-center gap-3 border-b border-borde px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-texto-suave lg:grid">
                                 <span>Cliente · Motivo</span>
                                 <span className="text-center">Próximas</span>
                                 <span className="text-center">Checklist inc.</span>
@@ -265,7 +265,7 @@ export function ClientesPage() {
                                 <span className="sr-only">Acción</span>
                             </div>
 
-                            <ul className="divide-y divide-[#ece9e3]">
+                            <ul className="divide-y divide-borde">
                                 {panel.clientes.map((cliente) => {
                                     const avisosVisibles = cliente.avisos.slice(0, 3)
                                     const restantes = Math.max(0, cliente.avisos.length - avisosVisibles.length)
@@ -273,12 +273,12 @@ export function ClientesPage() {
                                     return (
                                         <li
                                             key={cliente.autonomoId}
-                                            className="grid gap-4 px-4 py-4 transition hover:bg-[#faf8f4] sm:px-5 lg:grid-cols-[minmax(280px,2.4fr)_repeat(4,minmax(76px,0.7fr))_minmax(130px,1fr)_auto] lg:items-center lg:gap-3"
+                                            className="grid gap-4 px-4 py-4 transition hover:bg-fondo sm:px-5 lg:grid-cols-[minmax(280px,2.4fr)_repeat(4,minmax(76px,0.7fr))_minmax(130px,1fr)_auto] lg:items-center lg:gap-3"
                                         >
                                             <div className="min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2.5">
                                                     <span
-                                                        className="grid size-9 shrink-0 place-items-center rounded-full bg-[#1d2b4f] text-xs font-bold text-white"
+                                                        className="grid size-9 shrink-0 place-items-center rounded-full bg-tinta text-xs font-bold text-white"
                                                         aria-hidden="true"
                                                     >
                                                         {cliente.iniciales}
@@ -287,12 +287,12 @@ export function ClientesPage() {
                                                         <div className="flex flex-wrap items-center gap-2">
                                                             <Link
                                                                 to={`/gestor/clientes/${cliente.autonomoId}/calendario`}
-                                                                className="truncate text-sm font-bold text-[#152546] hover:underline"
+                                                                className="truncate text-sm font-bold text-tinta hover:underline"
                                                             >
                                                                 {cliente.nombreCompleto}
                                                             </Link>
                                                             {cliente.requiereAtencion ? (
-                                                                <span className="rounded bg-[#c86b1c] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                                                                <span className="rounded-pastilla bg-aviso-fondo px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-aviso">
                                                                     Requiere atención
                                                                 </span>
                                                             ) : (
@@ -301,7 +301,7 @@ export function ClientesPage() {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <p className="text-xs text-[#647083]">
+                                                        <p className="text-xs text-texto-suave">
                                                             {cliente.actividad ?? `NIF ${cliente.nif}`}
                                                         </p>
                                                     </div>
@@ -333,7 +333,7 @@ export function ClientesPage() {
                                                         {restantes > 0 && (
                                                             <Link
                                                                 to={`/gestor/clientes/${cliente.autonomoId}/calendario`}
-                                                                className="px-1.5 text-[11px] font-medium text-[#647083] hover:underline"
+                                                                className="px-1.5 text-[11px] font-medium text-texto-suave hover:underline"
                                                             >
                                                                 +{restantes} más
                                                             </Link>
@@ -343,8 +343,8 @@ export function ClientesPage() {
                                             </div>
 
                                             <div className="flex items-center justify-between text-xs lg:justify-center">
-                                                <span className="text-[#647083] lg:hidden">Próximas</span>
-                                                <span className="font-bold text-[#152546]">
+                                                <span className="text-texto-suave lg:hidden">Próximas</span>
+                                                <span className="font-bold text-tinta">
                                                     {cliente.obligacionesProximasCount > 0
                                                         ? cliente.obligacionesProximasCount
                                                         : '—'}
@@ -352,12 +352,12 @@ export function ClientesPage() {
                                             </div>
 
                                             <div className="flex items-center justify-between text-xs lg:justify-center">
-                                                <span className="text-[#647083] lg:hidden">Checklists incompletos</span>
+                                                <span className="text-texto-suave lg:hidden">Checklists incompletos</span>
                                                 <span
                                                     className={
                                                         cliente.checklistsIncompletosCount > 0
-                                                            ? 'font-bold text-[#c86b1c]'
-                                                            : 'text-[#9aa1ac]'
+                                                            ? 'font-bold text-acento'
+                                                            : 'text-texto-tenue'
                                                     }
                                                 >
                                                     {cliente.checklistsIncompletosCount > 0
@@ -367,12 +367,12 @@ export function ClientesPage() {
                                             </div>
 
                                             <div className="flex items-center justify-between text-xs lg:justify-center">
-                                                <span className="text-[#647083] lg:hidden">Documentos por validar</span>
+                                                <span className="text-texto-suave lg:hidden">Documentos por validar</span>
                                                 <span
                                                     className={
                                                         cliente.documentosPorValidarCount > 0
-                                                            ? 'font-bold text-[#2563eb]'
-                                                            : 'text-[#9aa1ac]'
+                                                            ? 'font-bold text-info'
+                                                            : 'text-texto-tenue'
                                                     }
                                                 >
                                                     {cliente.documentosPorValidarCount > 0
@@ -382,12 +382,12 @@ export function ClientesPage() {
                                             </div>
 
                                             <div className="flex items-center justify-between text-xs lg:justify-center">
-                                                <span className="text-[#647083] lg:hidden">Anomalías pendientes</span>
+                                                <span className="text-texto-suave lg:hidden">Anomalías pendientes</span>
                                                 <span
                                                     className={
                                                         cliente.anomaliasPendientesCount > 0
                                                             ? 'font-bold text-red-600'
-                                                            : 'text-[#9aa1ac]'
+                                                            : 'text-texto-tenue'
                                                     }
                                                 >
                                                     {cliente.anomaliasPendientesCount > 0
@@ -397,13 +397,13 @@ export function ClientesPage() {
                                             </div>
 
                                             <div className="flex items-center justify-between lg:block lg:text-right">
-                                                <span className="text-xs text-[#647083] lg:hidden">Próxima obligación</span>
+                                                <span className="text-xs text-texto-suave lg:hidden">Próxima obligación</span>
                                                 <div>
-                                                    <p className="text-xs font-bold text-[#152546]">
+                                                    <p className="text-xs font-bold text-tinta">
                                                         {formatearFechaCorta(cliente.proximaObligacionFecha)}
                                                     </p>
                                                     {cliente.proximaObligacionEtiqueta && (
-                                                        <p className="text-[11px] font-semibold text-[#c86b1c]">
+                                                        <p className="text-[11px] font-semibold text-acento">
                                                             {cliente.proximaObligacionEtiqueta}
                                                         </p>
                                                     )}
@@ -420,7 +420,7 @@ export function ClientesPage() {
                                                     }
                                                     aria-label={`Enviar recordatorio a ${cliente.nombreCompleto}`}
                                                     title="Recordatorio"
-                                                    className="rounded-lg border border-[#e3ded4] bg-white p-2 text-[#647083] transition hover:bg-[#f2efe8] hover:text-[#152546]"
+                                                    className="rounded-control border border-borde bg-white p-2 text-texto-suave transition hover:bg-fondo hover:text-tinta"
                                                 >
                                                     <Bell className="size-4" aria-hidden="true" />
                                                 </button>
@@ -433,8 +433,8 @@ export function ClientesPage() {
                     )}
                 </section>
 
-                <footer className="flex items-start gap-2.5 rounded-xl border border-[#e3ded4] bg-[#fbfaf7] px-4 py-3 text-xs text-[#647083]">
-                    <Info className="mt-0.5 size-4 shrink-0 text-[#2563eb]" aria-hidden="true" />
+                <footer className="flex items-start gap-2.5 rounded-xl border border-borde bg-fondo px-4 py-3 text-xs text-texto-suave">
+                    <Info className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
                     <p>
                         <strong>Reglas visibles del panel:</strong> una obligación es <em>próxima</em> si su
                         fecha configurada vence en{' '}

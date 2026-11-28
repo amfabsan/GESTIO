@@ -45,10 +45,10 @@ export function DireccionFiscalEmisor({ autonomoId }: Props) {
 
   return <section className={`${card} mb-5 p-5`} aria-labelledby="direccion-fiscal-emisor">
     <h2 id="direccion-fiscal-emisor" className="font-semibold">Dirección fiscal del emisor</h2>
-    <p className="mt-1 text-sm text-[#6b6656]">Se copiará a las facturas nuevas al emitirlas. Las emitidas conservarán estos datos aunque actualices el perfil.</p>
-    {cargando ? <p className="mt-3 text-sm text-[#6b6656]" role="status">Cargando dirección fiscal…</p> : <>
+    <p className="mt-1 text-sm text-texto-suave">Se copiará a las facturas nuevas al emitirlas. Las emitidas conservarán estos datos aunque actualices el perfil.</p>
+    {cargando ? <p className="mt-3 text-sm text-texto-suave" role="status">Cargando dirección fiscal…</p> : <>
       <label className="mt-3 block text-sm font-medium">Dirección fiscal
-        <textarea className="mt-1 min-h-20 w-full rounded-xl border border-[#d6d2c8] bg-[#f5f3ef] p-3 text-sm outline-none focus:border-[#435271] focus:ring-2 focus:ring-[#435271]/15" maxLength={500} value={direccion} onChange={evento => { setDireccion(evento.target.value); setError(''); setMensaje('') }} placeholder="Calle, número, código postal y municipio" />
+        <textarea className="mt-1 min-h-20 w-full rounded-xl border border-borde bg-fondo p-3 text-sm outline-none focus:border-tinta-hover focus:ring-2 focus:ring-tinta-hover/15" maxLength={500} value={direccion} onChange={evento => { setDireccion(evento.target.value); setError(''); setMensaje('') }} placeholder="Calle, número, código postal y municipio" />
       </label>
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
       {mensaje && <p role="status" className="mt-2 text-sm text-green-700">{mensaje}</p>}

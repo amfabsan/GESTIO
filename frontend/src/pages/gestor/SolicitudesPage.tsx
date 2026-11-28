@@ -78,56 +78,56 @@ export function SolicitudesPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f3ef] px-6 py-8 text-[#1b2a4a] sm:px-10 lg:px-24 lg:py-10">
+    <div className="min-h-screen bg-fondo px-6 py-8 text-tinta sm:px-10 lg:px-9 lg:py-10">
       <section className="mx-auto max-w-5xl">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div>
-            <h1 className="font-serif text-3xl font-bold sm:text-4xl">Solicitudes de vinculación</h1>
-            <p className="mt-2 text-sm text-[#647083]">Autónomos que quieren que tu asesoría lleve su fiscalidad.</p>
+            <h1 className="text-3xl font-bold sm:text-[34px]">Solicitudes de vinculación</h1>
+            <p className="mt-2 text-sm text-texto-suave">Autónomos que quieren que tu asesoría lleve su fiscalidad.</p>
           </div>
-          <span className="inline-flex w-fit items-center rounded-full bg-[#c86b1c] px-3 py-1.5 text-xs font-bold text-white">
+          <span className="inline-flex w-fit items-center rounded-full bg-acento px-3 py-1.5 text-xs font-bold text-white">
             {pendientes.length} {pendientes.length === 1 ? 'pendiente' : 'pendientes'}
           </span>
         </div>
 
         {error && (
-          <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#f2c7bd] bg-[#fff5f2] p-4 text-sm text-[#9d3d2f]" role="alert">
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-error-fondo bg-error-fondo p-4 text-sm text-error" role="alert">
             <AlertCircle className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
         {mensaje && (
-          <div className="mt-6 rounded-xl border border-[#b9e5c8] bg-[#f0fbf3] p-4 text-sm text-[#247344]" role="status">{mensaje}</div>
+          <div className="mt-6 rounded-xl border border-ok-fondo bg-ok-fondo p-4 text-sm text-ok" role="status">{mensaje}</div>
         )}
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-[#dfdbd3] bg-white shadow-sm" aria-label="Solicitudes pendientes">
+        <section className="mt-6 overflow-hidden rounded-tarjeta bg-tarjeta shadow-tarjeta" aria-label="Solicitudes pendientes">
           {cargando ? (
-            <div className="flex items-center justify-center gap-2 p-12 text-sm text-[#647083]" aria-busy="true">
+            <div className="flex items-center justify-center gap-2 p-12 text-sm text-texto-suave" aria-busy="true">
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />
               Cargando solicitudes...
             </div>
           ) : pendientes.length === 0 ? (
             <div className="flex flex-col items-center px-6 py-14 text-center">
-              <span className="grid size-12 place-items-center rounded-full bg-[#f1eee8] text-[#647083]" aria-hidden="true"><Check className="size-6" /></span>
+              <span className="grid size-12 place-items-center rounded-full bg-fondo text-texto-suave" aria-hidden="true"><Check className="size-6" /></span>
               <h2 className="mt-4 font-semibold">No tienes solicitudes pendientes</h2>
-              <p className="mt-1 max-w-md text-sm text-[#647083]">Cuando un autónomo solicite vincularse con tu asesoría, aparecerá aquí para que puedas revisarla.</p>
+              <p className="mt-1 max-w-md text-sm text-texto-suave">Cuando un autónomo solicite vincularse con tu asesoría, aparecerá aquí para que puedas revisarla.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-[#ece9e3]">
+            <ul className="divide-y divide-borde">
               {pendientes.map((vinculacion) => {
                 const procesando = procesandoId === vinculacion.id
                 return (
                   <li className="flex flex-col justify-between gap-5 p-4 sm:flex-row sm:items-center sm:p-5" key={vinculacion.id}>
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f1eee8] text-sm font-bold text-[#1b2a4a]" aria-hidden="true">
+                      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-fondo text-sm font-bold text-tinta" aria-hidden="true">
                         {iniciales(vinculacion)}
                       </span>
                       <div className="min-w-0">
                         <h2 className="truncate text-sm font-bold">{nombreCompleto(vinculacion)}</h2>
-                        <p className="mt-0.5 text-xs text-[#647083]">
+                        <p className="mt-0.5 text-xs text-texto-suave">
                           NIF {vinculacion.autonomo?.nif ?? 'No disponible'} · Código {vinculacion.codigoAsesoria}
                         </p>
-                        <p className="mt-1 flex items-center gap-1 text-xs text-[#647083]">
+                        <p className="mt-1 flex items-center gap-1 text-xs text-texto-suave">
                           <Clock3 className="size-3.5" aria-hidden="true" />
                           Solicitado {formatearFecha(vinculacion.fechaSolicitud)}
                         </p>
@@ -135,7 +135,7 @@ export function SolicitudesPage() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2 pl-14 sm:pl-0">
                       <button
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#f1eee8] px-3 py-2.5 text-xs font-bold text-[#1b2a4a] transition hover:bg-[#e8e3d9] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-2 rounded-control bg-fondo px-3 py-2.5 text-xs font-bold text-tinta transition hover:bg-borde disabled:cursor-not-allowed disabled:opacity-60"
                         type="button"
                         onClick={() => void gestionarSolicitud(vinculacion, 'rechazar')}
                         disabled={procesandoId !== null}
@@ -146,7 +146,7 @@ export function SolicitudesPage() {
                         Rechazar
                       </button>
                       <button
-                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#1b2a4a] px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-[#2b3e66] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-2 rounded-control bg-tinta px-3.5 py-2.5 text-xs font-bold text-white transition hover:bg-tinta-hover disabled:cursor-not-allowed disabled:opacity-60"
                         type="button"
                         onClick={() => void gestionarSolicitud(vinculacion, 'aceptar')}
                         disabled={procesandoId !== null}

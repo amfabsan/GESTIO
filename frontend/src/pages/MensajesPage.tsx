@@ -20,9 +20,9 @@ export function MensajesPage() {
     const seleccionado = documentoId
 
     return (
-        <div className="min-h-[calc(100vh-3.5rem)] bg-[#edf0f2] text-[#172444]">
+        <div className="min-h-screen bg-fondo text-tinta">
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-8">
-                <h1 className="text-4xl font-bold">Mensajes</h1>
+                <h1 className="text-[34px] font-bold">Mensajes</h1>
                 <p className="mb-6 mt-1 text-slate-600">Consulta y responde aclaraciones sobre documentos.</p>
                 <div className="grid items-stretch gap-5 lg:grid-cols-[minmax(16rem,1fr)_minmax(0,2fr)]">
                     <section aria-label="Conversaciones" className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -31,7 +31,7 @@ export function MensajesPage() {
                             {[false, true].map(filtro => (
                                 <button type="button" key={String(filtro)} aria-pressed={soloSinLeer === filtro}
                                     onClick={() => setSoloSinLeer(filtro)}
-                                    className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold aria-pressed:bg-[#172444] aria-pressed:text-white">
+                                    className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold aria-pressed:bg-tinta aria-pressed:text-white">
                                     {filtro ? `Sin leer (${conversaciones.filter(c => c.sinLeer > 0).length})` : `Todas (${conversaciones.length})`}
                                 </button>
                             ))}
