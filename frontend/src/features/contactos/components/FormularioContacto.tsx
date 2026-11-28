@@ -93,8 +93,8 @@ export function FormularioContacto({ contacto, enviando, error, onCancelar, onGu
     })
   }
 
-  const claseCampo = 'mt-1 w-full rounded-lg border border-[#d9d4c9] bg-white px-3 py-2.5 text-sm text-[#202b43] outline-none focus:border-[#435271] focus:ring-2 focus:ring-[#435271]/15'
-  const etiqueta = 'block text-sm font-medium text-[#343b49]'
+  const claseCampo = 'mt-1 w-full rounded-control border border-borde bg-white px-3 py-2.5 text-sm text-tinta outline-none focus:border-tinta-hover focus:ring-2 focus:ring-tinta-hover/15'
+  const etiqueta = 'block text-sm font-medium text-tinta'
 
   return (
     <form className="space-y-4" noValidate onSubmit={guardar}>
@@ -118,25 +118,25 @@ export function FormularioContacto({ contacto, enviando, error, onCancelar, onGu
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className={etiqueta}>
-          Correo electrónico <span className="text-xs font-normal text-[#777265]">(opcional)</span>
+          Correo electrónico <span className="text-xs font-normal text-texto-suave">(opcional)</span>
           <input className={claseCampo} maxLength={320} type="email" value={campos.email} onChange={evento => actualizar('email', evento.target.value)} aria-invalid={Boolean(errores.email)} />
           {errores.email && <span className="mt-1 block text-xs text-red-700">{errores.email}</span>}
         </label>
         <label className={etiqueta}>
-          Teléfono <span className="text-xs font-normal text-[#777265]">(opcional)</span>
+          Teléfono <span className="text-xs font-normal text-texto-suave">(opcional)</span>
           <input className={claseCampo} maxLength={30} type="tel" placeholder="612 345 678 o +34 612 345 678" value={campos.telefono} onChange={evento => actualizar('telefono', evento.target.value)} aria-invalid={Boolean(errores.telefono)} />
           {errores.telefono && <span className="mt-1 block text-xs text-red-700">{errores.telefono}</span>}
         </label>
       </div>
       <label className={etiqueta}>
-        Dirección fiscal <span className="text-xs font-normal text-[#777265]">(opcional; se completará al facturar)</span>
+        Dirección fiscal <span className="text-xs font-normal text-texto-suave">(opcional; se completará al facturar)</span>
         <DireccionAutocomplete className={`${claseCampo} min-h-20 resize-y`} multiline value={campos.direccion} onChange={valor => actualizar('direccion', valor)} ariaInvalid={Boolean(errores.direccion)} />
         {errores.direccion && <span className="mt-1 block text-xs text-red-700">{errores.direccion}</span>}
       </label>
-      {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
-      <div className="flex flex-col-reverse justify-end gap-2 border-t border-[#eeeae2] pt-4 sm:flex-row">
-        <button className="rounded-lg border border-[#d9d4c9] px-4 py-2.5 text-sm font-medium text-[#343b49] hover:bg-[#f5f3ef] disabled:opacity-60" type="button" onClick={onCancelar} disabled={enviando}>Cancelar</button>
-        <button className="rounded-lg bg-[#1d2b4f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#2b3b62] disabled:cursor-wait disabled:opacity-60" type="submit" disabled={enviando}>{enviando ? 'Guardando…' : contacto ? 'Guardar cambios' : 'Crear contacto'}</button>
+      {error && <p role="alert" className="rounded-control bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
+      <div className="flex flex-col-reverse justify-end gap-2 border-t border-fondo pt-4 sm:flex-row">
+        <button className="rounded-control border border-borde px-4 py-2.5 text-sm font-medium text-tinta hover:bg-fondo disabled:opacity-60" type="button" onClick={onCancelar} disabled={enviando}>Cancelar</button>
+        <button className="rounded-control bg-tinta px-4 py-2.5 text-sm font-semibold text-white hover:bg-tinta-hover disabled:cursor-wait disabled:opacity-60" type="submit" disabled={enviando}>{enviando ? 'Guardando…' : contacto ? 'Guardar cambios' : 'Crear contacto'}</button>
       </div>
     </form>
   )

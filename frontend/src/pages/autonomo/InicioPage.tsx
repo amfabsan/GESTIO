@@ -1,35 +1,46 @@
 import { Link } from 'react-router-dom'
+import type { ComponentType } from 'react'
+import { ArrowRight, CalendarDays, FileText, Inbox, UserRound } from 'lucide-react'
+import { useAuth } from '../../context/useAuth'
+
+// Rediseño: se quitaron los datos inventados (gestor «Pedro Sánchez», «3 documentos», «Al día» y un botón sin
+// acción). Inicio solo muestra datos reales del perfil y accesos a pantallas que existen.
+const ACCESOS: { ruta: string; titulo: string; texto: string; icono: ComponentType<{ className?: string }> }[] = [
+  { ruta: '/autonomo/buzon', titulo: 'Buzón', texto: 'Sube facturas y tickets para que tu asesoría los valide.', icono: Inbox },
+  { ruta: '/autonomo/calendario', titulo: 'Calendario', texto: 'Consulta tus obligaciones y plazos fiscales.', icono: CalendarDays },
+  { ruta: '/autonomo/facturas', titulo: 'Facturas', texto: 'Crea, revisa y emite tus facturas.', icono: FileText },
+  { ruta: '/autonomo/perfil-fiscal', titulo: 'Perfil fiscal', texto: 'Revisa tus datos fiscales.', icono: UserRound },
+]
 
 export function InicioPage() {
+  const { perfilActivo } = useAuth()
+
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#f5f3ef] px-6 py-12 text-[#1b2a4a] sm:px-10 lg:px-24">
+    <div className="min-h-screen bg-fondo px-4 py-7 text-tinta sm:px-8 lg:px-9 lg:py-[50px]">
       <section className="mb-8 max-w-3xl">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-[#c86b1c]">Inicio</p>
-        <h1 className="font-serif text-4xl font-bold">Hola, Ramón</h1>
-        <p className="mt-2 text-[#647083]">Ten a mano el estado de tu gestión y la ayuda de tu asesoría.</p>
+        <h1 className="text-[34px] font-bold leading-tight">Hola{perfilActivo?.nombre.trim() ? `, ${perfilActivo.nombre.trim()}` : ''}</h1>
+        <p className="mt-1 text-base text-texto-gris">Accede a tu gestión y a la ayuda de tu asesoría.</p>
       </section>
 
-      <section className="max-w-3xl rounded-2xl border border-[#dfdbd3] bg-white p-6 shadow-sm" aria-label="Gestor asignado">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-[#c86b1c]">Tu gestor asignado</p>
-            <div className="flex items-center gap-3">
-              <span className="grid size-12 place-items-center rounded-full bg-[#1b2a4a] text-sm font-bold text-white" aria-hidden="true">PS</span>
-              <div>
-                <h2 className="text-lg font-semibold text-[#1b2a4a]">Pedro Sánchez</h2>
-                <p className="mt-1 text-sm text-[#647083]">Asesoría Sánchez</p>
-              </div>
-            </div>
-          </div>
-          <span className="whitespace-nowrap rounded-full bg-[#e3f5e9] px-3 py-2 text-xs font-bold text-[#247344]">●&nbsp; Al día</span>
-        </div>
-
-        <div className="mt-6 flex flex-col items-start justify-between gap-4 border-t border-[#ece9e3] pt-5 sm:flex-row sm:items-center">
-          <p className="text-sm text-[#647083]"><span className="mr-2 inline-grid size-6 place-items-center rounded-full bg-[#fff0df] text-xs font-bold text-[#c86b1c]">3</span>documentos pendientes de su revisión</p>
-          <button className="rounded-lg bg-[#1b2a4a] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#2b3e66]" type="button">Enviar mensaje o duda</button>
-        </div>
-      </section>
-      <Link to="/autonomo/perfil-fiscal" className="mt-6 inline-block font-semibold underline">Consultar perfil fiscal</Link>
+      <ul className="grid max-w-5xl gap-5 sm:grid-cols-2">
+        {ACCESOS.map(({ ruta, titulo, texto, icono: Icono }) => (
+          <li key={ruta}>
+            <Link
+              to={ruta}
+              className="group flex h-full items-start gap-4 rounded-tarjeta bg-tarjeta p-6 shadow-tarjeta transition-shadow hover:shadow-md"
+            >
+              <span className="grid size-[42px] shrink-0 place-items-center rounded-control bg-fondo text-tinta" aria-hidden="true">
+                <Icono className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-bold">{titulo}</span>
+                <span className="mt-1 block text-sm text-texto-suave">{texto}</span>
+              </span>
+              <ArrowRight className="mt-1 size-4 shrink-0 text-texto-suave transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

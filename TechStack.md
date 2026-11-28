@@ -19,6 +19,7 @@
 - Axios
 - Tailwind CSS 4
 - `openapi-typescript` para generar `src/types/api.ts`
+- `@fontsource-variable/geist`: fuente Geist del rediseño (OFL-1.1), servida desde la propia app, sin CDN
 
 ## Infraestructura
 

@@ -150,9 +150,9 @@ function estadoLegible(estado: Documento['estado']) {
 }
 
 const NIVELES_CONFIANZA: Record<string, { etiqueta: string; clases: string }> = {
-    ALTO: { etiqueta: 'Confianza alta', clases: 'bg-[#e3f6ea] text-[#008b45]' },
-    MEDIO: { etiqueta: 'Confianza media', clases: 'bg-[#fff0bf] text-[#a95500]' },
-    DUDOSO: { etiqueta: 'Confianza dudosa', clases: 'bg-[#ffe0e0] text-[#c62828]' },
+    ALTO: { etiqueta: 'Confianza alta', clases: 'bg-ok-fondo text-ok' },
+    MEDIO: { etiqueta: 'Confianza media', clases: 'bg-aviso-fondo text-aviso' },
+    DUDOSO: { etiqueta: 'Confianza dudosa', clases: 'bg-error-fondo text-error' },
 }
 
 // Solo se muestra la confianza que calcula el backend; nunca se inventa en el cliente.
@@ -412,27 +412,27 @@ export function BandejaValidacionPage() {
 
     if (cargando) {
         return (
-            <main className="flex min-h-[calc(100dvh-7rem)] items-center justify-center bg-[#f7f6f2]">
-                <Loader2 className="size-7 animate-spin text-[#1d2b55]" />
+            <main className="flex min-h-[calc(100dvh-7rem)] items-center justify-center bg-fondo">
+                <Loader2 className="size-7 animate-spin text-tinta" />
             </main>
         )
     }
 
     return (
-        <main className="min-h-[calc(100dvh-7rem)] bg-[#f7f6f2] px-5 py-6 lg:px-8">
+        <main className="min-h-[calc(100dvh-7rem)] bg-fondo px-5 py-6 lg:px-8">
             <div className="mx-auto max-w-[1450px]">
                 <header className="flex items-start justify-between gap-6">
                     <div>
-                        <h1 className="font-serif text-4xl font-bold tracking-tight text-[#1d2b55]">
+                        <h1 className="text-[34px] font-bold tracking-tight text-tinta">
                             Bandeja de validación
                         </h1>
 
-                        <p className="mt-2 text-lg text-[#766e61]">
+                        <p className="mt-2 text-lg text-texto-suave">
                             Revisa lo que ha leído la IA y apruébalo con un clic
                         </p>
                     </div>
 
-                    <div className="shrink-0 rounded-full bg-[#d66b13] px-5 py-2.5 text-base font-bold text-white">
+                    <div className="shrink-0 rounded-full bg-acento px-5 py-2.5 text-base font-bold text-white">
                         {pendientes} por validar
                     </div>
                 </header>
@@ -449,8 +449,8 @@ export function BandejaValidacionPage() {
                                 onClick={() => cambiarPestana(clave)}
                                 className={
                                     activa
-                                        ? 'rounded-full border-2 border-[#1d2b55] bg-[#1d2b55] px-5 py-2 text-base font-bold text-white'
-                                        : 'rounded-full border-2 border-[#ddd8ce] bg-white px-5 py-2 text-base font-medium text-[#766e61] hover:bg-[#f0eee8]'
+                                        ? 'rounded-full border-2 border-tinta bg-tinta px-5 py-2 text-base font-bold text-white'
+                                        : 'rounded-full border-2 border-borde bg-white px-5 py-2 text-base font-medium text-texto-suave hover:bg-fondo'
                                 }
                             >
                                 {etiqueta} ({documentosDePestana(documentos, clave).length})
@@ -465,7 +465,7 @@ export function BandejaValidacionPage() {
                             void cargar()
                         }}
                         disabled={procesando}
-                        className="ml-auto inline-flex items-center gap-2 rounded-full border-2 border-[#ddd8ce] bg-white px-4 py-2 text-sm font-bold text-[#1d2b55] transition hover:bg-[#f0eee8] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="ml-auto inline-flex items-center gap-2 rounded-full border-2 border-borde bg-white px-4 py-2 text-sm font-bold text-tinta transition hover:bg-fondo disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         <RefreshCw className="size-4" />
                         Actualizar
@@ -483,24 +483,24 @@ export function BandejaValidacionPage() {
                 )}
 
                 {visibles.length === 0 ? (
-                    <section className="mt-6 rounded-3xl border border-[#ddd8ce] bg-white p-16 text-center">
+                    <section className="mt-6 rounded-3xl border border-borde bg-white p-16 text-center">
                         <Check className="mx-auto size-10 text-emerald-600" />
 
-                        <h2 className="mt-4 text-xl font-bold text-[#1d2b55]">
+                        <h2 className="mt-4 text-xl font-bold text-tinta">
                             {pestana === 'PENDIENTES'
                                 ? 'No hay documentos pendientes'
                                 : 'No hay documentos en esta pestaña'}
                         </h2>
 
                         {pestana === 'PENDIENTES' && (
-                            <p className="mt-2 text-sm text-[#766e61]">
+                            <p className="mt-2 text-sm text-texto-suave">
                                 Todos los documentos han sido revisados.
                             </p>
                         )}
                     </section>
                 ) : (
-                    <section className="mt-6 grid min-h-[620px] grid-cols-[300px_minmax(0,1fr)] overflow-hidden rounded-3xl border border-[#d9d4ca] bg-white">
-                        <aside className="overflow-y-auto border-r border-[#e6e1d8]">
+                    <section className="mt-6 grid min-h-[620px] grid-cols-[300px_minmax(0,1fr)] overflow-hidden rounded-3xl border border-borde bg-white">
+                        <aside className="overflow-y-auto border-r border-borde">
                             {visibles.map((documento) => {
                                 const seleccionado =
                                     documento.id === documentoSeleccionado?.id
@@ -512,20 +512,20 @@ export function BandejaValidacionPage() {
                                         onClick={() =>
                                             seleccionarDocumento(documento.id)
                                         }
-                                        className={`relative w-full border-b border-[#e6e1d8] px-5 py-4 text-left transition ${seleccionado
-                                            ? 'bg-[#efede8]'
-                                            : 'bg-white hover:bg-[#faf9f6]'
+                                        className={`relative w-full border-b border-borde px-5 py-4 text-left transition ${seleccionado
+                                            ? 'bg-fondo'
+                                            : 'bg-white hover:bg-fondo'
                                             }`}
                                     >
                                         {seleccionado && (
-                                            <span className="absolute inset-y-0 left-0 w-1 bg-[#d66b13]" />
+                                            <span className="absolute inset-y-0 left-0 w-1 bg-acento" />
                                         )}
 
-                                        <p className="truncate text-base font-bold text-[#151515]">
+                                        <p className="truncate text-base font-bold text-tinta">
                                             {documento.nombreArchivo}
                                         </p>
 
-                                        <p className="mt-1 text-sm text-[#766e61]">
+                                        <p className="mt-1 text-sm text-texto-suave">
                                             {documento.usuario} ·{' '}
                                             {formatearFecha(
                                                 documento.fechaSubida,
@@ -534,12 +534,12 @@ export function BandejaValidacionPage() {
 
                                         <div className="mt-2 flex items-center gap-2">
                                             <EstadoBadge estado={documento.estado} />
-                                            <span className="text-base font-bold text-[#008b45]">
+                                            <span className="text-base font-bold text-ok">
                                                 {obtenerTotal(documento)}
                                             </span>
 
                                             {tieneAnomalia(documento) && (
-                                                <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                <span className="rounded-full bg-error-fondo px-2 py-0.5 text-xs font-bold text-error">
                                                     Anomalía
                                                 </span>
                                             )}
@@ -551,13 +551,13 @@ export function BandejaValidacionPage() {
 
                         {documentoSeleccionado && (
                             <section className="flex min-w-0 flex-col">
-                                <header className="flex items-center justify-between gap-4 border-b border-[#e6e1d8] px-7 py-5">
+                                <header className="flex items-center justify-between gap-4 border-b border-borde px-7 py-5">
                                     <div className="min-w-0">
-                                        <h2 className="truncate text-2xl font-bold text-[#1d2b55]">
+                                        <h2 className="truncate text-2xl font-bold text-tinta">
                                             {documentoSeleccionado.nombreArchivo}
                                         </h2>
 
-                                        <p className="mt-1 text-sm text-[#766e61]">
+                                        <p className="mt-1 text-sm text-texto-suave">
                                             {documentoSeleccionado.usuario} ·{' '}
                                             {documentoSeleccionado.origen ||
                                                 'Documento'}{' '}
@@ -571,31 +571,31 @@ export function BandejaValidacionPage() {
                                     <div className="flex shrink-0 items-center gap-3">
                                         <EstadoBadge estado={documentoSeleccionado.estado} />
 
-                                        <strong className="text-xl text-[#1d2b55]">
+                                        <strong className="text-xl text-tinta">
                                             {obtenerTotal(documentoSeleccionado)}
                                         </strong>
                                     </div>
                                 </header>
 
                                 <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_390px]">
-                                    <section className="min-w-0 overflow-y-auto border-r border-[#e6e1d8] p-6">
+                                    <section className="min-w-0 overflow-y-auto border-r border-borde p-6">
                                         <div className="flex items-center gap-2">
-                                            <FileText className="size-5 text-[#1d2b55]" />
+                                            <FileText className="size-5 text-tinta" />
 
-                                            <h3 className="text-sm font-bold uppercase tracking-wide text-[#766e61]">
+                                            <h3 className="text-sm font-bold uppercase tracking-wide text-texto-suave">
                                                 Documento original
                                             </h3>
                                         </div>
 
                                         <div
                                             id="documento-original"
-                                            className="mt-4 flex min-h-[330px] items-center justify-center overflow-hidden rounded-2xl border border-[#d9d4ca] bg-[#eeeae1] p-5"
+                                            className="mt-4 flex min-h-[330px] items-center justify-center overflow-hidden rounded-2xl border border-borde bg-fondo p-5"
                                         >
                                             {cargandoOriginal && (
                                                 <div className="text-center">
-                                                    <Loader2 className="mx-auto size-7 animate-spin text-[#1d2b55]" />
+                                                    <Loader2 className="mx-auto size-7 animate-spin text-tinta" />
 
-                                                    <p className="mt-2 text-sm text-[#766e61]">
+                                                    <p className="mt-2 text-sm text-texto-suave">
                                                         Cargando documento…
                                                     </p>
                                                 </div>
@@ -625,28 +625,28 @@ export function BandejaValidacionPage() {
                                                         <img
                                                             src={originalUrl}
                                                             alt={`Documento original: ${documentoSeleccionado.nombreArchivo}`}
-                                                            className="max-h-[390px] w-auto max-w-full rounded-lg bg-white object-contain shadow-md"
+                                                            className="max-h-[390px] w-auto max-w-full rounded-control bg-white object-contain shadow-md"
                                                         />
                                                     </a>
                                                 ) : (
                                                     <iframe
                                                         title={`Documento original: ${documentoSeleccionado.nombreArchivo}`}
                                                         src={originalUrl}
-                                                        className="h-[390px] w-full rounded-lg bg-white shadow-md"
+                                                        className="h-[390px] w-full rounded-control bg-white shadow-md"
                                                     />
                                                 ))}
 
                                             {!cargandoOriginal &&
                                                 !errorOriginal &&
                                                 !originalUrl && (
-                                                    <p className="text-sm text-[#766e61]">
+                                                    <p className="text-sm text-texto-suave">
                                                         No hay documento original disponible.
                                                     </p>
                                                 )}
                                         </div>
 
                                         {tieneAnomalia(documentoSeleccionado) && (
-                                            <div className="mt-5 rounded-2xl border border-red-200 bg-[#fff4f4] p-4">
+                                            <div className="mt-5 rounded-2xl border border-red-200 bg-error-fondo p-4">
                                                 <div className="flex gap-3">
                                                     <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" />
 
@@ -717,8 +717,8 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         {documentoSeleccionado.anomalias.some((anomalia) => anomalia.resuelta) && (
-                                            <div className="mt-3 rounded-2xl border border-[#e6e1d8] bg-[#faf9f6] p-4">
-                                                <p className="text-xs font-bold uppercase tracking-wide text-[#766e61]">
+                                            <div className="mt-3 rounded-2xl border border-borde bg-fondo p-4">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-texto-suave">
                                                     Avisos resueltos
                                                 </p>
 
@@ -727,9 +727,9 @@ export function BandejaValidacionPage() {
                                                     .map((anomalia) => (
                                                         <p
                                                             key={anomalia.id}
-                                                            className="mt-1.5 flex items-center gap-1.5 text-sm text-[#766e61]"
+                                                            className="mt-1.5 flex items-center gap-1.5 text-sm text-texto-suave"
                                                         >
-                                                            <Check className="size-3.5 shrink-0 text-[#008b45]" />
+                                                            <Check className="size-3.5 shrink-0 text-ok" />
                                                             {reglaAnomalia(anomalia.tipo)}
                                                             {anomalia.campo && ` (${etiquetaCampo(anomalia.campo)})`}
                                                             {' · detectado el '}
@@ -742,13 +742,13 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         {(documentoSeleccionado.comprobacionesSinHacer?.length ?? 0) > 0 && (
-                                            <div className="mt-3 rounded-2xl border border-[#e6e1d8] bg-[#faf9f6] p-4">
-                                                <p className="text-xs font-bold uppercase tracking-wide text-[#766e61]">
+                                            <div className="mt-3 rounded-2xl border border-borde bg-fondo p-4">
+                                                <p className="text-xs font-bold uppercase tracking-wide text-texto-suave">
                                                     Comprobaciones no realizadas
                                                 </p>
 
                                                 {documentoSeleccionado.comprobacionesSinHacer!.map((motivo) => (
-                                                    <p key={motivo} className="mt-1.5 text-sm text-[#766e61]">
+                                                    <p key={motivo} className="mt-1.5 text-sm text-texto-suave">
                                                         {motivo}
                                                     </p>
                                                 ))}
@@ -767,13 +767,13 @@ export function BandejaValidacionPage() {
 
                                     <aside className="flex min-h-0 flex-col p-6">
                                         {documentoSeleccionado.estado === 'EXTRAYENDO_DATOS' ? <div className="rounded-xl bg-blue-50 p-4"><EstadoBadge estado={documentoSeleccionado.estado} /><p className="mt-3 text-sm">Los datos propuestos y sus confianzas estarán disponibles al terminar la extracción. No se puede editar ni validar mientras tanto.</p></div> : <>
-                                        <div className="mt-3 rounded-2xl border border-[#d9d4ca] bg-[#f8f6f3] p-4">
+                                        <div className="mt-3 rounded-2xl border border-borde bg-fondo p-4">
                                             <div className="flex items-center justify-between gap-3">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="flex size-7 items-center justify-center rounded-md bg-[#1d2b55] text-[10px] font-bold text-white">
+                                                    <span className="flex size-7 items-center justify-center rounded-md bg-tinta text-[10px] font-bold text-white">
                                                         IA
                                                     </span>
-                                                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-[#766e61]">
+                                                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-texto-suave">
                                                         Categoría
                                                     </span>
                                                 </div>
@@ -786,13 +786,13 @@ export function BandejaValidacionPage() {
                                             </div>
 
                                             {documentoSeleccionado.categoriaPropuesta && (
-                                                <p className="mt-3 text-sm font-medium text-[#1d2b55]">
+                                                <p className="mt-3 text-sm font-medium text-tinta">
                                                     La IA propone <span className="font-bold">{documentoSeleccionado.categoriaPropuesta}</span>
                                                 </p>
                                             )}
 
                                             {documentoSeleccionado.categoria === 'SIN_CLASIFICAR' && (
-                                                <p className="mt-2 text-sm text-[#766e61]">
+                                                <p className="mt-2 text-sm text-texto-suave">
                                                     Sin clasificar: elige una categoría para guardarla.
                                                 </p>
                                             )}
@@ -812,10 +812,10 @@ export function BandejaValidacionPage() {
                                                             className={[
                                                                 'rounded-xl border px-3 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
                                                                 activa
-                                                                    ? 'border-[#1d2b55] bg-[#1d2b55] text-white shadow-sm'
+                                                                    ? 'border-tinta bg-tinta text-white shadow-sm'
                                                                     : propuesta
-                                                                        ? 'border-[#d66b13] bg-[#fff4ea] text-[#d66b13]'
-                                                                        : 'border-[#d9d4ca] bg-white text-[#1d2b55] hover:bg-[#f5f3ee]',
+                                                                        ? 'border-acento bg-acento-suave text-acento'
+                                                                        : 'border-borde bg-white text-tinta hover:bg-fondo',
                                                             ].join(' ')}
                                                         >
                                                             {categoria}
@@ -826,11 +826,11 @@ export function BandejaValidacionPage() {
                                         </div>
 
                                         <div className="mt-5 flex items-center gap-2">
-                                            <span className="flex size-9 items-center justify-center rounded-lg bg-[#1d2b55] text-xs font-bold text-white">
+                                            <span className="flex size-9 items-center justify-center rounded-control bg-tinta text-xs font-bold text-white">
                                                 IA
                                             </span>
 
-                                            <h3 className="text-sm font-bold uppercase tracking-wide text-[#766e61]">
+                                            <h3 className="text-sm font-bold uppercase tracking-wide text-texto-suave">
                                                 {modoCorreccion
                                                     ? 'Corrige los campos'
                                                     : 'Datos extraídos'}
@@ -845,10 +845,10 @@ export function BandejaValidacionPage() {
                                                             key={clave}
                                                             className="block"
                                                         >
-                                                            <span className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-[#766e61]">
+                                                            <span className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-texto-suave">
                                                                 {etiqueta}
                                                                 {campoARevisar(documentoSeleccionado, clave) && (
-                                                                    <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                                    <span className="rounded-full bg-error-fondo px-2 py-0.5 text-xs font-bold text-error">
                                                                         Revisar
                                                                     </span>
                                                                 )}
@@ -872,7 +872,7 @@ export function BandejaValidacionPage() {
                                                                             .value,
                                                                     )
                                                                 }
-                                                                className="w-full rounded-lg border border-[#d9d4ca] bg-[#faf9f6] px-3 py-2 text-sm text-[#151515] outline-none focus:border-[#1d2b55] focus:ring-2 focus:ring-[#1d2b55]/10"
+                                                                className="w-full rounded-control border border-borde bg-fondo px-3 py-2 text-sm text-tinta outline-none focus:border-tinta focus:ring-2 focus:ring-tinta/10"
                                                             />
                                                         </label>
                                                     ),
@@ -895,16 +895,16 @@ export function BandejaValidacionPage() {
                                                         return (
                                                             <div key={clave}>
                                                                 <div className="flex items-end justify-between gap-3">
-                                                                    <span className="flex items-center gap-1.5 text-sm text-[#766e61]">
+                                                                    <span className="flex items-center gap-1.5 text-sm text-texto-suave">
                                                                         {etiqueta}
                                                                         {campoARevisar(documentoSeleccionado, clave) && (
-                                                                            <span className="rounded-full bg-[#ffe0e0] px-2 py-0.5 text-xs font-bold text-[#c62828]">
+                                                                            <span className="rounded-full bg-error-fondo px-2 py-0.5 text-xs font-bold text-error">
                                                                                 Revisar
                                                                             </span>
                                                                         )}
                                                                     </span>
 
-                                                                    <strong className="text-right text-sm text-[#151515]">
+                                                                    <strong className="text-right text-sm text-tinta">
                                                                         {esImporte(
                                                                             clave,
                                                                         )
@@ -917,7 +917,7 @@ export function BandejaValidacionPage() {
                                                                 </div>
 
                                                                 {campoCorregido(documentoSeleccionado, clave) ? (
-                                                                    <span className="mt-1.5 inline-block rounded-full bg-[#e7f1fb] px-2 py-0.5 text-xs font-bold text-[#1d2b55]">
+                                                                    <span className="mt-1.5 inline-block rounded-full bg-info-fondo px-2 py-0.5 text-xs font-bold text-tinta">
                                                                         Corregido por el gestor
                                                                     </span>
                                                                 ) : confianza && (
@@ -945,7 +945,7 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         {!admiteValidacion && (
-                                            <p className="mt-4 border-t border-[#e6e1d8] pt-4 text-sm text-[#766e61]">
+                                            <p className="mt-4 border-t border-borde pt-4 text-sm text-texto-suave">
                                                 Este documento está en estado «
                                                 {estadoLegible(documentoSeleccionado.estado)}
                                                 » y no admite correcciones ni aprobación.
@@ -953,14 +953,14 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         {admiteValidacion && !modoCorreccion && (
-                                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#e6e1d8] pt-4">
+                                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-borde pt-4">
                                                 <button
                                                     type="button"
                                                     onClick={() =>
                                                         void aprobarDocumento()
                                                     }
                                                     disabled={procesando}
-                                                    className="flex items-center justify-center gap-1.5 rounded-lg bg-[#1d2b55] px-2 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                                    className="flex items-center justify-center gap-1.5 rounded-control bg-tinta px-2 py-2 text-sm font-bold text-white disabled:opacity-50"
                                                 >
                                                     {procesando ? (
                                                         <Loader2 className="size-3.5 animate-spin" />
@@ -975,7 +975,7 @@ export function BandejaValidacionPage() {
                                                     onClick={() =>
                                                         setModoCorreccion(true)
                                                     }
-                                                    className="flex items-center justify-center gap-1.5 rounded-lg bg-[#eeeae1] px-2 py-2 text-sm font-bold text-[#1d2b55]"
+                                                    className="flex items-center justify-center gap-1.5 rounded-control bg-fondo px-2 py-2 text-sm font-bold text-tinta"
                                                 >
                                                     <Pencil className="size-3.5" />
                                                     Corregir
@@ -985,14 +985,14 @@ export function BandejaValidacionPage() {
                                         )}
 
                                         {admiteValidacion && modoCorreccion && (
-                                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#e6e1d8] pt-4">
+                                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-borde pt-4">
                                                 <button
                                                     type="button"
                                                     onClick={() => {
                                                         setModoCorreccion(false)
                                                         setCambios({})
                                                     }}
-                                                    className="rounded-lg bg-[#eeeae1] px-3 py-2 text-sm font-bold text-[#1d2b55]"
+                                                    className="rounded-control bg-fondo px-3 py-2 text-sm font-bold text-tinta"
                                                 >
                                                     Cancelar
                                                 </button>
@@ -1003,7 +1003,7 @@ export function BandejaValidacionPage() {
                                                         void guardarCorrecciones()
                                                     }
                                                     disabled={procesando}
-                                                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#1d2b55] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                                    className="inline-flex items-center justify-center gap-1.5 rounded-control bg-tinta px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
                                                 >
                                                     {procesando ? (
                                                         <Loader2 className="size-4 animate-spin" />
@@ -1015,8 +1015,8 @@ export function BandejaValidacionPage() {
                                             </div>
                                         )}
 
-                                        <div className="mt-4 flex items-center gap-2 text-xs text-[#766e61]">
-                                            <Check className="size-3.5 text-[#008b45]" />
+                                        <div className="mt-4 flex items-center gap-2 text-xs text-texto-suave">
+                                            <Check className="size-3.5 text-ok" />
                                             Revisión manual requerida.
                                         </div>
                                         </>}
@@ -1027,7 +1027,7 @@ export function BandejaValidacionPage() {
                     </section>
                 )}
 
-                <footer className="mt-6 flex justify-between border-t border-[#d9d4ca] pt-4 text-xs text-[#766e61]">
+                <footer className="mt-6 flex justify-between border-t border-borde pt-4 text-xs text-texto-suave">
                     <span>Gestio · Bandeja de validación</span>
                     <span>Verifactu-ready</span>
                 </footer>

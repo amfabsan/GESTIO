@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Bell, Calculator, CheckCircle2, Clock, FileCheck2, ListChecks, MessageSquare, Users } from 'lucide-react'
+import { Calculator, Clock, FileCheck2, ListChecks } from 'lucide-react'
 import { apiClient } from '../../services/apiClient'
 import { btnPrimario, btnSecundario, card } from '../../components/ui/estilos'
 import type { Vinculacion } from '../../types/vinculaciones'
@@ -13,8 +13,6 @@ export function EstimacionClientePage() {
     const [ejercicio] = useState(2026)
     const [trimestre, setTrimestre] = useState(2)
     const [clienteNombre, setClienteNombre] = useState('Cliente')
-    const [avisoGestor, setAvisoGestor] = useState('')
-    const [revisado, setRevisado] = useState(false)
 
     const { estimacion, cargando, error, procesando, actualizarInclusion } = useEstimacion(
         autonomoId ?? '',
@@ -46,120 +44,70 @@ export function EstimacionClientePage() {
     if (!autonomoId) return null
 
     const inicialesCliente = obtenerIniciales(clienteNombre) || 'CL'
-    const requiereAtencion = !revisado && ((estimacion?.elementosPorRevisar?.length ?? 0) > 0)
+    const requiereAtencion = (estimacion?.elementosPorRevisar?.length ?? 0) > 0
 
     const fechaFormateada = estimacion?.fechaCalculoUtc
         ? new Date(estimacion.fechaCalculoUtc)
             .toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
             .replace('.', '')
-        : '15 jun · 18:00'
+        : 'todavía sin calcular'
 
     return (
-        <main className="min-h-[calc(100vh-4rem)] bg-[#f5f3ef] px-4 py-7 text-[#1b2a4a] sm:px-8 lg:px-14">
-            <Link to="/gestor/clientes" className="inline-block text-sm font-medium text-[#6b6656] hover:text-[#1b2a4a]">
+        <main className="min-h-screen bg-fondo px-4 py-7 text-tinta sm:px-8 lg:px-9">
+            <Link to="/gestor/clientes" className="inline-block text-sm font-medium text-texto-suave hover:text-tinta">
                 ← Volver al panel de clientes
             </Link>
 
             <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-3.5">
                     <span
-                        className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#1d2b4f] text-sm font-bold text-white"
+                        className="grid size-11 shrink-0 place-items-center rounded-xl bg-tinta text-sm font-bold text-white"
                         aria-hidden="true"
                     >
                         {inicialesCliente}
                     </span>
                     <div>
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <h1 className="font-serif text-3xl font-bold text-[#152546] sm:text-4xl">
+                            <h1 className="text-3xl font-bold text-tinta sm:text-[34px]">
                                 {clienteNombre}
                             </h1>
                             {requiereAtencion ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-[#fff0df] px-2.5 py-0.5 text-xs font-bold text-[#c86b1c]">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-aviso-fondo px-2.5 py-0.5 text-xs font-bold text-aviso">
                                     ● Requiere atención
                                 </span>
                             ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-[#e3f5e9] px-2.5 py-0.5 text-xs font-bold text-[#247344]">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-ok-fondo px-2.5 py-0.5 text-xs font-bold text-ok">
                                     ● Sin incidencias
                                 </span>
                             )}
                         </div>
                     </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setAvisoGestor(`Recordatorio preparado para ${clienteNombre}.`)}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-[#d6d2c8] bg-white px-3.5 py-2 text-xs font-semibold text-[#152546] hover:bg-[#ece9e3]"
-                    >
-                        <Bell className="size-3.5 text-[#6b6656]" aria-hidden="true" />
-                        Recordatorio
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setAvisoGestor(`Mensajes con ${clienteNombre} no disponibles en esta vista.`)}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-[#d6d2c8] bg-white px-3.5 py-2 text-xs font-semibold text-[#152546] hover:bg-[#ece9e3]"
-                    >
-                        <MessageSquare className="size-3.5 text-[#6b6656]" aria-hidden="true" />
-                        Mensajes
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setRevisado(true)
-                            setAvisoGestor(`Estado de revisión actualizado para ${clienteNombre}.`)
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#1d2b4f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2b3e66]"
-                    >
-                        <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                        Marcar revisado
-                    </button>
-                </div>
             </div>
 
             <nav
                 aria-label="Secciones del cliente"
-                className="mt-6 flex gap-6 overflow-x-auto border-b border-[#d6d2c8] text-sm font-semibold"
+                className="mt-6 flex gap-6 overflow-x-auto border-b border-borde text-sm font-semibold"
             >
-                <span aria-disabled="true" className="flex cursor-not-allowed items-center gap-2 whitespace-nowrap pb-3 text-[#6b6656]/55">
-                    <Users className="size-4" aria-hidden="true" />
-                    Resumen
-                </span>
                 <Link
                     to={`/gestor/clientes/${autonomoId}/perfil-fiscal`}
-                    className="flex items-center gap-2 whitespace-nowrap pb-3 text-[#6b6656] hover:text-[#1b2a4a]"
+                    className="flex items-center gap-2 whitespace-nowrap pb-3 text-texto-suave hover:text-tinta"
                 >
                     <FileCheck2 className="size-4" aria-hidden="true" />
                     Perfil fiscal
                 </Link>
                 <Link
                     to={`/gestor/clientes/${autonomoId}/calendario`}
-                    className="flex items-center gap-2 whitespace-nowrap pb-3 text-[#6b6656] hover:text-[#1b2a4a]"
+                    className="flex items-center gap-2 whitespace-nowrap pb-3 text-texto-suave hover:text-tinta"
                 >
                     <ListChecks className="size-4" aria-hidden="true" />
                     Obligaciones y checklist
                 </Link>
-                <span className="flex items-center gap-2 whitespace-nowrap border-b-2 border-[#d96c13] pb-3 text-[#1b2a4a]">
+                <span className="flex items-center gap-2 whitespace-nowrap border-b-2 border-acento pb-3 text-tinta">
                     <Calculator className="size-4" aria-hidden="true" />
                     Estimación
                 </span>
             </nav>
-
-            {avisoGestor && (
-                <div
-                    role="status"
-                    className="mt-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900"
-                >
-                    <span>{avisoGestor}</span>
-                    <button
-                        type="button"
-                        onClick={() => setAvisoGestor('')}
-                        className="font-bold underline"
-                    >
-                        Cerrar
-                    </button>
-                </div>
-            )}
 
             <div className="my-6 flex flex-wrap items-center justify-between gap-4">
                 <div className={`${card} inline-flex gap-1 p-1`} aria-label="Trimestre fiscal">
@@ -177,7 +125,7 @@ export function EstimacionClientePage() {
                     ))}
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs text-[#6b6656]">
+                <div className="flex items-center gap-1.5 text-xs text-texto-suave">
                     <Clock className="size-3.5" aria-hidden="true" />
                     <span>Última actualización del cálculo: {fechaFormateada}</span>
                 </div>

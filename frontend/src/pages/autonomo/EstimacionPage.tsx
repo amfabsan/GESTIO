@@ -22,12 +22,12 @@ export function EstimacionPage() {
         ? new Date(estimacion.fechaCalculoUtc)
             .toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
             .replace('.', '')
-        : '15 jun · 18:00'
+        : 'todavía sin calcular'
 
     return (
-        <main className="min-h-[calc(100vh-4rem)] bg-[#f5f3ef] px-4 py-7 text-[#1b2a4a] sm:px-8 lg:px-14">
-            <h1 className="font-serif text-4xl font-bold text-[#152546]">Estimación fiscal</h1>
-            <p className="mt-1.5 text-sm text-[#6b6656]">
+        <main className="min-h-screen bg-fondo px-4 py-7 text-tinta sm:px-8 lg:px-9">
+            <h1 className="text-[34px] font-bold text-tinta">Estimación fiscal</h1>
+            <p className="mt-1.5 text-sm text-texto-suave">
                 Previsión orientativa de IVA del trimestre y documentos de los que procede
             </p>
 
@@ -48,7 +48,7 @@ export function EstimacionPage() {
                     ))}
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs text-[#6b6656]">
+                <div className="flex items-center gap-1.5 text-xs text-texto-suave">
                     <Clock className="size-3.5" />
                     <span>Última actualización del cálculo: {fechaFormateada}</span>
                 </div>

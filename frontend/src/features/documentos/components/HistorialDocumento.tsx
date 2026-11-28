@@ -30,16 +30,16 @@ function LineaTemporal({ documentoId, version }: { documentoId: string; version?
 
   return (
     <div className="mt-3">
-      <ol className="space-y-3 border-l border-[#d6d2c8] pl-4">
+      <ol className="space-y-3 border-l border-borde pl-4">
         {historial.elementos.map((evento) => (
           <li key={evento.id}>
             <div className="flex items-center gap-2">
               {esEventoDelSistema(evento)
-                ? <Bot aria-hidden="true" className="size-3.5 text-[#1d2b4f]" />
-                : <User aria-hidden="true" className="size-3.5 text-[#6b6656]" />}
+                ? <Bot aria-hidden="true" className="size-3.5 text-tinta" />
+                : <User aria-hidden="true" className="size-3.5 text-texto-suave" />}
               <p className="font-medium">{textoEvento(evento)}</p>
             </div>
-            <p className="text-xs text-[#6b6656]">
+            <p className="text-xs text-texto-suave">
               <time dateTime={evento.fecha}>{formatearFechaHora(evento.fecha)}</time> · {nombreActor(evento)}
             </p>
             {evento.cambio ? (
@@ -47,7 +47,7 @@ function LineaTemporal({ documentoId, version }: { documentoId: string; version?
                 {etiquetaCampo(evento.cambio.campo)}: <del>{valorCorregido(evento.cambio.campo, evento.cambio.valorAnterior)}</del> → <span className="font-medium">{valorCorregido(evento.cambio.campo, evento.cambio.valorNuevo)}</span>
               </p>
             ) : (
-              evento.detalle && <p className="mt-1 text-[#3d3a30]">{textoEstadoExtraccion(evento.detalle)}</p>
+              evento.detalle && <p className="mt-1 text-tinta">{textoEstadoExtraccion(evento.detalle)}</p>
             )}
           </li>
         ))}

@@ -1,16 +1,56 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    font-family: Inter, system-ui, sans-serif;
-  }
+/* Rediseño (Figma de Bellas Artes, «Gestió · v3»). Tokens con nombre propio: no se redefinen los de Tailwind
+   (rounded-xl, shadow-sm…) para que las pantallas aún sin migrar no cambien de golpe. */
+@theme {
+  /* Geist variable (paquete @fontsource-variable/geist, importado en main.tsx). */
+  --font-sans: 'Geist Variable', Inter, system-ui, sans-serif;
 
+  --color-acento: #7c36f8;          /* «principale» */
+  --color-acento-hover: #6a25e6;
+  --color-acento-suave: #f0e8fe;    /* fondos de avatar/insignia violeta */
+  --color-tinta: #141e38;           /* «Nero/Blu»: texto principal y barra lateral */
+  --color-tinta-hover: #26314f;
+  --color-fondo: #eff2f4;           /* «fondi» */
+  --color-tarjeta: #ffffff;         /* «card» */
+  --color-borde: #dfdfdc;           /* «righe» */
+  --color-texto-suave: #64748b;
+  --color-texto-gris: #666666;
+  --color-texto-tenue: #94a3b8;     /* textos de apoyo muy claros (no viene en el Figma) */
+  --color-ok: #277023;              /* «verde scuro» */
+  --color-ok-fondo: #d3ffc9;        /* «fondo verde» */
+  --color-aviso: #b47113;           /* «arancio scuro» */
+  --color-aviso-fondo: #ffeed1;     /* «fondo arancio» */
+  --color-error: #b3261e;           /* no viene en el Figma: el rojo de texto lo elegimos nosotros */
+  --color-error-fondo: #ffc9c9;     /* «rosso fondo» */
+  --color-info: #1d6ae4;
+  --color-info-fondo: #d8e5fa;
+
+  --radius-control: 10px;
+  --radius-tarjeta: 24px;
+  --radius-pastilla: 999px;
+
+  --shadow-tarjeta: 0 8px 24px -12px rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.05);
+}
+
+@layer base {
   body {
     margin: 0;
     min-width: 320px;
-    background-color: #f5f3ef;
-    color: #1b2a4a;
+    font-family: var(--font-sans);
+    background-color: var(--color-fondo);
+    color: var(--color-tinta);
   }
+}
+
+/* La factura (documento fiscal) conserva la tipografía anterior al rediseño, en pantalla y en el PDF. */
+#factura-imprimible {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* Degradado de la barra lateral y de la tarjeta destacada del Figma. */
+@utility bg-degradado-gestio {
+  background-image: linear-gradient(180deg, #141e38 30%, #30158a 65%, #6225cd 100%);
 }
 
 /* UT23 (PB-23, D3): «Descargar PDF» usa la impresión del navegador. Solo se imprime la factura abierta

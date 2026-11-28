@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowDownRight, ArrowUpRight, Ban, Calculator, Check, Fi
 import type { EstimacionResponse, ElementoPorRevisar } from '../../../types/estimacion'
 import { formatearEuros } from '../../../utils/formato'
 
-const card = 'rounded-2xl border border-[#e2dfd7] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]'
+const card = 'rounded-2xl border border-borde bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]'
 
 interface VistaEstimacionProps {
     estimacion: EstimacionResponse | null
@@ -25,7 +25,7 @@ export function VistaEstimacion({
     const [toastMensaje, setToastMensaje] = useState<string | null>(null)
 
     if (cargando) {
-        return <p role="status" className="py-12 text-center text-sm text-[#6b6656]">Calculando estimación fiscal…</p>
+        return <p role="status" className="py-12 text-center text-sm text-texto-suave">Calculando estimación fiscal…</p>
     }
 
     if (estimacion && !estimacion.disponible) {
@@ -35,11 +35,11 @@ export function VistaEstimacion({
 
         return (
             <div role="alert" className={`${card} flex flex-col items-center justify-center px-6 py-16 text-center`}>
-                <div className="grid size-12 place-items-center rounded-full bg-[#eef0f3] text-[#647083]">
+                <div className="grid size-12 place-items-center rounded-full bg-fondo text-texto-suave">
                     <Ban className="size-6" strokeWidth={1.8} />
                 </div>
-                <h2 className="mt-4 text-base font-bold text-[#152546]">Estimación no disponible para este perfil</h2>
-                <p className="mt-2 max-w-[520px] text-sm leading-relaxed text-[#6b6656]">
+                <h2 className="mt-4 text-base font-bold text-tinta">Estimación no disponible para este perfil</h2>
+                <p className="mt-2 max-w-[520px] text-sm leading-relaxed text-texto-suave">
                     {motivo}
                 </p>
             </div>
@@ -86,51 +86,51 @@ export function VistaEstimacion({
             <div className="grid gap-5 md:grid-cols-3">
                 {/* KPI 1: IVA de ingresos incluidos */}
                 <div className={`${card} flex flex-col justify-between p-6`}>
-                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#6b6656]">
-                        <ArrowUpRight className="size-3.5 text-[#1f7a5c]" strokeWidth={2.4} />
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-texto-suave">
+                        <ArrowUpRight className="size-3.5 text-ok" strokeWidth={2.4} />
                         IVA DE INGRESOS INCLUIDOS
                     </p>
-                    <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-[#152546]">
+                    <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-tinta">
                         {formatearEuros(ivaIngresos)}
                     </p>
-                    <p className="mt-2.5 text-xs text-[#6b6656]">
+                    <p className="mt-2.5 text-xs text-texto-suave">
                         {ingresos.length} facturas emitidas validadas
                     </p>
                 </div>
 
                 {/* KPI 2: IVA de gastos incluidos */}
                 <div className={`${card} flex flex-col justify-between p-6`}>
-                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#6b6656]">
-                        <ArrowDownRight className="size-3.5 text-[#6b6656]" strokeWidth={2.4} />
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-texto-suave">
+                        <ArrowDownRight className="size-3.5 text-texto-suave" strokeWidth={2.4} />
                         IVA DE GASTOS INCLUIDOS
                     </p>
-                    <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-[#152546]">
+                    <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-tinta">
                         {formatearEuros(ivaGastos)}
                     </p>
-                    <p className="mt-2.5 text-xs text-[#6b6656]">
+                    <p className="mt-2.5 text-xs text-texto-suave">
                         {gastos.length} gastos marcados por el gestor
                     </p>
                 </div>
 
                 {/* KPI 3: Diferencia orientativa (Tarjeta Azul Marino) */}
-                <div className="flex flex-col justify-between rounded-2xl bg-[#152546] p-6 text-white shadow-sm">
-                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#9aa8be]">
+                <div className="flex flex-col justify-between rounded-2xl bg-tinta p-6 text-white shadow-sm">
+                    <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-texto-tenue">
                         <Calculator className="size-3.5" strokeWidth={2} />
                         DIFERENCIA ORIENTATIVA · {trimestre}T
                     </p>
                     {sinDatos ? (
                         <>
                             <p className="mt-3 text-2xl font-bold tracking-tight text-white">Datos insuficientes</p>
-                            <p className="mt-2 text-xs leading-relaxed text-[#9aa8be]">
+                            <p className="mt-2 text-xs leading-relaxed text-texto-tenue">
                                 No hay documentos validados de este trimestre que permitan estimar una cifra.
                             </p>
                         </>
                     ) : (
                         <>
-                            <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-[#f5a623]">
+                            <p className="mt-3 text-[32px] font-extrabold leading-none tracking-tight text-aviso">
                                 {formatearEuros(diferencia)}
                             </p>
-                            <p className="mt-2.5 text-xs text-[#9aa8be]">
+                            <p className="mt-2.5 text-xs text-texto-tenue">
                                 {formatearEuros(ivaIngresos)} – {formatearEuros(ivaGastos)} · importe a reservar orientativo
                             </p>
                         </>
@@ -139,10 +139,10 @@ export function VistaEstimacion({
             </div>
 
             {/* Fila 2: Banner informativo amarillo */}
-            <div className="flex items-start gap-3 rounded-xl border border-[#ebd899] bg-[#fdf8e6] px-4 py-3 text-xs leading-relaxed text-[#7c6218]">
-                <Info className="mt-0.5 size-4 shrink-0 text-[#b78a14]" />
+            <div className="flex items-start gap-3 rounded-xl border border-aviso-fondo bg-aviso-fondo px-4 py-3 text-xs leading-relaxed text-aviso">
+                <Info className="mt-0.5 size-4 shrink-0 text-aviso" />
                 <p>
-                    <strong className="font-bold text-[#5c4810]">Previsión orientativa, no definitiva.</strong> No es el resultado de una declaración tributaria. Solo incluye documentos VALIDADOS del trimestre; el IVA de un gasto solo se resta cuando el gestor lo marca para la estimación (clasificarlo como gasto no implica que sea deducible).
+                    <strong className="font-bold text-aviso">Previsión orientativa, no definitiva.</strong> No es el resultado de una declaración tributaria. Solo incluye documentos VALIDADOS del trimestre; el IVA de un gasto solo se resta cuando el gestor lo marca para la estimación (clasificarlo como gasto no implica que sea deducible).
                 </p>
             </div>
 
@@ -150,29 +150,29 @@ export function VistaEstimacion({
             <div className="grid items-start gap-5 lg:grid-cols-2">
                 {/* Columna Izquierda: Ingresos utilizados */}
                 <section className={`${card} overflow-hidden`}>
-                    <header className="flex items-center justify-between border-b border-[#ece9e3] px-6 py-4">
-                        <h3 className="flex items-center gap-2 text-sm font-bold text-[#152546]">
-                            <ArrowUpRight className="size-4 text-[#1f7a5c]" strokeWidth={2.4} />
+                    <header className="flex items-center justify-between border-b border-borde px-6 py-4">
+                        <h3 className="flex items-center gap-2 text-sm font-bold text-tinta">
+                            <ArrowUpRight className="size-4 text-ok" strokeWidth={2.4} />
                             Ingresos utilizados
                         </h3>
-                        <span className="text-xs text-[#6b6656]">{ingresos.length} documentos</span>
+                        <span className="text-xs text-texto-suave">{ingresos.length} documentos</span>
                     </header>
 
                     {ingresos.length === 0 ? (
-                        <p className="px-6 py-5 text-sm text-[#6b6656]">Ningún documento incluido.</p>
+                        <p className="px-6 py-5 text-sm text-texto-suave">Ningún documento incluido.</p>
                     ) : (
-                        <ul className="divide-y divide-[#f2efe9]">
+                        <ul className="divide-y divide-fondo">
                             {ingresos.map(doc => (
                                 <li key={doc.documentoId} className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
                                     <div className="min-w-0">
-                                        <p className="truncate font-bold text-[#152546]">
+                                        <p className="truncate font-bold text-tinta">
                                             {doc.numeroFactura || doc.emisor || 'Factura emitida'}
                                         </p>
-                                        <p className="mt-0.5 truncate text-xs text-[#6b6656]">
+                                        <p className="mt-0.5 truncate text-xs text-texto-suave">
                                             {doc.emisor ? `${doc.emisor}${doc.nif ? ` (${doc.nif})` : ''} · validado` : 'Documento validado'}
                                         </p>
                                     </div>
-                                    <span className="shrink-0 font-bold text-[#152546]">
+                                    <span className="shrink-0 font-bold text-tinta">
                                         {formatearEuros(doc.ivaIncluido)}
                                     </span>
                                 </li>
@@ -180,7 +180,7 @@ export function VistaEstimacion({
                         </ul>
                     )}
 
-                    <footer className="flex items-center justify-between border-t border-[#ece9e3] px-6 py-3.5 text-sm font-bold text-[#152546]">
+                    <footer className="flex items-center justify-between border-t border-borde px-6 py-3.5 text-sm font-bold text-tinta">
                         <span>Suma de cuotas de IVA</span>
                         <span>{formatearEuros(ivaIngresos)}</span>
                     </footer>
@@ -188,30 +188,30 @@ export function VistaEstimacion({
 
                 {/* Columna Derecha: Gastos incluidos por el gestor */}
                 <section className={`${card} overflow-hidden`}>
-                    <header className="flex items-center justify-between border-b border-[#ece9e3] px-6 py-4">
-                        <h3 className="flex items-center gap-2 text-sm font-bold text-[#152546]">
-                            <ArrowDownRight className="size-4 text-[#6b6656]" strokeWidth={2.4} />
+                    <header className="flex items-center justify-between border-b border-borde px-6 py-4">
+                        <h3 className="flex items-center gap-2 text-sm font-bold text-tinta">
+                            <ArrowDownRight className="size-4 text-texto-suave" strokeWidth={2.4} />
                             Gastos incluidos por el gestor
                         </h3>
-                        <span className="text-xs text-[#6b6656]">{gastos.length} documentos</span>
+                        <span className="text-xs text-texto-suave">{gastos.length} documentos</span>
                     </header>
 
                     {gastos.length === 0 ? (
-                        <p className="px-6 py-5 text-sm text-[#6b6656]">Ningún documento incluido.</p>
+                        <p className="px-6 py-5 text-sm text-texto-suave">Ningún documento incluido.</p>
                     ) : (
-                        <ul className="divide-y divide-[#f2efe9]">
+                        <ul className="divide-y divide-fondo">
                             {gastos.map(doc => {
                                 const nombreVisible = doc.numeroFactura || doc.emisor || 'Gasto deducible'
                                 return (
                                     <li key={doc.documentoId} className="flex items-center justify-between gap-4 px-6 py-3.5 text-sm">
                                         <div className="min-w-0">
-                                            <p className="truncate font-bold text-[#152546]">{nombreVisible}</p>
-                                            <p className="mt-0.5 truncate text-xs text-[#6b6656]">
+                                            <p className="truncate font-bold text-tinta">{nombreVisible}</p>
+                                            <p className="mt-0.5 truncate text-xs text-texto-suave">
                                                 {doc.emisor ? `${doc.emisor}${doc.nif ? ` (${doc.nif})` : ''} · validado` : 'Documento validado'}
                                             </p>
                                         </div>
                                         <div className="flex shrink-0 items-center gap-3">
-                                            <span className="font-bold text-[#152546]">
+                                            <span className="font-bold text-tinta">
                                                 {formatearEuros(doc.ivaIncluido)}
                                             </span>
                                             {esGestor && (
@@ -220,7 +220,7 @@ export function VistaEstimacion({
                                                     disabled={procesando}
                                                     onClick={() => void manejarToggleGasto(doc.documentoId, nombreVisible, false)}
                                                     title="Excluir gasto de la estimación"
-                                                    className="grid size-6 place-items-center rounded-full bg-[#f0ede6] text-[#6b6656] transition hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
+                                                    className="grid size-6 place-items-center rounded-full bg-fondo text-texto-suave transition hover:bg-red-100 hover:text-red-700 disabled:opacity-50"
                                                 >
                                                     <Minus className="size-3.5" />
                                                 </button>
@@ -232,7 +232,7 @@ export function VistaEstimacion({
                         </ul>
                     )}
 
-                    <footer className="flex items-center justify-between border-t border-[#ece9e3] px-6 py-3.5 text-sm font-bold text-[#152546]">
+                    <footer className="flex items-center justify-between border-t border-borde px-6 py-3.5 text-sm font-bold text-tinta">
                         <span>Suma de cuotas de IVA</span>
                         <span>{formatearEuros(ivaGastos)}</span>
                     </footer>
@@ -241,18 +241,18 @@ export function VistaEstimacion({
 
             {/* Fila 4: Elementos por revisar · excluidos del cálculo */}
             <section className={`${card} overflow-hidden`}>
-                <header className="flex items-center justify-between border-b border-[#ece9e3] px-6 py-4">
-                    <h3 className="flex items-center gap-2 text-sm font-bold text-[#152546]">
-                        <AlertTriangle className="size-4 text-[#d97706]" />
+                <header className="flex items-center justify-between border-b border-borde px-6 py-4">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-tinta">
+                        <AlertTriangle className="size-4 text-aviso" />
                         Elementos por revisar · excluidos del cálculo
                     </h3>
-                    <span className="text-xs font-semibold text-[#6b6656]">{elementosPorRevisar.length}</span>
+                    <span className="text-xs font-semibold text-texto-suave">{elementosPorRevisar.length}</span>
                 </header>
 
                 {elementosPorRevisar.length === 0 ? (
-                    <p className="px-6 py-5 text-sm text-[#6b6656]">No hay documentos excluidos en este trimestre.</p>
+                    <p className="px-6 py-5 text-sm text-texto-suave">No hay documentos excluidos en este trimestre.</p>
                 ) : (
-                    <ul className="divide-y divide-[#f2efe9]">
+                    <ul className="divide-y divide-fondo">
                         {elementosPorRevisar.map((elemento: ElementoPorRevisar) => {
                             const esAnomaliaOPendiente =
                                 elemento.severidad === 'ANOMALIA' ||
@@ -264,12 +264,12 @@ export function VistaEstimacion({
                             return (
                                 <li key={elemento.documentoId} className="flex flex-col justify-between gap-3 px-6 py-4 text-sm sm:flex-row sm:items-center">
                                     <div className="flex items-start gap-3">
-                                        <FileText className="mt-0.5 size-4 shrink-0 text-[#8a94a6]" />
+                                        <FileText className="mt-0.5 size-4 shrink-0 text-texto-suave" />
                                         <div>
-                                            <p className="font-bold text-[#152546]">
+                                            <p className="font-bold text-tinta">
                                                 Documento {elemento.documentoId.slice(0, 8)}
                                             </p>
-                                            <p className={`mt-0.5 text-xs ${puedeIncluirse ? 'text-[#6b6656]' : 'text-[#b45309]'}`}>
+                                            <p className={`mt-0.5 text-xs ${puedeIncluirse ? 'text-texto-suave' : 'text-aviso'}`}>
                                                 {elemento.motivo}
                                             </p>
                                         </div>
@@ -280,7 +280,7 @@ export function VistaEstimacion({
                                             type="button"
                                             disabled={procesando}
                                             onClick={() => void manejarToggleGasto(elemento.documentoId, elemento.documentoId.slice(0, 8), true)}
-                                            className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-xl bg-[#152546] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#243b6b] disabled:opacity-50 sm:self-auto"
+                                            className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-xl bg-tinta px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-tinta-hover disabled:opacity-50 sm:self-auto"
                                         >
                                             <Plus className="size-3.5" />
                                             Incluir IVA
@@ -297,9 +297,9 @@ export function VistaEstimacion({
             {toastMensaje && (
                 <div
                     role="status"
-                    className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-[#1c1b18] px-4 py-3 text-xs font-semibold text-white shadow-lg"
+                    className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl bg-tinta px-4 py-3 text-xs font-semibold text-white shadow-lg"
                 >
-                    <Check className="size-4 text-[#34d399]" />
+                    <Check className="size-4 text-ok-fondo" />
                     <span>{toastMensaje}</span>
                 </div>
             )}

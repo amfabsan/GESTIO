@@ -42,26 +42,27 @@ function BloqueQr({ factura }: { factura: Factura }) {
 export function FacturaDetalleModal({ factura, modo, cargando = false, error, onVolver, onConfirmar, onCerrar, onEditar, onConsultar }: Props) {
   const emitida = factura.estado === 'EMITIDA'
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#101827]/55 p-0 sm:items-center sm:p-4 print:static print:block print:bg-transparent" onMouseDown={evento => { if (evento.target === evento.currentTarget && !cargando) onCerrar() }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="titulo-detalle-factura" className="max-h-[95vh] w-full overflow-y-auto rounded-t-2xl bg-[#fbfaf7] p-5 shadow-2xl sm:max-w-3xl sm:rounded-2xl sm:p-7 print:max-h-none print:overflow-visible print:shadow-none">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-tinta/55 p-0 sm:items-center sm:p-4 print:static print:block print:bg-transparent" onMouseDown={evento => { if (evento.target === evento.currentTarget && !cargando) onCerrar() }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="titulo-detalle-factura" className="max-h-[95vh] w-full overflow-y-auto rounded-t-2xl bg-fondo p-5 shadow-2xl sm:max-w-3xl sm:rounded-2xl sm:p-7 print:max-h-none print:overflow-visible print:shadow-none">
         <header className="flex items-start justify-between gap-4">
           <div>
             {modo === 'emitida' && <CheckCircle2 className="mb-2 text-green-700" size={28} aria-hidden="true" />}
-            <h2 id="titulo-detalle-factura" className="font-serif text-2xl font-bold text-[#1d2b4f]">
+            <h2 id="titulo-detalle-factura" className="text-2xl font-bold text-tinta">
               {modo === 'revision' ? 'Comprobación de factura' : modo === 'emitida' ? `Factura emitida · ${factura.numeroVisible}` : emitida ? factura.numeroVisible : 'Vista previa del borrador'}
             </h2>
             {modo === 'emitida' && <p className="mt-1 text-sm text-green-800">La factura ya no se puede editar.</p>}
           </div>
           <div className="flex items-center gap-1 print:hidden">
             {/* D3: el PDF lo genera el navegador («Guardar como PDF»); el CSS de impresión deja solo la factura. */}
-            {modo === 'consulta' && <button type="button" className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#1d2b4f] shadow-sm hover:bg-[#f5f4f0]" onClick={() => window.print()}><Printer size={14} aria-hidden="true" /> Descargar PDF</button>}
-            <button type="button" aria-label="Cerrar" className="rounded-lg p-2 text-[#6b6656] hover:bg-[#efede6]" onClick={onCerrar}><X size={20} /></button>
+            {modo === 'consulta' && <button type="button" className="flex items-center gap-1.5 rounded-control bg-white px-3 py-1.5 text-xs font-semibold text-tinta shadow-sm hover:bg-fondo" onClick={() => window.print()}><Printer size={14} aria-hidden="true" /> Descargar PDF</button>}
+            <button type="button" aria-label="Cerrar" className="rounded-control p-2 text-texto-suave hover:bg-fondo" onClick={onCerrar}><X size={20} /></button>
           </div>
         </header>
 
-        {error && <p role="alert" className="mt-4 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+        {error && <p role="alert" className="mt-4 rounded-control border border-red-300 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
         {modo === 'emitida' && <p className="mt-5 rounded-xl bg-green-50 p-5 text-sm text-green-900">La factura <strong>{factura.numeroVisible}</strong> se ha emitido correctamente y ya no se puede editar.</p>}
         {modo !== 'emitida' && <div id="factura-imprimible">
+        {/* Rediseño: la factura (documento fiscal impreso) conserva sus colores y tipografía originales a propósito. */}
         {/* Solo en el PDF: el título del modal queda fuera de la zona imprimible. */}
         <div className="hidden items-end justify-between border-b-2 border-[#1d2b4f] pb-3 print:flex">
           <p className="font-serif text-2xl font-bold text-[#1d2b4f]">{factura.emisorNombre || 'Factura'}</p>
@@ -97,8 +98,8 @@ export function FacturaDetalleModal({ factura, modo, cargando = false, error, on
         </div>
         {factura.qr && (
           <div className="mt-4 flex flex-col gap-2 rounded-xl bg-white px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between print:hidden">
-            <span className="flex min-w-0 items-center gap-1.5 text-[#6b6656]"><Link2 size={14} className="flex-shrink-0" aria-hidden="true" /><span className="truncate">{factura.qr.url}</span></span>
-            <a href={factura.qr.url} target="_blank" rel="noopener noreferrer" className="flex flex-shrink-0 items-center gap-1 font-semibold text-[#c8651a] hover:underline">Abrir página del QR <ExternalLink size={14} aria-hidden="true" /></a>
+            <span className="flex min-w-0 items-center gap-1.5 text-texto-suave"><Link2 size={14} className="flex-shrink-0" aria-hidden="true" /><span className="truncate">{factura.qr.url}</span></span>
+            <a href={factura.qr.url} target="_blank" rel="noopener noreferrer" className="flex flex-shrink-0 items-center gap-1 font-semibold text-acento hover:underline">Abrir página del QR <ExternalLink size={14} aria-hidden="true" /></a>
           </div>
         )}
         </div>}

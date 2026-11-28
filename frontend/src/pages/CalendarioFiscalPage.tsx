@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { Bell, Calculator, CheckCircle2, ExternalLink, FileCheck2, FileText, ListChecks, MessageSquare, RotateCcw, Search, Sparkles, Users, X } from 'lucide-react'
+import { Calculator, CheckCircle2, ExternalLink, FileCheck2, FileText, ListChecks, RotateCcw, Search, Sparkles, X } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Vacio } from '../components/ui/Vacio'
@@ -62,7 +62,6 @@ function Contenido({
     const [buscandoEvidencias, setBuscandoEvidencias] = useState(false)
     const [error, setError] = useState('')
     const [mensaje, setMensaje] = useState('')
-    const [avisoGestor, setAvisoGestor] = useState('')
     const [vista, setVista] = useState<'listado' | 'calendario'>('listado')
     const [mostrarPresentadas, setMostrarPresentadas] = useState<boolean | null>(null)
     const [seleccion, setSeleccion] = useState<{ inicial?: string; id?: string }>({ inicial: seleccionInicial })
@@ -128,120 +127,70 @@ function Contenido({
     const hayIncompletas = visibles.some(o => o.estado !== 'PRESENTADA' && o.obligatoriosConfirmados < o.totalObligatorios)
 
     return (
-        <div className="min-h-[calc(100vh-4rem)] bg-[#f5f3ef] px-4 py-7 text-[#1b2a4a] sm:px-8 lg:px-14">
+        <div className="min-h-screen bg-fondo px-4 py-7 text-tinta sm:px-8 lg:px-9">
             {esGestor ? (
                 <>
-                    <Link to="/gestor/clientes" className="inline-block text-sm font-medium text-[#6b6656] hover:text-[#1b2a4a]">
+                    <Link to="/gestor/clientes" className="inline-block text-sm font-medium text-texto-suave hover:text-tinta">
                         ← Volver al panel de clientes
                     </Link>
 
                     <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                         <div className="flex items-center gap-3.5">
                             <span
-                                className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#1d2b4f] text-sm font-bold text-white"
+                                className="grid size-11 shrink-0 place-items-center rounded-xl bg-tinta text-sm font-bold text-white"
                                 aria-hidden="true"
                             >
                                 {inicialesCliente}
                             </span>
                             <div>
                                 <div className="flex flex-wrap items-center gap-2.5">
-                                    <h1 className="font-serif text-3xl font-bold text-[#152546] sm:text-4xl">
+                                    <h1 className="text-3xl font-bold text-tinta sm:text-[34px]">
                                         {nombreCliente}
                                     </h1>
                                     {datos && (
                                         hayIncompletas ? (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-[#fff0df] px-2.5 py-0.5 text-xs font-bold text-[#c86b1c]">
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-aviso-fondo px-2.5 py-0.5 text-xs font-bold text-aviso">
                                                 ● Requiere atención
                                             </span>
                                         ) : (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-[#e3f5e9] px-2.5 py-0.5 text-xs font-bold text-[#247344]">
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-ok-fondo px-2.5 py-0.5 text-xs font-bold text-ok">
                                                 ● Sin incidencias
                                             </span>
                                         )
                                     )}
                                 </div>
                                 {datos?.perfil && (
-                                    <p className="mt-1 text-xs text-[#647083]">
+                                    <p className="mt-1 text-xs text-texto-suave">
                                         IVA: {datos.perfil.regimenIva} · IRPF: {datos.perfil.regimenIrpf}
                                     </p>
                                 )}
                             </div>
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setAvisoGestor(`Recordatorio preparado para ${nombreCliente}.`)}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-[#d6d2c8] bg-white px-3.5 py-2 text-xs font-semibold text-[#152546] hover:bg-[#ece9e3]"
-                            >
-                                <Bell className="size-3.5 text-[#6b6656]" aria-hidden="true" />
-                                Recordatorio
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setAvisoGestor(`Mensajes con ${nombreCliente} no disponibles en esta vista.`)}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-[#d6d2c8] bg-white px-3.5 py-2 text-xs font-semibold text-[#152546] hover:bg-[#ece9e3]"
-                            >
-                                <MessageSquare className="size-3.5 text-[#6b6656]" aria-hidden="true" />
-                                Mensajes
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setAvisoGestor(`Estado de revisión actualizado para ${nombreCliente}.`)}
-                                className="inline-flex items-center gap-1.5 rounded-xl bg-[#1d2b4f] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2b3e66]"
-                            >
-                                <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                                Marcar revisado
-                            </button>
-                        </div>
                     </div>
 
                     <nav
                         aria-label="Secciones del cliente"
-                        className="mt-6 flex gap-6 overflow-x-auto border-b border-[#d6d2c8] text-sm font-semibold"
+                        className="mt-6 flex gap-6 overflow-x-auto border-b border-borde text-sm font-semibold"
                     >
-                        <span
-                            aria-disabled="true"
-                            className="flex cursor-not-allowed items-center gap-2 whitespace-nowrap pb-3 text-[#6b6656]/55"
-                        >
-                            <Users className="size-4" aria-hidden="true" />
-                            Resumen
-                        </span>
                         <Link
                             to={`/gestor/clientes/${id}/perfil-fiscal`}
-                            className="flex items-center gap-2 whitespace-nowrap pb-3 text-[#6b6656] hover:text-[#1b2a4a]"
+                            className="flex items-center gap-2 whitespace-nowrap pb-3 text-texto-suave hover:text-tinta"
                         >
                             <FileCheck2 className="size-4" aria-hidden="true" />
                             Perfil fiscal
                         </Link>
-                        <span className="flex items-center gap-2 whitespace-nowrap border-b-2 border-[#d96c13] pb-3 text-[#1b2a4a]">
+                        <span className="flex items-center gap-2 whitespace-nowrap border-b-2 border-acento pb-3 text-tinta">
                             <ListChecks className="size-4" aria-hidden="true" />
                             Obligaciones y checklist
                         </span>
                         <Link
                             to={`/gestor/clientes/${id}/estimacion`}
-                            className="flex items-center gap-2 whitespace-nowrap pb-3 text-[#6b6656] hover:text-[#1b2a4a]"
+                            className="flex items-center gap-2 whitespace-nowrap pb-3 text-texto-suave hover:text-tinta"
                         >
                             <Calculator className="size-4" aria-hidden="true" />
                             Estimación
                         </Link>
                     </nav>
-
-                    {avisoGestor && (
-                        <div
-                            role="status"
-                            className="mt-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900"
-                        >
-                            <span>{avisoGestor}</span>
-                            <button
-                                type="button"
-                                onClick={() => setAvisoGestor('')}
-                                className="font-bold underline"
-                            >
-                                Cerrar
-                            </button>
-                        </div>
-                    )}
                 </>
             ) : (
                 <PageHeader
@@ -322,18 +271,18 @@ function Contenido({
             ) : datos && !datos.perfilConfigurado ? (
                 <section className={`${card} p-8 text-center`}>
                     <h2 className="font-semibold">No hay perfil fiscal configurado para {ejercicio}</h2>
-                    <p className="mx-auto mt-3 max-w-xl text-sm text-[#6b6656]">Sin un perfil configurado no se generan obligaciones por suposición. Tu gestor debe configurarlo primero.</p>
+                    <p className="mx-auto mt-3 max-w-xl text-sm text-texto-suave">Sin un perfil configurado no se generan obligaciones por suposición. Tu gestor debe configurarlo primero.</p>
                     <Link to={rutaPerfil} className="mt-4 inline-block text-sm underline">Consultar perfil fiscal</Link>
                 </section>
             ) : datos && (
                 <div className="grid items-start gap-5 lg:grid-cols-[2fr_3fr]">
                     <section className={`${card} overflow-hidden`} aria-label="Obligaciones del ejercicio">
-                        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#ece9e3] p-4">
+                        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-borde p-4">
                             <h2 className="font-semibold">{datos.obligaciones.length} obligaciones · {ejercicio}</h2>
                             {presentadas > 0 && (
                                 <button
                                     type="button"
-                                    className="text-xs font-semibold text-[#b65a12]"
+                                    className="text-xs font-semibold text-acento-hover"
                                     onClick={() => setMostrarPresentadas(v => !v)}
                                 >
                                     {mostrarObligacionesPresentadas ? 'Ocultar presentadas' : `Ver presentadas (${presentadas})`}
@@ -348,21 +297,21 @@ function Contenido({
                                             type="button"
                                             aria-pressed={seleccionada?.id === o.id}
                                             onClick={() => setSeleccion({ inicial: seleccionInicial, id: o.id })}
-                                            className={`flex w-full items-start gap-4 border-b border-[#ece9e3] p-4 text-left ${seleccionada?.id === o.id ? 'border-l-2 border-l-[#d96c13] bg-[#f0ede7]' : 'hover:bg-[#f8f7f4]'}`}
+                                            className={`flex w-full items-start gap-4 border-b border-borde p-4 text-left ${seleccionada?.id === o.id ? 'border-l-2 border-l-acento bg-fondo' : 'hover:bg-fondo'}`}
                                         >
                                             <time dateTime={o.fechaPrevista} className="w-20 shrink-0 text-xs font-semibold">
                                                 {formatearFecha(`${o.fechaPrevista}T12:00:00`)}
                                             </time>
                                             <span className="min-w-0 flex-1">
                                                 <strong className="text-sm">Mod. {o.modelo} · {o.periodo} · {o.ejercicio}</strong>
-                                                <span className="mt-1 block text-xs text-[#6b6656]">{o.nombre}</span>
-                                                <span className="mt-1 block text-xs font-semibold text-[#6b6656]">
+                                                <span className="mt-1 block text-xs text-texto-suave">{o.nombre}</span>
+                                                <span className="mt-1 block text-xs font-semibold text-texto-suave">
                                                     {o.obligatoriosConfirmados}/{o.totalObligatorios} obligatorios confirmados
                                                 </span>
                                             </span>
                                             <span className="flex shrink-0 flex-col items-end gap-1">
                                                 <Estado estado={o.estado} />
-                                                <span className="text-[10px] text-[#6b6656]">{o.fechaPrevista}</span>
+                                                <span className="text-[10px] text-texto-suave">{o.fechaPrevista}</span>
                                             </span>
                                         </button>
                                     </li>
@@ -374,7 +323,7 @@ function Contenido({
                                     <label className="text-sm">
                                         Mes
                                         <select
-                                            className="ml-3 rounded-lg border border-[#d6d2c8] bg-[#f5f3ef] p-2"
+                                            className="ml-3 rounded-control border border-borde bg-fondo p-2"
                                             value={mes}
                                             onChange={e => setMes(Number(e.target.value))}
                                         >
@@ -511,20 +460,20 @@ function Detalle({
 
     return (
         <section className={`${card} p-6`} aria-label="Detalle de obligación">
-            {error && <p role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-            {mensaje && <p role="status" className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-800">{mensaje}</p>}
+            {error && <p role="alert" className="mb-4 rounded-control bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+            {mensaje && <p role="status" className="mb-4 rounded-control bg-green-50 p-3 text-sm text-green-800">{mensaje}</p>}
             {!o ? (
                 <p role="status">Cargando checklist…</p>
             ) : (
                 <>
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <p className="text-xs text-[#6b6656]">Modelo {o.modelo} · {o.periodo} {o.ejercicio}</p>
-                            <h2 className="mt-2 font-serif text-2xl font-bold">{o.nombre}</h2>
+                            <p className="text-xs text-texto-suave">Modelo {o.modelo} · {o.periodo} {o.ejercicio}</p>
+                            <h2 className="mt-2 text-2xl font-bold">{o.nombre}</h2>
                         </div>
                         <Estado estado={o.estado} />
                     </div>
-                    <dl className="my-6 grid grid-cols-2 gap-5 border-b border-[#ece9e3] pb-6 sm:grid-cols-4">
+                    <dl className="my-6 grid grid-cols-2 gap-5 border-b border-borde pb-6 sm:grid-cols-4">
                         {[['Modelo', o.modelo], ['Ejercicio', o.ejercicio], ['Periodo', o.periodo], ['Fecha prevista', formatearFecha(`${o.fechaPrevista}T12:00:00`)]].map(([nombre, valor]) => (
                             <div key={nombre}>
                                 <dt className={etiqueta}>{nombre}</dt>
@@ -545,7 +494,7 @@ function Detalle({
                     <p className="mb-4 rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
                         {detalle.avisoPlantilla} {detalle.avisoFechas}; no se presentan declaraciones a la AEAT.
                     </p>
-                    <div className="mb-4 flex items-center justify-between text-xs text-[#6b6656]">
+                    <div className="mb-4 flex items-center justify-between text-xs text-texto-suave">
                         <h3 className={etiqueta}>Checklist de preparación</h3>
                         <span>{detalle.obligatoriosConfirmados}/{detalle.totalObligatorios} obligatorios confirmados</span>
                     </div>
@@ -555,11 +504,11 @@ function Detalle({
                         aria-valuemin={0}
                         aria-valuemax={100}
                         aria-valuenow={porcentaje}
-                        className="mb-5 h-2 overflow-hidden rounded-full bg-[#ece9e3]"
+                        className="mb-5 h-2 overflow-hidden rounded-full bg-borde"
                     >
-                        <div className="h-full rounded-full bg-[#1d2b4f] transition-all" style={{ width: `${porcentaje}%` }} />
+                        <div className="h-full rounded-full bg-tinta transition-all" style={{ width: `${porcentaje}%` }} />
                     </div>
-                    <ul className="divide-y divide-[#ece9e3]">
+                    <ul className="divide-y divide-borde">
                         {detalle.elementos.map(elemento => {
                             const evidenciaConfirmada = elemento.evidencias.some(e => e.estado === 'CONFIRMADA')
                             return (
@@ -567,20 +516,20 @@ function Detalle({
                                 <div className="flex items-start gap-3">
                                     <span
                                         aria-hidden="true"
-                                        className={`mt-1 h-3 w-3 shrink-0 rounded-sm ${elemento.estado === 'CONFIRMADO' ? 'bg-green-600' : elemento.estado === 'APORTADO' ? 'bg-amber-400' : 'border-2 border-[#d6d2c8]'}`}
+                                        className={`mt-1 h-3 w-3 shrink-0 rounded-sm ${elemento.estado === 'CONFIRMADO' ? 'bg-green-600' : elemento.estado === 'APORTADO' ? 'bg-amber-400' : 'border-2 border-borde'}`}
                                     />
                                     <div className="min-w-0 flex-1">
                                         <p className="font-semibold text-sm">
                                             {elemento.descripcion}{' '}
-                                            <span className="ml-1 rounded bg-[#eceef2] px-1.5 py-0.5 text-[9px] uppercase">
+                                            <span className="ml-1 rounded bg-fondo px-1.5 py-0.5 text-[9px] uppercase">
                                                 {elemento.obligatorio ? 'Obligatorio' : 'Opcional'}
                                             </span>
                                         </p>
-                                        <p className={`mt-1 text-xs ${elemento.estado === 'CONFIRMADO' ? 'text-green-700' : elemento.estado === 'APORTADO' ? 'text-amber-700' : 'text-[#6b6656]'}`}>
+                                        <p className={`mt-1 text-xs ${elemento.estado === 'CONFIRMADO' ? 'text-green-700' : elemento.estado === 'APORTADO' ? 'text-amber-700' : 'text-texto-suave'}`}>
                                             {textoEstado(elemento)}
                                         </p>
                                         {elemento.historial.length > 0 && (
-                                            <details className="mt-2 text-xs text-[#6b6656]">
+                                            <details className="mt-2 text-xs text-texto-suave">
                                                 <summary className="cursor-pointer">Historial ({elemento.historial.length})</summary>
                                                 <ol className="mt-2 space-y-2 pl-4">
                                                     {elemento.historial.map(c => (
@@ -600,7 +549,7 @@ function Detalle({
                                                         ? 'border-violet-200 bg-violet-50 text-violet-950'
                                                         : confirmada
                                                             ? 'border-green-200 bg-green-50 text-green-950'
-                                                            : 'border-[#e6e1d8] bg-[#faf9f6] text-[#6b6656]'
+                                                            : 'border-borde bg-fondo text-texto-suave'
                                                     return (
                                                         <article key={vinculo.id} className={`rounded-xl border p-3 ${colores}`}>
                                                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -646,14 +595,14 @@ function Detalle({
                                                             {esGestor && o.estado !== 'PRESENTADA' && (
                                                                 <div className="mt-3 flex flex-wrap gap-2">
                                                                     {propuesta && <>
-                                                                        <button type="button" className="rounded-lg bg-violet-700 px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50" disabled={procesando !== null} onClick={() => void cambiarEvidencia(vinculo, 'confirmar')}>
+                                                                        <button type="button" className="rounded-control bg-violet-700 px-3 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50" disabled={procesando !== null} onClick={() => void cambiarEvidencia(vinculo, 'confirmar')}>
                                                                             {procesando === vinculo.id ? 'Guardando…' : 'Confirmar evidencia'}
                                                                         </button>
-                                                                        <button type="button" className="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50" disabled={procesando !== null} onClick={() => void cambiarEvidencia(vinculo, 'rechazar')}>
+                                                                        <button type="button" className="rounded-control border border-violet-300 bg-white px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50" disabled={procesando !== null} onClick={() => void cambiarEvidencia(vinculo, 'rechazar')}>
                                                                             Rechazar
                                                                         </button>
                                                                     </>}
-                                                                    {confirmada && <button type="button" className="inline-flex items-center gap-1 rounded-lg border border-green-300 bg-white px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50" disabled={procesando !== null} onClick={() => void cambiarEvidencia(vinculo, 'retirar')}>
+                                                                    {confirmada && <button type="button" className="inline-flex items-center gap-1 rounded-control border border-green-300 bg-white px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50" disabled={procesando !== null} onClick={() => void cambiarEvidencia(vinculo, 'retirar')}>
                                                                         <RotateCcw className="size-3" aria-hidden="true" /> Retirar evidencia
                                                                     </button>}
                                                                 </div>
@@ -667,7 +616,7 @@ function Detalle({
                                     {o.estado !== 'PRESENTADA' && (esGestor ? (
                                         <button
                                             type="button"
-                                            className="rounded-lg bg-green-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                                            className="rounded-control bg-green-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
                                             disabled={procesando !== null || (elemento.estado === 'CONFIRMADO' && evidenciaConfirmada)}
                                             title={elemento.estado === 'CONFIRMADO' && evidenciaConfirmada ? 'Retira primero la evidencia confirmada.' : undefined}
                                             onClick={() => void cambiar(elemento, elemento.estado === 'CONFIRMADO' ? 'pendiente' : 'confirmar')}

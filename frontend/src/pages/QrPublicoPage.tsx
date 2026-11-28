@@ -35,11 +35,11 @@ export function QrPublicoPage() {
   }, [codigo])
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f5f4f0] text-[#1a1916]">
-      <header className="bg-[#1d2b4f] text-white">
+    <div className="flex min-h-screen flex-col bg-fondo text-tinta">
+      <header className="bg-tinta text-white">
         <div className="mx-auto flex h-14 max-w-xl items-center gap-2 px-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#c8651a]"><span className="text-sm font-bold">G</span></div>
-          <span className="font-serif text-lg tracking-tight">Gestio</span>
+          <div className="flex h-7 w-7 items-center justify-center rounded-control bg-acento"><span className="text-sm font-bold">G</span></div>
+          <span className="text-lg tracking-tight">Gestio</span>
           <span className="ml-2 text-xs text-blue-200">Identificación de factura</span>
         </div>
       </header>
@@ -53,32 +53,32 @@ export function QrPublicoPage() {
           </div>
         </div>
 
-        {estado.tipo === 'cargando' && <p className="rounded-2xl border border-[#d6d2c8] bg-white p-8 text-center text-sm text-[#6b6656]">Consultando la factura…</p>}
+        {estado.tipo === 'cargando' && <p className="rounded-tarjeta bg-tarjeta p-8 text-center text-sm text-texto-suave shadow-tarjeta">Consultando la factura…</p>}
 
         {estado.tipo === 'encontrada' && (
-          <div className="overflow-hidden rounded-2xl border border-[#d6d2c8] bg-white">
-            <div className="flex items-center gap-3 border-b border-[#ede9e0] px-6 py-5">
+          <div className="overflow-hidden rounded-tarjeta bg-tarjeta shadow-tarjeta">
+            <div className="flex items-center gap-3 border-b border-fondo px-6 py-5">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-100 text-green-700"><FileCheck2 className="h-6 w-6" aria-hidden="true" /></span>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-[#6b6656]">Factura emitida con GESTIO</p>
-                <h1 className="font-serif text-xl text-[#1d2b4f]">{estado.factura.serieNumero}</h1>
+                <p className="text-xs font-medium uppercase tracking-wider text-texto-suave">Factura emitida con GESTIO</p>
+                <h1 className="text-xl text-tinta">{estado.factura.serieNumero}</h1>
               </div>
             </div>
-            <dl className="divide-y divide-[#ede9e0] text-sm">
-              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-[#6b6656]">Emisor</dt><dd className="text-right font-semibold">{estado.factura.emisorNombre}</dd></div>
-              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-[#6b6656]">Serie y número</dt><dd className="font-semibold">{estado.factura.serieNumero}</dd></div>
-              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-[#6b6656]">Fecha de expedición</dt><dd className="font-semibold">{formatearFecha(estado.factura.fecha)}</dd></div>
-              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-[#6b6656]">Importe total</dt><dd className="text-lg font-bold text-[#1d2b4f]">{formatearEuros(estado.factura.total)}</dd></div>
+            <dl className="divide-y divide-fondo text-sm">
+              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-texto-suave">Emisor</dt><dd className="text-right font-semibold">{estado.factura.emisorNombre}</dd></div>
+              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-texto-suave">Serie y número</dt><dd className="font-semibold">{estado.factura.serieNumero}</dd></div>
+              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-texto-suave">Fecha de expedición</dt><dd className="font-semibold">{formatearFecha(estado.factura.fecha)}</dd></div>
+              <div className="flex justify-between gap-4 px-6 py-3"><dt className="text-texto-suave">Importe total</dt><dd className="text-lg font-bold text-tinta">{formatearEuros(estado.factura.total)}</dd></div>
             </dl>
-            <p className="bg-[#f8f7f4] px-6 py-3 text-[11px] text-[#6b6656]">Consulta pública de solo lectura. No se muestran datos del cliente, documentos, contactos ni mensajes.</p>
+            <p className="bg-fondo px-6 py-3 text-[11px] text-texto-suave">Consulta pública de solo lectura. No se muestran datos del cliente, documentos, contactos ni mensajes.</p>
           </div>
         )}
 
         {estado.tipo === 'no-valido' && (
-          <div className="rounded-2xl border border-[#d6d2c8] bg-white p-8 text-center">
+          <div className="rounded-tarjeta bg-tarjeta p-8 text-center shadow-tarjeta">
             <OctagonAlert className="mx-auto h-10 w-10 text-red-500" aria-hidden="true" />
-            <h1 className="mt-3 font-semibold text-[#1d2b4f]">Enlace no válido</h1>
-            <p className="mt-1 text-sm text-[#6b6656]">No hay ninguna factura asociada a este código.</p>
+            <h1 className="mt-3 font-semibold text-tinta">Enlace no válido</h1>
+            <p className="mt-1 text-sm text-texto-suave">No hay ninguna factura asociada a este código.</p>
           </div>
         )}
 

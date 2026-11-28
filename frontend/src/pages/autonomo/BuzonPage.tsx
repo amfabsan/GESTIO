@@ -30,7 +30,7 @@ export function BuzonPage() {
     const contar = (id: FiltroBuzon) => documentos.filter((documento) => cumpleFiltro(documento, id)).length
 
     return (
-        <div className="min-h-[calc(100vh-3.5rem)] bg-[#f5f4f0] text-[#1a1916]">
+        <div className="min-h-screen bg-fondo text-tinta">
             <div className="mx-auto max-w-6xl space-y-5 px-4 py-6">
                 <PageHeader titulo="Buzón de documentos" subtitulo="Sube una factura o ticket para extraer sus datos y dejarlos pendientes de validación" />
 
@@ -48,7 +48,7 @@ export function BuzonPage() {
                                     type="button"
                                     aria-pressed={filtro === id}
                                     onClick={() => setFiltro(id)}
-                                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filtro === id ? 'bg-[#1d2b4f] text-white' : 'border border-[#d6d2c8] bg-white text-[#6b6656] hover:border-[#1d2b4f]'
+                                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${filtro === id ? 'bg-tinta text-white' : 'border border-borde bg-white text-texto-suave hover:border-tinta'
                                         }`}
                                 >
                                     {texto} ({contar(id)})
@@ -66,7 +66,7 @@ export function BuzonPage() {
                             ) : (
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="border-b border-[#ede9e0]">
+                                        <tr className="border-b border-fondo">
                                             <th className={`${etiqueta} px-5 py-3 text-left`}>Documento</th>
                                             <th className={`${etiqueta} hidden px-3 py-3 text-left md:table-cell`}>Categoría</th>
                                             <th className={`${etiqueta} px-3 py-3 text-right`}>Importe</th>
@@ -76,10 +76,10 @@ export function BuzonPage() {
                                     </thead>
                                     <tbody>
                                         {filtrados.map((documento) => (
-                                            <tr key={documento.id} className="border-b border-[#ede9e0] transition-colors last:border-0 hover:bg-[#f5f4f0]">
+                                            <tr key={documento.id} className="border-b border-fondo transition-colors last:border-0 hover:bg-fondo">
                                                 <td className="px-5 py-3.5">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                                                        <div className="flex size-8 shrink-0 items-center justify-center rounded-control bg-slate-100 text-slate-600">
                                                             <FileText aria-hidden="true" className="size-4" />
                                                         </div>
                                                         <div className="min-w-0">
@@ -92,11 +92,11 @@ export function BuzonPage() {
                                                                     </>
                                                                 )}
                                                             </div>
-                                                            <p className="flex items-center gap-1.5 text-xs text-[#6b6656]">
+                                                            <p className="flex items-center gap-1.5 text-xs text-texto-suave">
                                                                 {formatearFecha(documento.fechaSubida)}
                                                                 {/* UT27: origen visible para distinguir lo recibido por el canal de WhatsApp. */}
                                                                 {documento.origen === 'WHATSAPP' && (
-                                                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#eff2f4] px-2 py-0.5 text-[11px] font-semibold text-[#141e38]">
+                                                                    <span className="inline-flex items-center gap-1 rounded-full bg-fondo px-2 py-0.5 text-[11px] font-semibold text-tinta">
                                                                         <Smartphone aria-hidden="true" className="size-3" /> WhatsApp
                                                                     </span>
                                                                 )}
@@ -105,7 +105,7 @@ export function BuzonPage() {
                                                             <details className="mt-2 text-sm" open={foco === documento.id || undefined}>
                                                                 <summary className="cursor-pointer">Ver datos propuestos</summary>
                                                                 <EstadoBadge estado={documento.estado} />
-                                                                {documento.estado === 'EXTRAYENDO_DATOS' ? <p className="mt-2 text-sm text-[#6b6656]">Los datos propuestos estarán disponibles cuando termine la extracción.</p> : <>
+                                                                {documento.estado === 'EXTRAYENDO_DATOS' ? <p className="mt-2 text-sm text-texto-suave">Los datos propuestos estarán disponibles cuando termine la extracción.</p> : <>
                                                                 <dl className="mt-2 space-y-1">
                                                                     {/* Cada valor lleva la confianza de su lectura cuando el motor la da (PB-06). */}
                                                                     {([
@@ -119,7 +119,7 @@ export function BuzonPage() {
                                                                         ['Total', 'Total', documento.extraccion?.total != null ? formatearEuros(documento.extraccion.total) : null],
                                                                     ] as const).map(([campo, clave, valor]) => {
                                                                         const confianza = valor != null ? documento.extraccion?.confianzaCampos?.[clave] : undefined
-                                                                        return <div key={campo}><dt className="inline font-medium">{campo}: </dt><dd className="inline">{valor ?? 'No extraído'}{confianza && <span className="text-[#6b6656]"> · confianza {TEXTO_CONFIANZA[confianza]}</span>}</dd></div>
+                                                                        return <div key={campo}><dt className="inline font-medium">{campo}: </dt><dd className="inline">{valor ?? 'No extraído'}{confianza && <span className="text-texto-suave"> · confianza {TEXTO_CONFIANZA[confianza]}</span>}</dd></div>
                                                                     })}
                                                                 </dl>
                                                                 {!!documento.extraccion?.desglosesIva?.length && <table className="mt-2 text-sm">
@@ -150,7 +150,7 @@ export function BuzonPage() {
                                                                 ))}
                                                                 </>}
                                                                 {documento.intentos.map(intento => <p key={intento.id} className="mt-2">{formatearFecha(intento.inicio)} · {textoEstadoExtraccion(intento.resultado)}{intento.error && `: ${intento.error}`}</p>)}
-                                                                {documento.tieneOriginal && (documento.estado === 'ERROR' || documento.estado === 'PENDIENTE_VALIDACION') && <button type="button" disabled={reintentando !== null} onClick={() => void reintentar(documento.id)} className="mt-2 text-[#c8651a] hover:underline">{reintentando === documento.id ? 'Solicitando extracción…' : documento.estado === 'ERROR' ? 'Reintentar extracción' : 'Volver a extraer'}</button>}
+                                                                {documento.tieneOriginal && (documento.estado === 'ERROR' || documento.estado === 'PENDIENTE_VALIDACION') && <button type="button" disabled={reintentando !== null} onClick={() => void reintentar(documento.id)} className="mt-2 text-acento hover:underline">{reintentando === documento.id ? 'Solicitando extracción…' : documento.estado === 'ERROR' ? 'Reintentar extracción' : 'Volver a extraer'}</button>}
                                                                 <HistorialDocumento documentoId={documento.id} version={documento.historial.length} />
                                                             </details>
                                                             <AclaracionesDocumento documentoId={documento.id} abrir={foco === documento.id} />
@@ -159,10 +159,10 @@ export function BuzonPage() {
                                                 </td>
                                                 <td className="hidden px-3 py-3.5 md:table-cell">
                                                     {/* El autónomo ve la categoría vigente que fija el gestor, no la propuesta de la IA (PB-09). */}
-                                                    <span className="text-sm text-[#3d3a30]">{documento.categoria === 'SIN_CLASIFICAR' ? 'Sin clasificar' : documento.categoria}</span>
+                                                    <span className="text-sm text-tinta">{documento.categoria === 'SIN_CLASIFICAR' ? 'Sin clasificar' : documento.categoria}</span>
                                                 </td>
                                                 <td className="px-3 py-3.5 text-right">
-                                                    <span className="text-sm font-semibold text-[#1a1916]">
+                                                    <span className="text-sm font-semibold text-tinta">
                                                         {documento.extraccion?.total != null ? formatearEuros(documento.extraccion.total) : '—'}
                                                     </span>
                                                 </td>
@@ -174,7 +174,7 @@ export function BuzonPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => void abrirOriginal(documento.id)}
-                                                            className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-[#c8651a] hover:underline"
+                                                            className="inline-flex items-center gap-1 whitespace-nowrap text-xs font-medium text-acento hover:underline"
                                                         >
                                                             <FileText aria-hidden="true" className="size-3.5" /> Ver original
                                                         </button>
