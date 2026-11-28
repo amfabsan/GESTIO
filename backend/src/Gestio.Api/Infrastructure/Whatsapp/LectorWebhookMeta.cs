@@ -8,6 +8,8 @@ namespace Gestio.Api.Infrastructure.Whatsapp;
 // UT27: traduce una notificación del webhook de la WhatsApp Cloud API a MensajeEntrante.
 // Ignora los «statuses» (entregado, leído…), los cambios que no son «messages» y los mensajes dirigidos a un número
 // distinto del configurado.
+public sealed record EntregaFallida(string MensajeId, int? Codigo, string? Titulo, string? Detalle);
+
 public static partial class LectorWebhookMeta
 {
     [GeneratedRegex("^[1-9][0-9]{7,14}$")]
@@ -37,6 +39,44 @@ public static partial class LectorWebhookMeta
         }
 
         return mensajes;
+    }
+
+    // Requisito 8: Meta acepta una respuesta (200) y avisa después, con un «status» = «failed», si no pudo entregarla.
+    // Se extraen solo el id del mensaje y el error; el destinatario (teléfono) no se devuelve para no registrarlo.
+    public static IReadOnlyList<EntregaFallida> LeerEntregasFallidas(ReadOnlySpan<byte> cuerpo, string phoneNumberId)
+    {
+        using var json = JsonDocument.Parse(cuerpo.ToArray());
+        var fallidas = new List<EntregaFallida>();
+        var raiz = json.RootElement;
+        if (Texto(raiz, "object") != "whatsapp_business_account" || Hijo(raiz, "entry") is not { ValueKind: JsonValueKind.Array } entradas)
+            return fallidas;
+
+        foreach (var entrada in entradas.EnumerateArray())
+        {
+            if (Hijo(entrada, "changes") is not { ValueKind: JsonValueKind.Array } cambios) continue;
+            foreach (var cambio in cambios.EnumerateArray())
+            {
+                if (Texto(cambio, "field") != "messages" || Hijo(cambio, "value") is not { ValueKind: JsonValueKind.Object } valor) continue;
+                if (Texto(Hijo(valor, "metadata") ?? default, "phone_number_id") != phoneNumberId) continue;
+                if (Hijo(valor, "statuses") is not { ValueKind: JsonValueKind.Array } estados) continue;
+
+                foreach (var estado in estados.EnumerateArray())
+                {
+                    if (Texto(estado, "status") != "failed") continue;
+                    var error = Hijo(estado, "errors") is { ValueKind: JsonValueKind.Array } errores && errores.GetArrayLength() > 0
+                        ? errores[0]
+                        : default;
+                    var codigo = Hijo(error, "code") is { ValueKind: JsonValueKind.Number } c ? c.GetInt32() : (int?)null;
+                    fallidas.Add(new EntregaFallida(
+                        Texto(estado, "id") ?? "?",
+                        codigo,
+                        Texto(error, "title") ?? Texto(error, "message"),
+                        Texto(Hijo(error, "error_data") ?? default, "details")));
+                }
+            }
+        }
+
+        return fallidas;
     }
 
     private static MensajeEntrante? Traducir(JsonElement m)

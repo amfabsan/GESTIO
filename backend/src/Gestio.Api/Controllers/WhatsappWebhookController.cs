@@ -51,15 +51,22 @@ public sealed class WhatsappWebhookController(
         }
 
         IReadOnlyList<MensajeEntrante> mensajes;
+        IReadOnlyList<EntregaFallida> fallidas;
         try
         {
             mensajes = LectorWebhookMeta.Leer(cuerpo, options.Value.PhoneNumberId);
+            fallidas = LectorWebhookMeta.LeerEntregasFallidas(cuerpo, options.Value.PhoneNumberId);
         }
         catch (Exception ex) when (ex is System.Text.Json.JsonException or InvalidOperationException)
         {
             logger.LogWarning(ex, "Notificación de WhatsApp firmada pero con JSON no válido");
             return BadRequest();
         }
+
+        // Requisito 8: una respuesta aceptada por Meta que luego no se pudo entregar queda registrada con su motivo.
+        foreach (var fallida in fallidas)
+            logger.LogWarning("Meta no pudo entregar la respuesta de WhatsApp {MensajeId}: {Codigo} {Titulo} {Detalle}",
+                fallida.MensajeId, fallida.Codigo, fallida.Titulo, fallida.Detalle);
 
         // Cada mensaje por separado: si uno falla no se responde 500, porque Meta reenviaría el lote entero.
         foreach (var mensaje in mensajes)

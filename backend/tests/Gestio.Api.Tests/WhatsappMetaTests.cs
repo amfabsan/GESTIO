@@ -134,6 +134,64 @@ public sealed class WhatsappMetaTests
     public void Lector_JsonRoto_Lanza() =>
         Assert.ThrowsAny<JsonException>(() => LectorWebhookMeta.Leer("{no es json"u8, PhoneNumberId));
 
+    // ─── Estados de entrega (requisito 8) ────────────────────────────────────────
+
+    [Fact]
+    public void EntregasFallidas_SeLeenConSuCodigoYMotivo_YSinElTelefono()
+    {
+        var cuerpo = Estados(
+            new { id = "wamid.ok", status = "delivered", recipient_id = MovilRamon },
+            new
+            {
+                id = "wamid.falla", status = "failed", recipient_id = MovilRamon,
+                errors = new[] { new { code = 131047, title = "Re-engagement message", error_data = new { details = "Message failed to send because more than 24 hours have passed" } } }
+            });
+
+        var fallida = Assert.Single(LectorWebhookMeta.LeerEntregasFallidas(cuerpo, PhoneNumberId));
+
+        Assert.Equal(new EntregaFallida("wamid.falla", 131047, "Re-engagement message",
+            "Message failed to send because more than 24 hours have passed"), fallida);
+        Assert.DoesNotContain(MovilRamon, fallida.ToString());
+    }
+
+    [Fact]
+    public void EntregasFallidas_DeOtroNumeroOSinErrores_NoRompen()
+    {
+        Assert.Empty(LectorWebhookMeta.LeerEntregasFallidas(Estados(new { id = "wamid.x", status = "failed" }), "999999999999999"));
+        Assert.Equal(new EntregaFallida("wamid.x", null, null, null),
+            Assert.Single(LectorWebhookMeta.LeerEntregasFallidas(Estados(new { id = "wamid.x", status = "failed" }), PhoneNumberId)));
+        Assert.Empty(LectorWebhookMeta.LeerEntregasFallidas(Notificacion(), PhoneNumberId));
+    }
+
+    [Fact]
+    public async Task Webhook_EntregaFallida_SeRegistraYRespondeOk()
+    {
+        var e = await WhatsappRecepcionTests.Entorno.CrearAsync(nameof(Webhook_EntregaFallida_SeRegistraYRespondeOk));
+        var registros = new List<(Microsoft.Extensions.Logging.LogLevel, string)>();
+        var webhook = new WhatsappWebhookController(e.Recepcion, Options.Create(OpcionesCompletas()),
+            new RegistroEnLista<WhatsappWebhookController>(registros))
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+
+        var cuerpo = Estados(new { id = "wamid.falla", status = "failed", errors = new[] { new { code = 131026, title = "Message undeliverable" } } });
+        Assert.IsType<OkResult>(await Enviar(webhook, cuerpo, firmar: true));
+
+        Assert.Contains(registros, r => r.Item1 == Microsoft.Extensions.Logging.LogLevel.Warning
+            && r.Item2.Contains("wamid.falla") && r.Item2.Contains("131026") && r.Item2.Contains("Message undeliverable"));
+    }
+
+    private static byte[] Estados(params object[] estados) => JsonSerializer.SerializeToUtf8Bytes(new
+    {
+        @object = "whatsapp_business_account",
+        entry = new[] { new { id = "1", changes = new[] { new { field = "messages", value = new
+        {
+            messaging_product = "whatsapp",
+            metadata = new { display_phone_number = "15550000000", phone_number_id = PhoneNumberId },
+            statuses = estados
+        } } } } }
+    });
+
     // ─── Proveedor contra la Graph API (HTTP falso) ──────────────────────────────
 
     [Fact]
